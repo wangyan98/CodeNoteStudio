@@ -1,0 +1,61 @@
+export type NoteType = 'mind' | 'md' | 'derive'
+
+export type NoteFilter = 'all' | NoteType
+
+export interface NoteItem {
+  id: string
+  name: string
+  path: string
+  type: NoteType
+}
+
+export interface CodeFile {
+  path: string
+  name: string
+  language: string
+}
+
+export interface CodeRepo {
+  path: string
+  commit: string
+  lsp: {
+    language: string
+    command: string
+  }
+}
+
+export interface NotebookConfig {
+  name: string
+  codeRepos: CodeRepo[]
+}
+
+export interface PanelWidths {
+  panel1: number
+  panel2: number
+  panel3: number
+  panel4: number
+}
+
+export type AppAction =
+  | { type: 'SELECT_NOTE'; noteId: string | null }
+  | { type: 'SET_NOTE_FILTER'; filter: NoteFilter }
+  | { type: 'SET_NOTE_SEARCH'; query: string }
+  | { type: 'SET_NOTES'; notes: NoteItem[] }
+  | { type: 'OPEN_CODE_FILE'; file: CodeFile }
+  | { type: 'CLOSE_CODE_FILE'; index: number }
+  | { type: 'SET_ACTIVE_CODE_FILE'; index: number }
+  | { type: 'SET_CODE_REPO'; path: string }
+  | { type: 'SET_CODE_FILES'; files: CodeFile[] }
+  | { type: 'SET_PANEL_WIDTHS'; widths: PanelWidths }
+
+export interface AppState {
+  notes: NoteItem[]
+  selectedNoteId: string | null
+  noteFilter: NoteFilter
+  noteSearchQuery: string
+  openCodeFiles: CodeFile[]
+  activeCodeFileIndex: number
+  codeRepoPath: string | null
+  codeFiles: CodeFile[]
+  panelWidths: PanelWidths
+}
