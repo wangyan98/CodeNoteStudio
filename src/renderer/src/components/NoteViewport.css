@@ -1,0 +1,38 @@
+.note-viewport {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.note-viewport-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: var(--placeholder-color);
+  font-size: 13px;
+}
+
+.note-viewport-toolbar {
+  display: flex;
+  align-items: center;
+  padding: 4px 8px;
+  border-bottom: 1px solid var(--border-color);
+  background: var(--header-bg);
+  gap: 8px;
+}
+
+.note-viewport-title {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-color);
+}
+
+.note-viewport-type-badge {
+  font-size: 10px;
+  padding: 1px 6px;
+  background: var(--accent-color);
+  color: #fff;
+  border-radius: 2px;
+  text-transform: uppercase;
+}
