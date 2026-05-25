@@ -15,6 +15,14 @@ declare global {
       deleteNote: (relativePath: string) => Promise<void>
       renameNote: (oldPath: string, newPath: string) => Promise<void>
       noteExists: (relativePath: string) => Promise<boolean>
+      listRepoFiles: (repoPath: string) => Promise<Array<{
+        name: string
+        relativePath: string
+        absolutePath: string
+        isDirectory: boolean
+      }>>
+      readCodeFile: (absolutePath: string) => Promise<string>
+      getGitCommit: (repoPath: string) => Promise<string>
     }
   }
 }

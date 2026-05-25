@@ -21,7 +21,12 @@ const api = {
   deleteNote: (relativePath: string) => ipcRenderer.invoke('notes:delete', relativePath),
   renameNote: (oldPath: string, newPath: string) =>
     ipcRenderer.invoke('notes:rename', oldPath, newPath),
-  noteExists: (relativePath: string) => ipcRenderer.invoke('notes:exists', relativePath)
+  noteExists: (relativePath: string) => ipcRenderer.invoke('notes:exists', relativePath),
+
+  // Code
+  listRepoFiles: (repoPath: string) => ipcRenderer.invoke('code:list-repo-files', repoPath),
+  readCodeFile: (absolutePath: string) => ipcRenderer.invoke('code:read-file', absolutePath),
+  getGitCommit: (repoPath: string) => ipcRenderer.invoke('code:get-git-commit', repoPath)
 }
 
 contextBridge.exposeInMainWorld('electronAPI', api)

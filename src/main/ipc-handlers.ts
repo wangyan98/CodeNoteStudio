@@ -63,6 +63,21 @@ export function registerIpcHandlers(projectPath: string): void {
   ipcMain.handle('app:get-project-path', (): string | null => {
     return currentProjectPath
   })
+
+  // Code repo
+  ipcMain.handle('code:list-repo-files', async (_event, repoPath: string) => {
+    const { listRepoFiles } = await import('./services/file-system')
+    return listRepoFiles(repoPath)
+  })
+
+  ipcMain.handle('code:read-file', async (_event, absolutePath: string) => {
+    const { readTextFile } = await import('./services/file-system')
+    return readTextFile(absolutePath)
+  })
+
+  ipcMain.handle('code:get-git-commit', async (_event, _repoPath: string): Promise<string> => {
+    return 'not available'
+  })
 }
 
 export function unregisterIpcHandlers(): void {
