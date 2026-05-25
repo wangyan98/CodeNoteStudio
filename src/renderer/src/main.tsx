@@ -1,14 +1,17 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
-import App from './App'
+import { App } from './App'
+import { createWebApiClient } from './services/web-api-client'
 
-const rootElement = document.getElementById('root')
-if (!rootElement) {
-  throw new Error('Root element not found')
+const IS_BROWSER = typeof (window as any).electronAPI === 'undefined'
+
+if (IS_BROWSER) {
+  ;(window as any).electronAPI = createWebApiClient()
+  console.log('[web-live-server] Running in browser mode')
 }
 
-createRoot(rootElement).render(
+createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <App />
+    <App isReadOnly={IS_BROWSER} />
   </StrictMode>
 )

@@ -2,9 +2,9 @@ import { AppProvider } from './contexts/AppContext'
 import { Layout } from './components/Layout'
 import './App.css'
 
-export default function App() {
+export function App({ isReadOnly = false }: { isReadOnly?: boolean }) {
   return (
-    <AppProvider>
+    <AppProvider isReadOnly={isReadOnly}>
       <Layout />
     </AppProvider>
   )

@@ -1,0 +1,62 @@
+.server-status-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 12px;
+  background: var(--bg-secondary);
+  border-top: 1px solid var(--border-color);
+  font-size: 12px;
+  height: 28px;
+  flex-shrink: 0;
+}
+
+.server-status-indicator {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.server-running {
+  background: #4caf50;
+  box-shadow: 0 0 4px #4caf50;
+}
+
+.server-stopped {
+  background: #888;
+}
+
+.server-label {
+  color: var(--text-muted);
+}
+
+.server-url {
+  color: var(--text-primary);
+  font-family: monospace;
+}
+
+.server-btn {
+  padding: 2px 8px;
+  border: 1px solid var(--border-color);
+  border-radius: 3px;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  cursor: pointer;
+  font-size: 11px;
+}
+
+.server-btn:hover {
+  background: var(--bg-hover);
+}
+
+.server-start {
+  background: #1a73e8;
+  color: white;
+  border-color: #1a73e8;
+}
+
+.server-stop {
+  background: #d93025;
+  color: white;
+  border-color: #d93025;
+}

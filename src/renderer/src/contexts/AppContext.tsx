@@ -80,14 +80,23 @@ export function appReducer(state: AppState, action: AppAction): AppState {
 interface AppContextValue {
   state: AppState
   dispatch: Dispatch<AppAction>
+  isReadOnly: boolean
 }
 
 const AppContext = createContext<AppContextValue | null>(null)
 
-export function AppProvider({ children, initialStateOverride }: { children: ReactNode; initialStateOverride?: AppState }) {
+export function AppProvider({
+  children,
+  initialStateOverride,
+  isReadOnly = false
+}: {
+  children: ReactNode
+  initialStateOverride?: AppState
+  isReadOnly?: boolean
+}) {
   const [state, dispatch] = useReducer(appReducer, initialStateOverride || initialState)
   return (
-    <AppContext.Provider value={{ state, dispatch }}>
+    <AppContext.Provider value={{ state, dispatch, isReadOnly }}>
       {children}
     </AppContext.Provider>
   )

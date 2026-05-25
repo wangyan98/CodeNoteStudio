@@ -22,7 +22,8 @@ beforeEach(() => {
     renameNote: vi.fn().mockResolvedValue(undefined),
     noteExists: vi.fn().mockResolvedValue(false),
     loadConfig: vi.fn().mockResolvedValue({ name: 'test', codeRepos: [] }),
-    saveConfig: vi.fn().mockResolvedValue(undefined)
+    saveConfig: vi.fn().mockResolvedValue(undefined),
+    getServerStatus: vi.fn().mockResolvedValue({ running: false, port: 0, url: '' })
   } as unknown as typeof window.electronAPI
 })
 

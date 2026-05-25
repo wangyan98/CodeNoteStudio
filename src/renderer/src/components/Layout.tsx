@@ -5,6 +5,7 @@ import { NoteDirectory } from './NoteDirectory'
 import { NoteViewport } from './NoteViewport'
 import { CodeViewport } from './CodeViewport'
 import { CodeDirectory } from './CodeDirectory'
+import { ServerStatus } from './ServerStatus'
 import type { PanelWidths } from '../types'
 import './Layout.css'
 
@@ -49,6 +50,7 @@ export function Layout() {
           </Panel>
         </PanelGroup>
       </div>
+      <ServerStatus />
     </div>
   )
 }
