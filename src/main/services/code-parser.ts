@@ -194,6 +194,8 @@ export async function parseCodeFile(filePath: string): Promise<CodeSymbol[]> {
 
   p.setLanguage(lang)
   const tree = p.parse(source)
+  if (!tree) return []
+
   const rootNode = tree.rootNode as unknown as TreeNode
 
   const symbols: CodeSymbol[] = []

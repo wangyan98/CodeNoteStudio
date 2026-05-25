@@ -79,6 +79,39 @@ export function registerIpcHandlers(projectPath: string): void {
     const { getCommitInfo } = await import('./services/git-service')
     return getCommitInfo(repoPath)
   })
+
+  ipcMain.handle('code:parse-symbols', async (_event, filePaths: string[]) => {
+    const { extractSymbols } = await import('./services/code-parser')
+    return extractSymbols(filePaths)
+  })
+
+  ipcMain.handle('code:index-symbols', async (_event, repoPath: string) => {
+    const { initSymbolDatabase, indexSymbols } = await import('./services/symbol-index')
+    const { extractSymbols, initParser } = await import('./services/code-parser')
+    const { listRepoFiles } = await import('./services/file-system')
+
+    await initParser()
+    const files = await listRepoFiles(repoPath)
+    const codeFiles = files.filter((f) => !f.isDirectory).map((f) => f.absolutePath)
+
+    const db = initSymbolDatabase(currentProjectPath!)
+    const symbols = await extractSymbols(codeFiles)
+    indexSymbols(db, symbols)
+
+    return { indexed: symbols.length, totalFiles: codeFiles.length }
+  })
+
+  ipcMain.handle('code:resolve-refs', async (_event, _notePath: string, content: string) => {
+    const { parseRefs, resolveRefs } = await import('./services/ref-resolver')
+    const { initSymbolDatabase, querySymbols } = await import('./services/symbol-index')
+
+    const refs = parseRefs(content)
+    if (refs.length === 0) return []
+
+    const db = initSymbolDatabase(currentProjectPath!)
+    const allSymbols = querySymbols(db)
+    return resolveRefs(refs, allSymbols)
+  })
 }
 
 export function unregisterIpcHandlers(): void {

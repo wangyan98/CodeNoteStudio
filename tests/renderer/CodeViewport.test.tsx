@@ -7,7 +7,7 @@ beforeEach(() => {
   window.electronAPI = {
     ...window.electronAPI,
     readCodeFile: vi.fn().mockResolvedValue('// code'),
-    getGitCommit: vi.fn().mockResolvedValue('a1b2c3d'),
+    getGitCommit: vi.fn().mockResolvedValue({ sha: 'a1b2c3d4e5f6', message: 'test commit', author: 'test', date: '2024-01-01' }),
     listNotes: vi.fn().mockResolvedValue([])
   } as unknown as typeof window.electronAPI
 })

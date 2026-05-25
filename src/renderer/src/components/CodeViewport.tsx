@@ -7,7 +7,7 @@ export function CodeViewport() {
   const { state, dispatch } = useAppContext()
   const { openCodeFiles, activeCodeFileIndex, codeRepoPath } = state
   const [fileContents, setFileContents] = useState<Map<string, string>>(new Map())
-  const [gitCommit, setGitCommit] = useState<string>('')
+  const [gitCommit, setGitCommit] = useState<{ sha: string; message: string; author: string; date: string } | null>(null)
 
   const activeFile = activeCodeFileIndex >= 0 ? openCodeFiles[activeCodeFileIndex] : null
 
@@ -81,7 +81,12 @@ export function CodeViewport() {
         {/* Git info */}
         <div className="code-git-info">
           <span>{activeFile.language}</span>
-          {gitCommit && <span className="code-git-sha">{gitCommit.slice(0, 7)}</span>}
+          {gitCommit && gitCommit.sha !== 'not available' && (
+            <>
+              <span className="code-git-sha">{gitCommit.sha.slice(0, 7)}</span>
+              <span>{gitCommit.message.slice(0, 60)}</span>
+            </>
+          )}
           <span>{activeFile.name}</span>
         </div>
 

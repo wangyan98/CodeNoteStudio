@@ -22,7 +22,24 @@ declare global {
         isDirectory: boolean
       }>>
       readCodeFile: (absolutePath: string) => Promise<string>
-      getGitCommit: (repoPath: string) => Promise<string>
+      getGitCommit: (repoPath: string) => Promise<{ sha: string; message: string; author: string; date: string }>
+      parseSymbols: (filePaths: string[]) => Promise<Array<{
+        name: string
+        kind: string
+        filePath: string
+        startLine: number
+        endLine: number
+        startColumn: number
+        endColumn: number
+        parentName?: string
+      }>>
+      indexSymbols: (repoPath: string) => Promise<{ indexed: number; totalFiles: number }>
+      resolveRefs: (notePath: string, content: string) => Promise<Array<{
+        functionName: string
+        filePath: string
+        startLine: number
+        endLine: number
+      }>>
     }
   }
 }

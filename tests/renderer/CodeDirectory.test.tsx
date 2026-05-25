@@ -14,7 +14,7 @@ beforeEach(() => {
     ...window.electronAPI,
     listRepoFiles: vi.fn().mockResolvedValue(mockFiles),
     readCodeFile: vi.fn().mockResolvedValue('// code'),
-    getGitCommit: vi.fn().mockResolvedValue('a1b2c3d'),
+    getGitCommit: vi.fn().mockResolvedValue({ sha: 'a1b2c3d4e5f6', message: 'test commit', author: 'test', date: '2024-01-01' }),
     loadConfig: vi.fn().mockResolvedValue({
       name: 'test',
       codeRepos: [{ path: '/repo', commit: '', lsp: { language: 'typescript', command: '' } }]
