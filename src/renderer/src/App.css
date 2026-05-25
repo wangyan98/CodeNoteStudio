@@ -24,3 +24,97 @@ html, body, #root {
   font-family: var(--font-family);
   font-size: 13px;
 }
+
+/* Embed Card */
+.embed-card {
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  padding: 10px 12px;
+  margin: 8px 0;
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.embed-card-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 4px;
+}
+
+.embed-card-badge {
+  font-size: 10px;
+  padding: 1px 6px;
+  background: var(--accent-color);
+  color: #fff;
+  border-radius: 2px;
+  text-transform: uppercase;
+}
+
+.embed-card-type {
+  font-size: 11px;
+  color: var(--header-color);
+}
+
+.embed-card-path {
+  font-size: 12px;
+  color: var(--text-color);
+  font-family: monospace;
+}
+
+/* Code Block */
+.code-block {
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  margin: 8px 0;
+  overflow: hidden;
+}
+
+.code-block-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 4px 10px;
+  background: rgba(255, 255, 255, 0.05);
+  border-bottom: 1px solid var(--border-color);
+}
+
+.code-block-lang {
+  font-size: 10px;
+  text-transform: uppercase;
+  color: var(--header-color);
+}
+
+.code-block-jump {
+  font-size: 11px;
+  background: transparent;
+  border: 1px solid var(--accent-color);
+  color: var(--accent-color);
+  border-radius: 3px;
+  padding: 1px 8px;
+  cursor: pointer;
+}
+
+.code-block-jump:hover {
+  background: var(--accent-color);
+  color: #fff;
+}
+
+.code-block-content {
+  padding: 12px;
+  margin: 0;
+  overflow-x: auto;
+  font-size: 12px;
+  line-height: 1.5;
+  background: rgba(0, 0, 0, 0.2);
+}
+
+.code-block-content code {
+  font-family: 'Consolas', 'Monaco', monospace;
+}
+
+.code-block-footer {
+  padding: 4px 10px;
+  font-size: 10px;
+  color: var(--placeholder-color);
+  border-top: 1px solid var(--border-color);
+}

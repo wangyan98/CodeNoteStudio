@@ -1,0 +1,18 @@
+.mindmap-container {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: var(--panel-bg);
+}
+
+.mindmap-container svg {
+  display: block;
+}
+
+.mind-node text {
+  user-select: none;
+}
+
+.mind-link {
+  transition: stroke 0.15s;
+}
