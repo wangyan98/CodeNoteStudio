@@ -1,4 +1,4 @@
-import { app, BrowserWindow, shell } from 'electron'
+import { app, BrowserWindow, ipcMain, shell } from 'electron'
 import { join } from 'path'
 
 function createWindow(): void {
@@ -7,6 +7,7 @@ function createWindow(): void {
     height: 900,
     minWidth: 1000,
     minHeight: 600,
+    show: false,
     title: 'Code Note Studio',
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
@@ -31,6 +32,8 @@ function createWindow(): void {
     mainWindow.loadFile(join(__dirname, '../renderer/index.html'))
   }
 }
+
+ipcMain.handle('get-app-version', () => app.getVersion())
 
 app.whenReady().then(() => {
   createWindow()
