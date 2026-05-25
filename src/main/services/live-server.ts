@@ -129,10 +129,10 @@ function createApp(projectPath: string): Express {
     }
   })
 
-  app.get('/api/notes/*', async (req: Request, res: Response) => {
+  app.get('/api/notes/*notePath', async (req: Request, res: Response) => {
     try {
       const { readNote } = await import('./note-service')
-      const relativePath = req.params[0] || req.path.slice('/api/notes/'.length)
+      const relativePath = req.params.notePath || req.path.slice('/api/notes/'.length)
 
       // Prevent path traversal: resolved path must stay within notes directory
       const resolvedPath = path.resolve(notesDir, relativePath)
@@ -244,7 +244,7 @@ function createApp(projectPath: string): Express {
   })
 
   // SPA fallback
-  app.get('*', (_req: Request, res: Response) => {
+  app.get('*splat', (_req: Request, res: Response) => {
     const indexPath = path.join(rendererDir, 'index.html')
     if (fs.existsSync(indexPath)) {
       res.sendFile(indexPath)
