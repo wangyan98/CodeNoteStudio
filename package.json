@@ -8,18 +8,24 @@
     "build": "electron-vite build",
     "preview": "electron-vite preview",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "postinstall": "electron-rebuild -f -w better-sqlite3"
   },
   "dependencies": {
+    "better-sqlite3": "^12.10.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
-    "react-resizable-panels": "^2.0.25"
+    "react-resizable-panels": "^2.0.25",
+    "uuid": "^14.0.0"
   },
   "devDependencies": {
+    "@electron/rebuild": "^4.0.4",
     "@testing-library/jest-dom": "^6.6.3",
     "@testing-library/react": "^16.1.0",
+    "@types/better-sqlite3": "^7.6.13",
     "@types/react": "^18.3.12",
     "@types/react-dom": "^18.3.1",
+    "@types/uuid": "^10.0.0",
     "@vitejs/plugin-react": "^4.3.4",
     "electron": "^33.2.1",
     "electron-vite": "^2.3.0",
