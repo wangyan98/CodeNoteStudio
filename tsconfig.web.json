@@ -8,7 +8,13 @@
     "esModuleInterop": true,
     "skipLibCheck": true,
     "outDir": "./out",
-    "declaration": true
+    "declaration": true,
+    "composite": true,
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["./src/renderer/src/*"]
+    }
   },
   "include": ["src/renderer/src/**/*.ts", "src/renderer/src/**/*.tsx"]
 }
