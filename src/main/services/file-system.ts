@@ -41,3 +41,59 @@ export async function listDirectory(dirPath: string): Promise<string[]> {
 export async function ensureDir(dirPath: string): Promise<void> {
   await fs.mkdir(dirPath, { recursive: true })
 }
+
+export interface RepoFileEntry {
+  name: string
+  relativePath: string
+  absolutePath: string
+  isDirectory: boolean
+}
+
+const IGNORE_DIRS = new Set([
+  '.git', 'node_modules', '__pycache__', '.venv', 'venv',
+  '.idea', '.vscode', 'dist', 'build', 'out', '.next',
+  'target', '.DS_Store'
+])
+
+export async function listRepoFiles(rootPath: string): Promise<RepoFileEntry[]> {
+  const result: RepoFileEntry[] = []
+
+  async function scan(dirPath: string, relativeDir: string): Promise<void> {
+    let entries: string[]
+    try {
+      const dirents = await fs.readdir(dirPath, { withFileTypes: true })
+      entries = dirents.map(e => e.name)
+    } catch {
+      return
+    }
+
+    for (const name of entries) {
+      if (name.startsWith('.') && name !== '.env') continue
+      if (IGNORE_DIRS.has(name)) continue
+
+      const absolutePath = path.join(dirPath, name)
+      const relativePath = relativeDir ? `${relativeDir}/${name}` : name
+
+      let stat
+      try {
+        stat = await fs.stat(absolutePath)
+      } catch {
+        continue
+      }
+
+      if (stat.isDirectory()) {
+        // Also include directories in result for the tree structure
+        result.push({ name, relativePath, absolutePath, isDirectory: true })
+        await scan(absolutePath, relativePath)
+      } else {
+        result.push({ name, relativePath, absolutePath, isDirectory: false })
+      }
+    }
+  }
+
+  await scan(rootPath, '')
+  return result.sort((a, b) => {
+    if (a.isDirectory !== b.isDirectory) return a.isDirectory ? -1 : 1
+    return a.name.localeCompare(b.name)
+  })
+}

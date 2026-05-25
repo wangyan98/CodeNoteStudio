@@ -10,7 +10,8 @@ import {
   deleteFile,
   fileExists,
   listDirectory,
-  ensureDir
+  ensureDir,
+  listRepoFiles
 } from '../../src/main/services/file-system'
 
 describe('file-system', () => {
@@ -97,6 +98,31 @@ describe('file-system', () => {
       await ensureDir(dirPath)
       await ensureDir(dirPath)
       expect(await fileExists(dirPath)).toBe(true)
+    })
+  })
+
+  describe('listRepoFiles', () => {
+    it('lists files recursively', async () => {
+      await writeTextFile(join(testDir, 'src', 'main.ts'), 'code')
+      await writeTextFile(join(testDir, 'src', 'utils.ts'), 'code')
+      await writeTextFile(join(testDir, 'README.md'), 'readme')
+      const files = await listRepoFiles(testDir)
+      expect(files).toHaveLength(4)
+      expect(files.map(f => f.name).sort()).toEqual(['README.md', 'main.ts', 'src', 'utils.ts'])
+    })
+
+    it('excludes .git directories', async () => {
+      await writeTextFile(join(testDir, 'src', 'main.ts'), 'code')
+      await writeTextFile(join(testDir, '.git', 'config'), 'config')
+      const files = await listRepoFiles(testDir)
+      expect(files).toHaveLength(2)
+    })
+
+    it('excludes node_modules directories', async () => {
+      await writeTextFile(join(testDir, 'src', 'main.ts'), 'code')
+      await writeTextFile(join(testDir, 'node_modules', 'dep', 'index.js'), 'js')
+      const files = await listRepoFiles(testDir)
+      expect(files).toHaveLength(2)
     })
   })
 })
