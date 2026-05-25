@@ -75,8 +75,9 @@ export function registerIpcHandlers(projectPath: string): void {
     return readTextFile(absolutePath)
   })
 
-  ipcMain.handle('code:get-git-commit', async (_event, _repoPath: string): Promise<string> => {
-    return 'not available'
+  ipcMain.handle('code:get-git-commit', async (_event, repoPath: string) => {
+    const { getCommitInfo } = await import('./services/git-service')
+    return getCommitInfo(repoPath)
   })
 }
 
