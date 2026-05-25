@@ -3,6 +3,9 @@ import { createServer, type Server as HttpServer } from 'node:http'
 import { WebSocketServer, type WebSocket } from 'ws'
 import path from 'node:path'
 import fs from 'node:fs'
+import Database from 'better-sqlite3'
+import { initSymbolDatabase, querySymbols } from './symbol-index'
+import type { NoteFileType } from '../types'
 
 export interface ServerStatus {
   running: boolean
@@ -28,6 +31,55 @@ let state: LiveServerState = {
   connectedClients: new Set()
 }
 
+// ===== Cached reusable DB connection for symbols/resolve-refs endpoints =====
+let cachedDb: Database.Database | null = null
+let cachedDbProjectPath: string = ''
+
+function getDb(projectPath: string): Database.Database {
+  if (cachedDb && cachedDbProjectPath === projectPath) {
+    return cachedDb
+  }
+  // Close old connection if project path changed
+  if (cachedDb) {
+    cachedDb.close()
+    cachedDb = null
+  }
+  cachedDb = initSymbolDatabase(projectPath)
+  cachedDbProjectPath = projectPath
+  return cachedDb
+}
+
+function closeDb(): void {
+  if (cachedDb) {
+    cachedDb.close()
+    cachedDb = null
+    cachedDbProjectPath = ''
+  }
+}
+
+// ===== Path validation helpers =====
+
+function isPathWithin(parent: string, child: string): boolean {
+  const resolvedParent = path.resolve(parent)
+  const resolvedChild = path.resolve(child)
+  return (
+    resolvedChild.startsWith(resolvedParent + path.sep) ||
+    resolvedChild === resolvedParent
+  )
+}
+
+// ===== Type validation =====
+
+const VALID_NOTE_FILTERS: ReadonlySet<string> = new Set(['mind', 'md', 'derive'])
+
+function validateNoteFilter(value: unknown): NoteFileType | undefined {
+  if (value === undefined || value === '') return undefined
+  if (typeof value === 'string' && VALID_NOTE_FILTERS.has(value)) {
+    return value as NoteFileType
+  }
+  return undefined
+}
+
 function getRendererDir(): string {
   const candidates = [
     path.join(process.cwd(), 'out', 'renderer'),
@@ -44,6 +96,13 @@ function getRendererDir(): string {
 function createApp(projectPath: string): Express {
   const app = express()
   const rendererDir = getRendererDir()
+  const notesDir = path.resolve(projectPath, 'notes')
+
+  // ===== CORS middleware for all /api/* routes =====
+  app.use('/api', (_req: Request, res: Response, next) => {
+    res.setHeader('Access-Control-Allow-Origin', '*')
+    next()
+  })
 
   app.use(express.static(rendererDir))
 
@@ -62,8 +121,8 @@ function createApp(projectPath: string): Express {
   app.get('/api/notes', async (req: Request, res: Response) => {
     try {
       const { listNotes } = await import('./note-service')
-      const filterType = req.query.filter as string | undefined
-      const notes = await listNotes(projectPath, filterType as any)
+      const filterType = validateNoteFilter(req.query.filter)
+      const notes = await listNotes(projectPath, filterType)
       res.json(notes)
     } catch (e) {
       res.status(500).json({ error: String(e) })
@@ -74,8 +133,21 @@ function createApp(projectPath: string): Express {
     try {
       const { readNote } = await import('./note-service')
       const relativePath = req.params[0] || req.path.slice('/api/notes/'.length)
+
+      // Prevent path traversal: resolved path must stay within notes directory
+      const resolvedPath = path.resolve(notesDir, relativePath)
+      if (!isPathWithin(notesDir, resolvedPath)) {
+        res.status(403).json({ error: 'Path traversal not allowed' })
+        return
+      }
+
       const content = await readNote(projectPath, relativePath)
-      res.json(content)
+      // Use res.send() for strings (markdown), res.json() for objects
+      if (typeof content === 'string') {
+        res.type('text/plain').send(content)
+      } else {
+        res.json(content)
+      }
     } catch (e) {
       res.status(500).json({ error: String(e) })
     }
@@ -95,11 +167,24 @@ function createApp(projectPath: string): Express {
   app.get('/api/code/file', async (req: Request, res: Response) => {
     try {
       const { readTextFile } = await import('./file-system')
+      const { loadConfig } = await import('./notebook-config')
       const filePath = req.query.path as string
       if (!filePath) {
         res.status(400).json({ error: 'Missing path parameter' })
         return
       }
+
+      // Verify filePath is within projectPath or a configured code repo
+      const resolvedPath = path.resolve(filePath)
+      const config = await loadConfig(projectPath)
+      const allowedDirs = [projectPath, ...config.codeRepos.map((r) => r.path)]
+
+      const isAllowed = allowedDirs.some((dir) => isPathWithin(dir, resolvedPath))
+      if (!isAllowed) {
+        res.status(403).json({ error: 'Access to this file path is not allowed' })
+        return
+      }
+
       const content = await readTextFile(filePath)
       res.type('text/plain').send(content)
     } catch (e) {
@@ -119,25 +204,24 @@ function createApp(projectPath: string): Express {
   })
 
   app.get('/api/code/symbols', async (req: Request, res: Response) => {
-    try {
-      const { initSymbolDatabase, querySymbols } = await import('./symbol-index')
-      const name = req.query.name as string | undefined
-      const filePath = req.query.file as string | undefined
-      const kind = req.query.kind as string | undefined
+    const name = req.query.name as string | undefined
+    const filePath = req.query.file as string | undefined
+    const kind = req.query.kind as string | undefined
 
-      const db = initSymbolDatabase(projectPath)
+    let db: Database.Database | null = null
+    try {
+      db = getDb(projectPath)
       const results = querySymbols(db, name, filePath, kind)
-      db.close()
       res.json(results)
     } catch (e) {
       res.status(500).json({ error: String(e) })
     }
+    // No db.close() here — connection is cached and reused
   })
 
   app.get('/api/code/resolve-refs', async (req: Request, res: Response) => {
     try {
       const { parseRefs, resolveRefs } = await import('./ref-resolver')
-      const { initSymbolDatabase, querySymbols } = await import('./symbol-index')
       const content = req.query.content as string
 
       if (!content) {
@@ -151,9 +235,8 @@ function createApp(projectPath: string): Express {
         return
       }
 
-      const db = initSymbolDatabase(projectPath)
+      const db = getDb(projectPath)
       const allSymbols = querySymbols(db)
-      db.close()
       res.json(resolveRefs(refs, allSymbols))
     } catch (e) {
       res.status(500).json({ error: String(e) })
@@ -178,16 +261,21 @@ export async function startServer(projectPath: string, port = 3456): Promise<Ser
     return { running: true, port: state.port, url: `http://localhost:${state.port}` }
   }
 
+  const app = createApp(projectPath)
+
+  // Defer state mutation until after createApp succeeds
   state.projectPath = projectPath
   state.port = port
 
-  const app = createApp(projectPath)
   const httpServer = createServer(app)
 
   const wss = new WebSocketServer({ server: httpServer })
 
   wss.on('connection', (ws: WebSocket) => {
     state.connectedClients.add(ws)
+
+    // Prevent unhandled error crashes
+    ws.on('error', () => {})
 
     ws.on('close', () => {
       state.connectedClients.delete(ws)
@@ -232,6 +320,9 @@ export async function stopServer(): Promise<void> {
     }
 
     state.httpServer!.close(() => {
+      // Close the cached DB connection
+      closeDb()
+
       state.httpServer = null
       state.app = null
       state.port = 0
