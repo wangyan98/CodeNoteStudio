@@ -84,8 +84,8 @@ interface AppContextValue {
 
 const AppContext = createContext<AppContextValue | null>(null)
 
-export function AppProvider({ children }: { children: ReactNode }) {
-  const [state, dispatch] = useReducer(appReducer, initialState)
+export function AppProvider({ children, initialStateOverride }: { children: ReactNode; initialStateOverride?: AppState }) {
+  const [state, dispatch] = useReducer(appReducer, initialStateOverride || initialState)
   return (
     <AppContext.Provider value={{ state, dispatch }}>
       {children}
