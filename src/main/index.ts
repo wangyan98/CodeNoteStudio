@@ -1,5 +1,6 @@
 import { app, BrowserWindow, ipcMain, shell } from 'electron'
-import { join } from 'path'
+import { join } from 'node:path'
+import { registerIpcHandlers, unregisterIpcHandlers } from './ipc-handlers'
 
 function createWindow(): void {
   const mainWindow = new BrowserWindow({
@@ -36,6 +37,9 @@ function createWindow(): void {
 ipcMain.handle('get-app-version', () => app.getVersion())
 
 app.whenReady().then(() => {
+  const projectPath = join(app.getPath('home'), 'code-note-studio-workspace')
+  registerIpcHandlers(projectPath)
+
   createWindow()
 
   app.on('activate', () => {
@@ -49,4 +53,8 @@ app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {
     app.quit()
   }
+})
+
+app.on('will-quit', () => {
+  unregisterIpcHandlers()
 })
