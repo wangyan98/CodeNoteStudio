@@ -1,6 +1,7 @@
 import { app, BrowserWindow, ipcMain, shell } from 'electron'
 import { join } from 'node:path'
 import { registerIpcHandlers, unregisterIpcHandlers } from './ipc-handlers'
+import { stopServer } from './services/live-server'
 
 function createWindow(): void {
   const mainWindow = new BrowserWindow({
@@ -55,6 +56,7 @@ app.on('window-all-closed', () => {
   }
 })
 
-app.on('will-quit', () => {
+app.on('will-quit', async () => {
+  await stopServer()
   unregisterIpcHandlers()
 })

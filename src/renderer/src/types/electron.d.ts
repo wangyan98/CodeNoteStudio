@@ -40,6 +40,9 @@ declare global {
         startLine: number
         endLine: number
       }>>
+      startServer: (port?: number) => Promise<{ running: boolean; port: number; url: string }>
+      stopServer: () => Promise<void>
+      getServerStatus: () => Promise<{ running: boolean; port: number; url: string }>
     }
   }
 }

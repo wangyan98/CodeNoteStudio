@@ -132,7 +132,8 @@ function createApp(projectPath: string): Express {
   app.get('/api/notes/*notePath', async (req: Request, res: Response) => {
     try {
       const { readNote } = await import('./note-service')
-      const relativePath = req.params.notePath || req.path.slice('/api/notes/'.length)
+      const rawPath = req.params.notePath || req.path.slice('/api/notes/'.length)
+      const relativePath = Array.isArray(rawPath) ? rawPath.join('/') : rawPath
 
       // Prevent path traversal: resolved path must stay within notes directory
       const resolvedPath = path.resolve(notesDir, relativePath)

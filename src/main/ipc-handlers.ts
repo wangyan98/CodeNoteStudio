@@ -36,7 +36,9 @@ export function registerIpcHandlers(projectPath: string): void {
   })
 
   ipcMain.handle('notes:create', async (_event, relativePath: string, type: NoteFileType): Promise<void> => {
-    return createNote(projectPath, relativePath, type)
+    await createNote(projectPath, relativePath, type)
+    const { broadcastMessage } = await import('./services/live-server')
+    broadcastMessage('note-created', { relativePath, type })
   })
 
   ipcMain.handle('notes:read', async (_event, relativePath: string): Promise<NoteContent> => {
@@ -44,11 +46,15 @@ export function registerIpcHandlers(projectPath: string): void {
   })
 
   ipcMain.handle('notes:update', async (_event, relativePath: string, content: NoteContent): Promise<void> => {
-    return updateNote(projectPath, relativePath, content)
+    await updateNote(projectPath, relativePath, content)
+    const { broadcastMessage } = await import('./services/live-server')
+    broadcastMessage('note-updated', { relativePath, content })
   })
 
   ipcMain.handle('notes:delete', async (_event, relativePath: string): Promise<void> => {
-    return deleteNote(projectPath, relativePath)
+    await deleteNote(projectPath, relativePath)
+    const { broadcastMessage } = await import('./services/live-server')
+    broadcastMessage('note-deleted', { relativePath })
   })
 
   ipcMain.handle('notes:rename', async (_event, oldPath: string, newPath: string): Promise<void> => {
@@ -111,6 +117,22 @@ export function registerIpcHandlers(projectPath: string): void {
     const db = initSymbolDatabase(currentProjectPath!)
     const allSymbols = querySymbols(db)
     return resolveRefs(refs, allSymbols)
+  })
+
+  // Live server
+  ipcMain.handle('server:start', async (_event, port?: number) => {
+    const { startServer } = await import('./services/live-server')
+    return startServer(currentProjectPath!, port)
+  })
+
+  ipcMain.handle('server:stop', async () => {
+    const { stopServer } = await import('./services/live-server')
+    return stopServer()
+  })
+
+  ipcMain.handle('server:status', async () => {
+    const { getServerStatus } = await import('./services/live-server')
+    return getServerStatus()
   })
 }
 

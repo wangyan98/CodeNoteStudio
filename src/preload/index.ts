@@ -29,7 +29,12 @@ const api = {
   getGitCommit: (repoPath: string) => ipcRenderer.invoke('code:get-git-commit', repoPath),
   parseSymbols: (filePaths: string[]) => ipcRenderer.invoke('code:parse-symbols', filePaths),
   indexSymbols: (repoPath: string) => ipcRenderer.invoke('code:index-symbols', repoPath),
-  resolveRefs: (notePath: string, content: string) => ipcRenderer.invoke('code:resolve-refs', notePath, content)
+  resolveRefs: (notePath: string, content: string) => ipcRenderer.invoke('code:resolve-refs', notePath, content),
+
+  // Server
+  startServer: (port?: number) => ipcRenderer.invoke('server:start', port),
+  stopServer: () => ipcRenderer.invoke('server:stop'),
+  getServerStatus: () => ipcRenderer.invoke('server:status')
 }
 
 contextBridge.exposeInMainWorld('electronAPI', api)
