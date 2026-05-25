@@ -6,6 +6,8 @@ export const initialState: AppState = {
   selectedNoteId: null,
   noteFilter: 'all',
   noteSearchQuery: '',
+  activeNoteContent: null,
+  activeNoteType: null,
   openCodeFiles: [],
   activeCodeFileIndex: -1,
   codeRepoPath: null,
@@ -62,6 +64,13 @@ export function appReducer(state: AppState, action: AppAction): AppState {
 
     case 'SET_PANEL_WIDTHS':
       return { ...state, panelWidths: action.widths }
+
+    case 'SET_ACTIVE_NOTE_CONTENT':
+      return {
+        ...state,
+        activeNoteContent: action.content,
+        activeNoteType: action.noteType
+      }
 
     default:
       return state

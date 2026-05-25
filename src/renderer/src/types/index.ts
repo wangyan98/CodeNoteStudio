@@ -3,9 +3,8 @@ export type NoteType = 'mind' | 'md' | 'derive'
 export type NoteFilter = 'all' | NoteType
 
 export interface NoteItem {
-  id: string
   name: string
-  path: string
+  relativePath: string
   type: NoteType
 }
 
@@ -41,6 +40,7 @@ export type AppAction =
   | { type: 'SET_NOTE_FILTER'; filter: NoteFilter }
   | { type: 'SET_NOTE_SEARCH'; query: string }
   | { type: 'SET_NOTES'; notes: NoteItem[] }
+  | { type: 'SET_ACTIVE_NOTE_CONTENT'; content: unknown; noteType: NoteType | null }
   | { type: 'OPEN_CODE_FILE'; file: CodeFile }
   | { type: 'CLOSE_CODE_FILE'; index: number }
   | { type: 'SET_ACTIVE_CODE_FILE'; index: number }
@@ -53,6 +53,8 @@ export interface AppState {
   selectedNoteId: string | null
   noteFilter: NoteFilter
   noteSearchQuery: string
+  activeNoteContent: unknown
+  activeNoteType: NoteType | null
   openCodeFiles: CodeFile[]
   activeCodeFileIndex: number
   codeRepoPath: string | null
