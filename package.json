@@ -9,7 +9,7 @@
     "preview": "electron-vite preview",
     "test": "vitest run",
     "test:watch": "vitest",
-    "postinstall": "electron-rebuild -f -w better-sqlite3"
+    "postinstall": "electron-rebuild -f -w better-sqlite3 && node scripts/copy-grammars.js"
   },
   "dependencies": {
     "@monaco-editor/react": "^4.7.0",
@@ -20,7 +20,16 @@
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-resizable-panels": "^2.0.25",
-    "uuid": "^14.0.0"
+    "simple-git": "^3.36.0",
+    "tree-sitter-c": "^0.24.1",
+    "tree-sitter-cpp": "^0.23.4",
+    "tree-sitter-go": "^0.25.0",
+    "tree-sitter-javascript": "^0.25.0",
+    "tree-sitter-python": "^0.25.0",
+    "tree-sitter-rust": "^0.24.0",
+    "tree-sitter-typescript": "^0.23.2",
+    "uuid": "^14.0.0",
+    "web-tree-sitter": "^0.26.9"
   },
   "devDependencies": {
     "@electron/rebuild": "^4.0.4",
