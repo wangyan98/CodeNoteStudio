@@ -1,10 +1,13 @@
 import Database from 'better-sqlite3'
+import fs from 'node:fs'
 import path from 'node:path'
 
 let db: Database.Database | null = null
 
 export function initDatabase(projectPath: string): Database.Database {
   if (db) return db
+
+  fs.mkdirSync(projectPath, { recursive: true })
 
   const dbPath = path.join(projectPath, '.index.db')
   db = new Database(dbPath)
