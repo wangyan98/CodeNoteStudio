@@ -17,14 +17,11 @@ export interface CodeFile {
 export interface CodeRepo {
   path: string
   commit: string
-  lsp: {
-    language: string
-    command: string
-  }
 }
 
 export interface NotebookConfig {
   name: string
+  notesPath: string
   codeRepos: CodeRepo[]
 }
 

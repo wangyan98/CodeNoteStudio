@@ -3,14 +3,11 @@ export type { MindMapDocument, DerivationDocument, MindMapNode, DerivationNode, 
 export interface CodeRepo {
   path: string
   commit: string
-  lsp: {
-    language: string
-    command: string
-  }
 }
 
 export interface NotebookConfig {
   name: string
+  notesPath: string
   codeRepos: CodeRepo[]
   notesPath?: string
 }
