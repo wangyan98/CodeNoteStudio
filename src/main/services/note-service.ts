@@ -18,8 +18,7 @@ import {
 } from '../schemas/note-types'
 import type { MindMapDocument, DerivationDocument } from '../schemas/note-types'
 import type { NoteFileType, NoteListItem } from '../types'
-
-const NOTES_DIR = 'notes'
+import { loadConfig } from './notebook-config'
 
 function getNoteType(fileName: string): NoteFileType | null {
   if (fileName.endsWith('.mind.json')) return 'mind'
@@ -28,8 +27,15 @@ function getNoteType(fileName: string): NoteFileType | null {
   return null
 }
 
-function getFullPath(projectPath: string, relativePath: string): string {
-  return path.join(projectPath, NOTES_DIR, relativePath)
+async function getNotesRoot(projectPath: string): Promise<string> {
+  const config = await loadConfig(projectPath)
+  const notesPath = config.notesPath || './'
+  return path.resolve(projectPath, notesPath)
+}
+
+async function getFullPath(projectPath: string, relativePath: string): Promise<string> {
+  const notesRoot = await getNotesRoot(projectPath)
+  return path.join(notesRoot, relativePath)
 }
 
 export type NoteContent = string | MindMapDocument | DerivationDocument
@@ -39,7 +45,7 @@ export async function createNote(
   relativePath: string,
   type: NoteFileType
 ): Promise<void> {
-  const fullPath = getFullPath(projectPath, relativePath)
+  const fullPath = await getFullPath(projectPath, relativePath)
   await ensureDir(path.dirname(fullPath))
 
   switch (type) {
@@ -65,7 +71,7 @@ export async function readNote(
   projectPath: string,
   relativePath: string
 ): Promise<NoteContent> {
-  const fullPath = getFullPath(projectPath, relativePath)
+  const fullPath = await getFullPath(projectPath, relativePath)
 
   if (relativePath.endsWith('.mind.json')) {
     const doc = await readJsonFile<MindMapDocument>(fullPath)
@@ -91,7 +97,7 @@ export async function updateNote(
   relativePath: string,
   content: NoteContent
 ): Promise<void> {
-  const fullPath = getFullPath(projectPath, relativePath)
+  const fullPath = await getFullPath(projectPath, relativePath)
 
   if (typeof content === 'string') {
     await writeTextFile(fullPath, content)
@@ -104,7 +110,7 @@ export async function deleteNote(
   projectPath: string,
   relativePath: string
 ): Promise<void> {
-  const fullPath = getFullPath(projectPath, relativePath)
+  const fullPath = await getFullPath(projectPath, relativePath)
   await deleteFile(fullPath)
 }
 
@@ -113,8 +119,8 @@ export async function renameNote(
   oldRelativePath: string,
   newRelativePath: string
 ): Promise<void> {
-  const oldPath = getFullPath(projectPath, oldRelativePath)
-  const newPath = getFullPath(projectPath, newRelativePath)
+  const oldPath = await getFullPath(projectPath, oldRelativePath)
+  const newPath = await getFullPath(projectPath, newRelativePath)
   await ensureDir(path.dirname(newPath))
   await fs.rename(oldPath, newPath)
 }
@@ -123,15 +129,15 @@ export async function noteExists(
   projectPath: string,
   relativePath: string
 ): Promise<boolean> {
-  return fileExists(getFullPath(projectPath, relativePath))
+  return fileExists(await getFullPath(projectPath, relativePath))
 }
 
 export async function listNotes(
   projectPath: string,
   filterType?: NoteFileType
 ): Promise<NoteListItem[]> {
-  const notesDir = path.join(projectPath, NOTES_DIR)
-  const exists = await fileExists(notesDir)
+  const notesRoot = await getNotesRoot(projectPath)
+  const exists = await fileExists(notesRoot)
   if (!exists) return []
 
   const result: NoteListItem[] = []
@@ -164,6 +170,6 @@ export async function listNotes(
     }
   }
 
-  await scanDir(notesDir, '')
+  await scanDir(notesRoot, '')
   return result
 }

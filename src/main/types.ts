@@ -12,6 +12,7 @@ export interface CodeRepo {
 export interface NotebookConfig {
   name: string
   codeRepos: CodeRepo[]
+  notesPath?: string
 }
 
 export type NoteFileType = 'mind' | 'md' | 'derive'
