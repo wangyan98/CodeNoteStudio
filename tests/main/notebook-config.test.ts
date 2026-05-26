@@ -20,16 +20,17 @@ describe('notebook-config', () => {
     const config = await loadConfig(testDir)
     expect(config.name).toBeTruthy()
     expect(config.codeRepos).toEqual([])
+    expect(config.notesPath).toBe('./')
   })
 
   it('saveConfig writes notebook.json and loadConfig reads it back', async () => {
     const config: NotebookConfig = {
       name: 'my-notes',
+      notesPath: './notes',
       codeRepos: [
         {
           path: '/home/user/projects/algo',
-          commit: 'a1b2c3d4',
-          lsp: { language: 'cpp', command: 'clangd' }
+          commit: 'a1b2c3d4'
         }
       ]
     }
@@ -39,8 +40,8 @@ describe('notebook-config', () => {
   })
 
   it('saveConfig overwrites existing config', async () => {
-    await saveConfig(testDir, { name: 'first', codeRepos: [] })
-    await saveConfig(testDir, { name: 'second', codeRepos: [] })
+    await saveConfig(testDir, { name: 'first', notesPath: './', codeRepos: [] })
+    await saveConfig(testDir, { name: 'second', notesPath: './', codeRepos: [] })
     const loaded = await loadConfig(testDir)
     expect(loaded.name).toBe('second')
   })

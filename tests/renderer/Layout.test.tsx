@@ -1,11 +1,18 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen } from '@testing-library/react'
-import { AppProvider } from '../../src/renderer/src/contexts/AppContext'
+import { AppProvider, initialState } from '../../src/renderer/src/contexts/AppContext'
 import { Layout } from '../../src/renderer/src/components/Layout'
+import type { AppState } from '../../src/renderer/src/types'
+
+const workspaceState: AppState = {
+  ...initialState,
+  workspacePath: '/test/workspace',
+  workspaceName: 'test'
+}
 
 function renderLayout() {
   return render(
-    <AppProvider>
+    <AppProvider initialStateOverride={workspaceState}>
       <Layout />
     </AppProvider>
   )
@@ -14,6 +21,7 @@ function renderLayout() {
 beforeEach(() => {
   window.electronAPI = {
     ...window.electronAPI,
+    getWorkspacePath: vi.fn().mockResolvedValue('/test/workspace'),
     listNotes: vi.fn().mockResolvedValue([]),
     readNote: vi.fn().mockResolvedValue(''),
     updateNote: vi.fn().mockResolvedValue(undefined),
@@ -21,8 +29,9 @@ beforeEach(() => {
     deleteNote: vi.fn().mockResolvedValue(undefined),
     renameNote: vi.fn().mockResolvedValue(undefined),
     noteExists: vi.fn().mockResolvedValue(false),
-    loadConfig: vi.fn().mockResolvedValue({ name: 'test', codeRepos: [] }),
+    loadConfig: vi.fn().mockResolvedValue({ name: 'test', notesPath: './', codeRepos: [] }),
     saveConfig: vi.fn().mockResolvedValue(undefined),
+    listRepoFiles: vi.fn().mockResolvedValue([]),
     getServerStatus: vi.fn().mockResolvedValue({ running: false, port: 0, url: '' })
   } as unknown as typeof window.electronAPI
 })
