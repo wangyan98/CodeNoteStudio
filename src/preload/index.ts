@@ -7,6 +7,11 @@ const api = {
 
   getProjectPath: (): Promise<string | null> => ipcRenderer.invoke('app:get-project-path'),
 
+  // Workspace
+  selectFolder: (): Promise<string | null> => ipcRenderer.invoke('dialog:select-folder'),
+  openWorkspace: (newPath: string) => ipcRenderer.invoke('workspace:open', newPath),
+  getWorkspacePath: (): Promise<string | null> => ipcRenderer.invoke('workspace:get-current'),
+
   // Config
   loadConfig: () => ipcRenderer.invoke('config:load'),
   saveConfig: (config: unknown) => ipcRenderer.invoke('config:save', config),

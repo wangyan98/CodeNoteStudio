@@ -6,6 +6,9 @@ declare global {
       platform: string
       getAppVersion: () => Promise<string>
       getProjectPath: () => Promise<string | null>
+      selectFolder: () => Promise<string | null>
+      openWorkspace: (newPath: string) => Promise<NotebookConfig>
+      getWorkspacePath: () => Promise<string | null>
       loadConfig: () => Promise<NotebookConfig>
       saveConfig: (config: NotebookConfig) => Promise<void>
       listNotes: (filterType?: NoteType) => Promise<NoteItem[]>

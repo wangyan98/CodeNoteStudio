@@ -2,6 +2,7 @@ import { app, BrowserWindow, ipcMain, shell } from 'electron'
 import { join } from 'node:path'
 import { registerIpcHandlers, unregisterIpcHandlers } from './ipc-handlers'
 import { stopServer } from './services/live-server'
+import { loadLastWorkspacePath, validateWorkspacePath } from './services/workspace'
 
 function createWindow(): void {
   const mainWindow = new BrowserWindow({
@@ -37,8 +38,12 @@ function createWindow(): void {
 
 ipcMain.handle('get-app-version', () => app.getVersion())
 
-app.whenReady().then(() => {
-  const projectPath = join(app.getPath('home'), 'code-note-studio-workspace')
+app.whenReady().then(async () => {
+  const lastPath = await loadLastWorkspacePath()
+  const projectPath = lastPath && validateWorkspacePath(lastPath)
+    ? lastPath
+    : ''
+
   registerIpcHandlers(projectPath)
 
   createWindow()

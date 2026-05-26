@@ -18,6 +18,11 @@ export function createWebApiClient() {
 
     getProjectPath: () => Promise.resolve(null),
 
+    // Workspace (read-only in browser)
+    selectFolder: () => Promise.resolve(null),
+    openWorkspace: () => Promise.resolve(null as any),
+    getWorkspacePath: () => Promise.resolve(null),
+
     // Config
     loadConfig: () => get('/api/config'),
     saveConfig: () => Promise.resolve(),
