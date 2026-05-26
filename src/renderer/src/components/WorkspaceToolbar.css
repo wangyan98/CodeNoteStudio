@@ -109,3 +109,20 @@
 .workspace-landing-btn:hover {
   opacity: 0.9;
 }
+
+.workspace-landing-btn:not(.primary) {
+  background: transparent;
+  color: var(--header-color);
+  border: 1px solid var(--border-color);
+}
+
+.workspace-landing-btn:not(.primary):hover {
+  border-color: var(--accent-color);
+  color: var(--text-color);
+}
+
+.workspace-landing-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 8px;
+}

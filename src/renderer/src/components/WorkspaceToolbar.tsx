@@ -56,11 +56,16 @@ export function WorkspaceToolbar() {
         <div className="workspace-landing-icon">📝</div>
         <div className="workspace-landing-title">Code Note Studio</div>
         <div className="workspace-landing-subtitle">
-          Open a folder to get started — your notes and linked code repos live there.
+          Create a new workspace or open an existing one to get started.
         </div>
-        <button className="workspace-landing-btn" onClick={handleOpenFolder}>
-          Open Folder
-        </button>
+        <div className="workspace-landing-actions">
+          <button className="workspace-landing-btn primary" onClick={handleOpenFolder}>
+            New Workspace
+          </button>
+          <button className="workspace-landing-btn" onClick={handleOpenFolder}>
+            Open Folder
+          </button>
+        </div>
       </div>
     )
   }
