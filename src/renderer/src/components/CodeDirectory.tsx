@@ -143,7 +143,7 @@ export function CodeDirectory() {
 
     const codeFile: CodeFile = {
       path: file.absolutePath,
-      name: file.relativePath,
+      name: file.name,
       language: langMap[ext] || 'plaintext'
     }
 

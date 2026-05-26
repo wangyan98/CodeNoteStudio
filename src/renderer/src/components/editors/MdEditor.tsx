@@ -1,17 +1,37 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect, useRef, forwardRef, useImperativeHandle } from 'react'
 import Editor from '@monaco-editor/react'
+import type * as monaco from 'monaco-editor'
+import { registerRefCompletionProvider } from '../../services/monaco-completion'
 import './MdEditor.css'
 
 interface MdEditorProps {
   content: string
   notePath: string
   onSave: (content: string) => Promise<void>
+  onRefClick?: (refName: string) => void
 }
 
-export function MdEditor({ content, notePath, onSave }: MdEditorProps) {
+export interface MdEditorHandle {
+  insertAtCursor: (text: string) => void
+}
+
+export const MdEditor = forwardRef<MdEditorHandle, MdEditorProps>(
+  function MdEditor({ content, notePath, onSave, onRefClick }, ref) {
   const [value, setValue] = useState(content)
   const [showPreview, setShowPreview] = useState(false)
   const [saving, setSaving] = useState(false)
+  const editorMonacoRef = useRef<monaco.editor.IStandaloneCodeEditor | null>(null)
+
+  useImperativeHandle(ref, () => ({
+    insertAtCursor(text: string) {
+      editorMonacoRef.current?.trigger('keyboard', 'type', { text })
+    }
+  }))
+
+  useEffect(() => {
+    const disposable = registerRefCompletionProvider()
+    return () => disposable.dispose()
+  }, [])
 
   const handleChange = useCallback((val: string | undefined) => {
     setValue(val || '')
@@ -63,6 +83,13 @@ export function MdEditor({ content, notePath, onSave }: MdEditorProps) {
               dangerouslySetInnerHTML={{
                 __html: renderMarkdown(value)
               }}
+              onClick={(e) => {
+                const target = (e.target as HTMLElement).closest('.ref-link') as HTMLElement | null
+                if (target) {
+                  const refName = target.getAttribute('data-ref-name')
+                  if (refName) onRefClick?.(refName)
+                }
+              }}
             />
           </div>
         ) : (
@@ -80,18 +107,25 @@ export function MdEditor({ content, notePath, onSave }: MdEditorProps) {
               scrollBeyondLastLine: false,
               automaticLayout: true
             }}
+            onMount={(editor) => { editorMonacoRef.current = editor }}
           />
         )}
       </div>
     </div>
   )
-}
+})
 
 function renderMarkdown(md: string): string {
   let html = md
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
+
+  // Convert @ref(name) to styled spans
+  html = html.replace(
+    /@ref\(([a-zA-Z0-9._-]+)\)/g,
+    '<span class="ref-link" data-ref-name="$1">@ref($1)</span>'
+  )
 
   html = html.replace(/```(\w*)\n([\s\S]*?)```/g, '<pre><code class="language-$1">$2</code></pre>')
   html = html.replace(/`([^`]+)`/g, '<code>$1</code>')

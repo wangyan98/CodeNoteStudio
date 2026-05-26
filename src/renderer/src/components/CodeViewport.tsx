@@ -1,6 +1,7 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import Editor from '@monaco-editor/react'
 import { useAppContext } from '../contexts/AppContext'
+import type * as monaco from 'monaco-editor'
 import './CodeViewport.css'
 
 export function CodeViewport() {
@@ -8,6 +9,7 @@ export function CodeViewport() {
   const { openCodeFiles, activeCodeFileIndex, codeRepoPath } = state
   const [fileContents, setFileContents] = useState<Map<string, string>>(new Map())
   const [gitCommit, setGitCommit] = useState<{ sha: string; message: string; author: string; date: string } | null>(null)
+  const editorRef = useRef<monaco.editor.IStandaloneCodeEditor | null>(null)
 
   const activeFile = activeCodeFileIndex >= 0 ? openCodeFiles[activeCodeFileIndex] : null
 
@@ -32,6 +34,23 @@ export function CodeViewport() {
       loadFileContent(activeFile.path)
     }
   }, [activeFile, fileContents, loadFileContent])
+
+  // Scroll to line when pendingScroll is set
+  useEffect(() => {
+    if (!state.pendingScroll || !activeFile || !editorRef.current) return
+    if (activeFile.path === state.pendingScroll.filePath) {
+      editorRef.current.revealLineInCenter(state.pendingScroll.line)
+      dispatch({ type: 'CLEAR_PENDING_SCROLL' })
+    }
+  }, [state.pendingScroll, activeFile, dispatch])
+
+  const handleEditorMount = useCallback((editor: monaco.editor.IStandaloneCodeEditor) => {
+    editorRef.current = editor
+    if (state.pendingScroll && activeFile && activeFile.path === state.pendingScroll.filePath) {
+      editor.revealLineInCenter(state.pendingScroll.line)
+      dispatch({ type: 'CLEAR_PENDING_SCROLL' })
+    }
+  }, [state.pendingScroll, activeFile, dispatch])
 
   const handleCloseTab = useCallback((index: number, e: React.MouseEvent) => {
     e.stopPropagation()
@@ -110,6 +129,7 @@ export function CodeViewport() {
                 renderLineHighlight: 'line',
                 glyphMargin: true
               }}
+              onMount={handleEditorMount}
             />
           ) : (
             <div style={{ padding: 16, color: 'var(--placeholder-color)' }}>Loading...</div>

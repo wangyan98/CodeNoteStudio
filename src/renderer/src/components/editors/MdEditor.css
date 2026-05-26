@@ -65,3 +65,10 @@
 .md-preview-content pre { background: rgba(0,0,0,0.3); padding: 12px; border-radius: 4px; overflow-x: auto; margin: 8px 0; }
 .md-preview-content pre code { background: none; padding: 0; }
 .md-preview-content a { color: var(--accent-color); }
+.md-preview-content .ref-link {
+  color: var(--accent-color);
+  cursor: pointer;
+  text-decoration: underline dotted;
+  font-family: monospace;
+}
+.md-preview-content .ref-link:hover { text-decoration: underline solid; }

@@ -30,6 +30,11 @@ export function WorkspaceToolbar() {
       setCodeRepos(config.codeRepos || [])
       const notes = await window.electronAPI.listNotes()
       dispatch({ type: 'SET_NOTES', notes })
+      for (const repo of config.codeRepos || []) {
+        window.electronAPI.indexSymbols(repo.path).catch((err) => {
+          console.error('Failed to index symbols for repo:', repo.path, err)
+        })
+      }
     } catch (err) {
       console.error('Failed to create workspace:', err)
     }
@@ -44,6 +49,11 @@ export function WorkspaceToolbar() {
       setCodeRepos(config.codeRepos || [])
       const notes = await window.electronAPI.listNotes()
       dispatch({ type: 'SET_NOTES', notes })
+      for (const repo of config.codeRepos || []) {
+        window.electronAPI.indexSymbols(repo.path).catch((err) => {
+          console.error('Failed to index symbols for repo:', repo.path, err)
+        })
+      }
     } catch (err) {
       console.error('Failed to open workspace:', err)
     }
@@ -57,6 +67,9 @@ export function WorkspaceToolbar() {
     const config = await window.electronAPI.loadConfig()
     await window.electronAPI.saveConfig({ ...config, codeRepos: newRepos })
     dispatch({ type: 'SET_CODE_REPO', path: repoPath })
+    window.electronAPI.indexSymbols(repoPath).catch((err) => {
+      console.error('Failed to index symbols for repo:', repoPath, err)
+    })
   }, [codeRepos, dispatch])
 
   const handleRemoveRepo = useCallback(async (repoPath: string) => {
@@ -113,6 +126,23 @@ export function WorkspaceToolbar() {
         <button className="workspace-toolbar-btn" onClick={handleAddRepo}>
           + Add Repo
         </button>
+        {codeRepos.length > 0 && (
+          <button
+            className="workspace-toolbar-btn"
+            onClick={() => {
+              for (const repo of codeRepos) {
+                window.electronAPI.indexSymbols(repo.path).then((result) => {
+                  console.log(`Indexed ${result.indexed} symbols in ${repo.path}`)
+                }).catch((err) => {
+                  console.error('Failed to re-index symbols:', err)
+                })
+              }
+            }}
+            title="Re-index all code repos"
+          >
+            Re-index
+          </button>
+        )}
       </div>
       <div className="workspace-toolbar-spacer" />
       <button className="workspace-toolbar-btn" onClick={handleOpenFolder}>

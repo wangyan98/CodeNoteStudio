@@ -50,6 +50,13 @@ export function createWebApiClient() {
     indexSymbols: () => Promise.resolve({ indexed: 0, totalFiles: 0 }),
     resolveRefs: (_notePath: string, content: string) =>
       get(`/api/code/resolve-refs?content=${encodeURIComponent(content)}`),
+    querySymbols: (name?: string, filePath?: string, kind?: string) => {
+      const params = new URLSearchParams()
+      if (name) params.set('name', name)
+      if (filePath) params.set('file', filePath)
+      if (kind) params.set('kind', kind)
+      return get(`/api/code/symbols?${params.toString()}`)
+    },
 
     // Server (no-op in browser)
     startServer: () => Promise.resolve({ running: false, port: 0, url: '' }),

@@ -1,16 +1,49 @@
+import { useEffect, useState, useRef, useCallback } from 'react'
 import { useAppContext } from '../contexts/AppContext'
 import { useNotes } from '../hooks/useNotes'
+import { useCodeNavigation } from '../hooks/useCodeNavigation'
 import { MdEditor } from './editors/MdEditor'
+import type { MdEditorHandle } from './editors/MdEditor'
 import { MindMapRenderer } from './editors/MindMapRenderer'
 import { DerivationRenderer } from './editors/DerivationRenderer'
+import { CodeMappingsPanel } from './CodeMappingsPanel'
+import { SymbolPicker } from './SymbolPicker'
 import type { MindMapDocument, DerivationDocument } from '../../../main/schemas/note-types'
+import type { CodeMapping } from '../types'
 import './NoteViewport.css'
 
 export function NoteViewport() {
   const { state } = useAppContext()
   const { saveNote } = useNotes()
+  const { navigateToCode } = useCodeNavigation()
 
   const { activeNoteContent, activeNoteType, selectedNoteId } = state
+
+  const mdEditorRef = useRef<MdEditorHandle>(null)
+  const [codeMappings, setCodeMappings] = useState<CodeMapping[]>([])
+  const [symbolPickerOpen, setSymbolPickerOpen] = useState(false)
+
+  const handleSymbolSelect = useCallback((name: string) => {
+    if (activeNoteType === 'md') {
+      mdEditorRef.current?.insertAtCursor(`@ref(${name})`)
+    } else {
+      navigator.clipboard.writeText(`@ref(${name})`)
+    }
+    setSymbolPickerOpen(false)
+  }, [activeNoteType])
+
+  useEffect(() => {
+    if (!activeNoteContent || !selectedNoteId) {
+      setCodeMappings([])
+      return
+    }
+    const contentStr = typeof activeNoteContent === 'string'
+      ? activeNoteContent
+      : JSON.stringify(activeNoteContent)
+    window.electronAPI.resolveRefs(selectedNoteId, contentStr)
+      .then(setCodeMappings)
+      .catch(() => setCodeMappings([]))
+  }, [activeNoteContent, selectedNoteId])
 
   if (!selectedNoteId || !activeNoteContent) {
     return (
@@ -28,10 +61,17 @@ export function NoteViewport() {
       case 'md':
         return (
           <MdEditor
+            ref={mdEditorRef}
             content={activeNoteContent as string}
             notePath={selectedNoteId}
             onSave={async (content: string) => {
               await saveNote(selectedNoteId, content)
+            }}
+            onRefClick={async (refName: string) => {
+              const mappings = await window.electronAPI.resolveRefs(selectedNoteId, `@ref(${refName})`)
+              if (mappings.length > 0) {
+                navigateToCode(mappings[0].filePath, mappings[0].startLine)
+              }
             }}
           />
         )
@@ -78,10 +118,19 @@ export function NoteViewport() {
             </span>
           </>
         )}
+        <button className="note-viewport-symbols-btn" onClick={() => setSymbolPickerOpen(true)}>
+          Symbols
+        </button>
       </div>
       <div className="note-viewport">
         {renderEditor()}
       </div>
+      <CodeMappingsPanel mappings={codeMappings} />
+      <SymbolPicker
+        isOpen={symbolPickerOpen}
+        onClose={() => setSymbolPickerOpen(false)}
+        onSelectSymbol={handleSymbolSelect}
+      />
     </div>
   )
 }

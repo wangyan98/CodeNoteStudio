@@ -44,6 +44,16 @@ declare global {
         startLine: number
         endLine: number
       }>>
+      querySymbols: (name?: string, filePath?: string, kind?: string) => Promise<Array<{
+        name: string
+        kind: string
+        filePath: string
+        startLine: number
+        endLine: number
+        startColumn: number
+        endColumn: number
+        parentName?: string
+      }>>
       startServer: (port?: number) => Promise<{ running: boolean; port: number; url: string }>
       stopServer: () => Promise<void>
       getServerStatus: () => Promise<{ running: boolean; port: number; url: string }>

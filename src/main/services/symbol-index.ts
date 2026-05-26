@@ -56,14 +56,15 @@ export function querySymbols(
   db: Database.Database,
   name?: string,
   filePath?: string,
-  kind?: string
+  kind?: string,
+  limit?: number
 ): CodeSymbol[] {
   let sql = 'SELECT name, kind, file_path, start_line, end_line, start_column, end_column, parent_name FROM symbols WHERE 1=1'
   const params: Record<string, string> = {}
 
   if (name) {
-    sql += ' AND name = @name'
-    params.name = name
+    sql += ' AND name LIKE @name'
+    params.name = `%${name}%`
   }
   if (filePath) {
     sql += ' AND file_path = @file_path'
@@ -75,6 +76,11 @@ export function querySymbols(
   }
 
   sql += ' ORDER BY start_line ASC'
+
+  if (limit) {
+    sql += ' LIMIT @limit'
+    params.limit = String(limit)
+  }
 
   const rows = db.prepare(sql).all(params) as Array<{
     name: string

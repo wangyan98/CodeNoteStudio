@@ -19,6 +19,13 @@ export interface CodeRepo {
   commit: string
 }
 
+export interface CodeMapping {
+  functionName: string
+  filePath: string
+  startLine: number
+  endLine: number
+}
+
 export interface NotebookConfig {
   name: string
   notesPath: string
@@ -46,6 +53,9 @@ export type AppAction =
   | { type: 'SET_PANEL_WIDTHS'; widths: PanelWidths }
   | { type: 'SET_WORKSPACE'; path: string; name: string }
   | { type: 'CLEAR_WORKSPACE' }
+  | { type: 'SET_CODE_MAPPINGS'; mappings: CodeMapping[] }
+  | { type: 'SET_PENDING_SCROLL'; filePath: string; line: number }
+  | { type: 'CLEAR_PENDING_SCROLL' }
 
 export interface AppState {
   notes: NoteItem[]
@@ -61,4 +71,6 @@ export interface AppState {
   panelWidths: PanelWidths
   workspacePath: string | null
   workspaceName: string
+  codeMappings: CodeMapping[]
+  pendingScroll: { filePath: string; line: number } | null
 }

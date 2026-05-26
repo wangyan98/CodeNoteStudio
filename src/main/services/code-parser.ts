@@ -32,6 +32,25 @@ const EXT_TO_LANG: Record<string, string> = {
   '.cxx': 'cpp'
 }
 
+function getTreeSitterWasmPath(): string {
+  const candidates = [
+    // Development electron-vite: navigate from out/main/chunks up to project root
+    path.join(__dirname, '..', '..', '..', 'node_modules', 'web-tree-sitter', 'web-tree-sitter.wasm'),
+    // Directly in project root
+    path.join(process.cwd(), 'node_modules', 'web-tree-sitter', 'web-tree-sitter.wasm'),
+    // Bundled alongside the script
+    path.join(__dirname, 'web-tree-sitter.wasm')
+  ]
+
+  for (const candidate of candidates) {
+    if (existsSync(candidate)) {
+      return candidate
+    }
+  }
+
+  return candidates[0]
+}
+
 function getGrammarDir(): string {
   // Try multiple locations for the grammar WASM files
   const candidates = [
@@ -54,7 +73,12 @@ function getGrammarDir(): string {
 export async function initParser(): Promise<Parser> {
   if (parser) return parser
 
-  await Parser.init()
+  const treeSitterWasmPath = getTreeSitterWasmPath()
+  await Parser.init({
+    locateFile(_scriptName: string) {
+      return treeSitterWasmPath
+    }
+  })
   parser = new Parser()
 
   const grammarDir = getGrammarDir()

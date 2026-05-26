@@ -14,7 +14,9 @@ export const initialState: AppState = {
   codeFiles: [],
   panelWidths: { panel1: 18, panel2: 32, panel3: 32, panel4: 18 },
   workspacePath: null,
-  workspaceName: ''
+  workspaceName: '',
+  codeMappings: [],
+  pendingScroll: null
 }
 
 export function appReducer(state: AppState, action: AppAction): AppState {
@@ -72,6 +74,15 @@ export function appReducer(state: AppState, action: AppAction): AppState {
 
     case 'CLEAR_WORKSPACE':
       return { ...state, workspacePath: null, workspaceName: '' }
+
+    case 'SET_CODE_MAPPINGS':
+      return { ...state, codeMappings: action.mappings }
+
+    case 'SET_PENDING_SCROLL':
+      return { ...state, pendingScroll: { filePath: action.filePath, line: action.line } }
+
+    case 'CLEAR_PENDING_SCROLL':
+      return { ...state, pendingScroll: null }
 
     case 'SET_ACTIVE_NOTE_CONTENT':
       return {

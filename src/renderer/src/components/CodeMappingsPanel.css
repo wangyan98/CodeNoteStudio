@@ -1,0 +1,43 @@
+.code-mappings-panel {
+  border-top: 1px solid var(--border-color);
+  background: var(--header-bg);
+  max-height: 160px;
+  overflow-y: auto;
+}
+
+.code-mappings-header {
+  padding: 4px 10px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--header-color);
+  border-bottom: 1px solid var(--border-color);
+}
+
+.code-mappings-list {
+  padding: 2px 0;
+}
+
+.code-mapping-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 4px 10px;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.code-mapping-item:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.code-mapping-name {
+  color: var(--accent-color);
+  font-family: monospace;
+  font-weight: 500;
+}
+
+.code-mapping-location {
+  color: var(--placeholder-color);
+  font-family: monospace;
+  font-size: 10px;
+}
