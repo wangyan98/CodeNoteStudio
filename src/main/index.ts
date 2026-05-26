@@ -39,10 +39,16 @@ function createWindow(): void {
 ipcMain.handle('get-app-version', () => app.getVersion())
 
 app.whenReady().then(async () => {
-  const lastPath = await loadLastWorkspacePath()
-  const projectPath = lastPath && validateWorkspacePath(lastPath)
-    ? lastPath
-    : ''
+  let projectPath = ''
+
+  try {
+    const lastPath = await loadLastWorkspacePath()
+    if (lastPath && validateWorkspacePath(lastPath)) {
+      projectPath = lastPath
+    }
+  } catch (err) {
+    console.error('[workspace] Failed to load last workspace:', err)
+  }
 
   registerIpcHandlers(projectPath)
 

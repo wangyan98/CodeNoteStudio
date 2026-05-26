@@ -34,6 +34,7 @@ export async function loadLastWorkspacePath(): Promise<string | null> {
 export function validateWorkspacePath(workspacePath: string): boolean {
   if (!workspacePath || !path.isAbsolute(workspacePath)) return false
   try {
+    fs.accessSync(workspacePath, fs.constants.R_OK | fs.constants.W_OK)
     const stat = fs.statSync(workspacePath)
     return stat.isDirectory()
   } catch {
