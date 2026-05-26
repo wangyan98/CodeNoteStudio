@@ -19,7 +19,9 @@ let currentProjectPath: string | null = null
 export function registerIpcHandlers(projectPath: string): void {
   currentProjectPath = projectPath
 
-  initDatabase(projectPath)
+  if (projectPath) {
+    initDatabase(projectPath)
+  }
 
   // Notebook config
   ipcMain.handle('config:load', async (): Promise<NotebookConfig> => {
@@ -67,6 +69,31 @@ export function registerIpcHandlers(projectPath: string): void {
 
   // App
   ipcMain.handle('app:get-project-path', (): string | null => {
+    return currentProjectPath
+  })
+
+  // Workspace
+  ipcMain.handle('dialog:select-folder', async (): Promise<string | null> => {
+    const { dialog } = await import('electron')
+    const result = await dialog.showOpenDialog({
+      properties: ['openDirectory']
+    })
+    return result.canceled ? null : result.filePaths[0]
+  })
+
+  ipcMain.handle('workspace:open', async (_event, newPath: string): Promise<NotebookConfig> => {
+    const { saveLastWorkspacePath, validateWorkspacePath } = await import('./services/workspace')
+    if (!validateWorkspacePath(newPath)) {
+      throw new Error(`Invalid workspace path: ${newPath}`)
+    }
+    currentProjectPath = newPath
+    closeDatabase()
+    initDatabase(newPath)
+    await saveLastWorkspacePath(newPath)
+    return loadConfig(newPath)
+  })
+
+  ipcMain.handle('workspace:get-current', (): string | null => {
     return currentProjectPath
   })
 
