@@ -6,6 +6,7 @@ const CONFIG_FILE = 'notebook.json'
 
 const DEFAULT_CONFIG: NotebookConfig = {
   name: '',
+  notesPath: './',
   codeRepos: []
 }
 
@@ -15,7 +16,17 @@ export async function loadConfig(projectPath: string): Promise<NotebookConfig> {
   if (!exists) {
     return { ...DEFAULT_CONFIG, name: path.basename(projectPath) }
   }
-  return readJsonFile<NotebookConfig>(configPath)
+  try {
+    const config = await readJsonFile<NotebookConfig>(configPath)
+    return {
+      notesPath: config.notesPath || DEFAULT_CONFIG.notesPath,
+      name: config.name || path.basename(projectPath),
+      codeRepos: Array.isArray(config.codeRepos) ? config.codeRepos : []
+    }
+  } catch {
+    console.warn(`[notebook-config] Corrupted config at ${configPath}, using defaults`)
+    return { ...DEFAULT_CONFIG, name: path.basename(projectPath) }
+  }
 }
 
 export async function saveConfig(projectPath: string, config: NotebookConfig): Promise<void> {
