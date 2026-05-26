@@ -1,0 +1,69 @@
+<h2>笔记中的代码块渲染 + 跳转</h2>
+<p class="subtitle">代码在笔记里直接显示，点击即可跳转到 Panel 3 的源码位置</p>
+
+<div class="mockup" style="margin-bottom: 20px;">
+  <div class="mockup-header">笔记视口 (Panel 2) — 代码块渲染示意</div>
+  <div class="mockup-body" style="padding: 16px; font-size: 13px;">
+
+    <!-- 普通代码块 -->
+    <div style="margin-bottom: 16px;">
+      <div style="font-weight: 600; margin-bottom: 4px;">📝 笔记内容</div>
+      <div style="background: var(--bg); padding: 12px; border-radius: 6px; line-height: 1.8;">
+        <p>快速排序的核心实现如下，它采用分治策略：</p>
+
+        <!-- 带映射的代码块 -->
+        <div style="border: 1px solid var(--border); border-radius: 6px; margin: 10px 0; overflow: hidden;">
+          <div style="display: flex; justify-content: space-between; align-items: center; padding: 4px 10px; background: #282c34; color: #abb2bf; font-size: 11px;">
+            <span>java</span>
+            <span style="display: flex; align-items: center; gap: 4px; color: #61afef; cursor: pointer;">
+              🔗 跳转到源码 &nbsp; ↗
+            </span>
+          </div>
+          <div style="background: #282c34; padding: 10px 14px; font-family: monospace; font-size: 12px; line-height: 1.6;">
+            <span style="color: #c678dd;">void</span> <span style="color: #61afef;">quicksort</span>(<span style="color: #e5c07b;">int</span> arr[], <span style="color: #e5c07b;">int</span> l, <span style="color: #e5c07b;">int</span> r) {<br>
+            &nbsp;&nbsp;<span style="color: #5c6370;">// ...</span><br>
+            }
+          </div>
+          <div style="padding: 3px 10px; font-size: 10px; color: var(--muted); background: var(--bg-card);">
+            ↳ src/algorithms/sort.c:42 &nbsp;|&nbsp; commit a1b2c3d
+          </div>
+        </div>
+
+        <p>时间复杂度为 O(n log n)。</p>
+      </div>
+    </div>
+
+    <!-- 语法说明 -->
+    <div style="border: 1px dashed var(--border); border-radius: 6px; padding: 12px; font-size: 12px;">
+      <div style="font-weight: 600; margin-bottom: 6px;">📋 映射语法（在 MD 中）</div>
+      <div style="font-family: monospace; background: var(--bg); padding: 8px; border-radius: 4px;">
+        ```java @ref quicksort<br>
+        void quicksort(int arr[], int l, int r) {<br>
+        &nbsp;&nbsp;// ...<br>
+        }<br>
+        ```
+      </div>
+      <div style="margin-top: 8px; color: var(--muted);">
+        <code>@ref quicksort</code> 声明映射目标函数名。代码块内容可选（用户可手写或留空由 LSP 自动填充）。
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<div class="options">
+  <div class="option" data-choice="a" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="content">
+      <h3>就是这样</h3>
+      <p>代码块内联渲染 + @ref 声明映射 + 跳转按钮</p>
+    </div>
+  </div>
+  <div class="option" data-choice="b" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="content">
+      <h3>映射语法或交互需要调整</h3>
+      <p>我有不同的想法</p>
+    </div>
+  </div>
+</div>

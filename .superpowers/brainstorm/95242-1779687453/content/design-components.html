@@ -1,0 +1,105 @@
+<h2>4 栏组件设计 & 数据流</h2>
+<p class="subtitle">每个面板的职责和交互</p>
+
+<div class="mockup" style="margin-bottom: 20px;">
+  <div class="mockup-header">面板职责</div>
+  <div class="mockup-body" style="padding: 14px;">
+
+    <div style="display: flex; gap: 10px; font-size: 12px;">
+
+      <!-- Panel 1 -->
+      <div style="flex: 1; background: var(--bg-card); border: 1px solid var(--border); border-radius: 6px; padding: 10px;">
+        <div style="font-weight: 700; margin-bottom: 6px;">📁 笔记目录 (Panel 1)</div>
+        <div style="font-size: 11px; color: var(--muted);">
+          职责：展示所有笔记的树状目录<br>
+          操作：新建/删除/重命名/拖拽排序<br>
+          交互：点击 → Panel 2 打开笔记<br>
+          过滤：按类型筛选 (思维导图/MD/推导树)<br>
+          搜索：笔记标题模糊搜索
+        </div>
+      </div>
+
+      <!-- Panel 2 -->
+      <div style="flex: 1; background: var(--bg-card); border: 1px solid var(--border); border-radius: 6px; padding: 10px;">
+        <div style="font-weight: 700; margin-bottom: 6px;">📝 笔记视口 (Panel 2)</div>
+        <div style="font-size: 11px; color: var(--muted);">
+          职责：编辑/查看当前笔记<br>
+          MD 模式：Monaco Editor + 预览<br>
+          思维导图：D3.js 交互式树<br>
+          推导树：带编号的公式树<br>
+          嵌入：内联渲染被嵌入的子笔记<br>
+          映射：高亮显示代码引用链接
+        </div>
+      </div>
+
+      <!-- Panel 3 -->
+      <div style="flex: 2; background: var(--bg-card); border: 1px solid var(--border); border-radius: 6px; padding: 10px;">
+        <div style="font-weight: 700; margin-bottom: 6px;">💻 代码视口 (Panel 3)</div>
+        <div style="font-size: 11px; color: var(--muted);">
+          职责：展示代码文件内容<br>
+          编辑器：Monaco Editor (只读)<br>
+          跳转：点击映射链接 → 定位到函数定义<br>
+          高亮：当前映射的函数高亮显示<br>
+          Git 信息：显示当前 commit SHA<br>
+          多 Tab：可打开多个代码文件
+        </div>
+      </div>
+
+      <!-- Panel 4 -->
+      <div style="flex: 1; background: var(--bg-card); border: 1px solid var(--border); border-radius: 6px; padding: 10px;">
+        <div style="font-weight: 700; margin-bottom: 6px;">📂 代码目录 (Panel 4)</div>
+        <div style="font-size: 11px; color: var(--muted);">
+          职责：展示关联仓库的文件树<br>
+          交互：点击文件 → Panel 3 打开<br>
+          标记：有映射的文件显示特殊图标<br>
+          过滤：支持文件类型过滤<br>
+          多仓库：切换不同关联仓库
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<div class="mockup" style="margin-bottom: 20px;">
+  <div class="mockup-header">核心交互流程</div>
+  <div class="mockup-body" style="padding: 14px; font-size: 12px;">
+
+    <div style="display: flex; flex-direction: column; gap: 8px;">
+
+      <div style="background: var(--bg-card); border-left: 3px solid #61afef; padding: 8px 12px; border-radius: 0 6px 6px 0;">
+        <strong>打开笔记 → 查看代码</strong><br>
+        Panel 1 选笔记 → Panel 2 渲染内容 → 点击 @map 链接 → Panel 3 跳转到代码函数 → Panel 4 展开对应文件
+      </div>
+
+      <div style="background: var(--bg-card); border-left: 3px solid #98c379; padding: 8px 12px; border-radius: 0 6px 6px 0;">
+        <strong>浏览代码 → 查找笔记</strong><br>
+        Panel 4 浏览代码树 → Panel 3 查看代码 → 右键 "查找相关笔记" → Panel 1 高亮关联笔记 → Panel 2 打开
+      </div>
+
+      <div style="background: var(--bg-card); border-left: 3px solid #e5c07b; padding: 8px 12px; border-radius: 0 6px 6px 0;">
+        <strong>建立映射</strong><br>
+        Panel 2 选中笔记节点/文本 → 点击 "关联代码" → 弹出函数选择器 (由 C++ LSP 提供列表) → 选择函数 → 映射写入 SQLite 索引
+      </div>
+
+    </div>
+
+  </div>
+</div>
+
+<div class="options">
+  <div class="option" data-choice="a" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="content">
+      <h3>面板和数据流设计没问题</h3>
+      <p>继续下一步</p>
+    </div>
+  </div>
+  <div class="option" data-choice="b" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="content">
+      <h3>某些交互需要调整</h3>
+      <p>我有修改意见</p>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,92 @@
+<h2>Workspace Architecture</h2>
+<p class="subtitle">Approach 1: Config-in-Notes — single directory, config lives alongside notes</p>
+
+<div class="section">
+  <h3>Directory Structure</h3>
+  <div class="mockup">
+    <div class="mockup-body">
+<pre style="font-family: monaco, monospace; font-size: 13px; line-height: 1.6;">
+~/my-notes/                   ← user picks this via native folder dialog
+├── <strong>notebook.json</strong>              ← config file lives here
+├── algorithms.md
+├── system-design.md
+├── projects/
+│   └── todo.md
+└── .index.db                  ← SQLite index (hidden)
+</pre>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h3>notebook.json Format</h3>
+  <div class="mockup">
+    <div class="mockup-body">
+<pre style="font-family: monaco, monospace; font-size: 13px; line-height: 1.6;">
+{
+  "name": "My Notes",
+  "notesPath": "./",           ← default: workspace root
+  "codeRepos": [
+    {
+      "path": "/Users/wangyan/projects/algo",
+      "commit": "",
+      "lsp": { "language": "cpp", "command": "clangd" }
+    }
+  ]
+}
+</pre>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h3>Startup Flow</h3>
+  <div class="mockup">
+    <div class="mockup-body">
+<pre style="font-family: monaco, monospace; font-size: 13px; line-height: 1.6;">
+App Launch
+  │
+  ├─ Read ~/Library/.../code-note-studio/workspace.json
+  │    └─ { "lastPath": "/Users/wangyan/my-notes" }
+  │
+  ├─ Path exists?
+  │    ├─ YES → open workspace, load notebook.json
+  │    └─ NO  → show landing page ("Open Folder" button)
+  │
+  └─ Window loads with 4-panel layout + workspace toolbar
+
+User switches workspace:
+  Toolbar "Open Folder" → native dialog → workspace:open IPC
+    → save new path to workspace.json
+    → load notebook.json
+    → refresh UI
+</pre>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h3>IPC Channels (new)</h3>
+  <table style="width:100%; border-collapse: collapse; font-size: 12px;">
+    <tr style="background: rgba(255,255,255,0.05);">
+      <th style="padding: 6px 10px; text-align: left;">Channel</th>
+      <th style="padding: 6px 10px; text-align: left;">Direction</th>
+      <th style="padding: 6px 10px; text-align: left;">Purpose</th>
+    </tr>
+    <tr>
+      <td style="padding: 6px 10px;"><code>workspace:open</code></td>
+      <td style="padding: 6px 10px;">renderer → main</td>
+      <td style="padding: 6px 10px;">Set workspace path, load config, init DB</td>
+    </tr>
+    <tr>
+      <td style="padding: 6px 10px;"><code>workspace:get-current</code></td>
+      <td style="padding: 6px 10px;">renderer → main</td>
+      <td style="padding: 6px 10px;">Get current workspace path (replaces unused getProjectPath)</td>
+    </tr>
+    <tr>
+      <td style="padding: 6px 10px;"><code>dialog:select-folder</code></td>
+      <td style="padding: 6px 10px;">renderer → main</td>
+      <td style="padding: 6px 10px;">Open native folder picker dialog</td>
+    </tr>
+  </table>
+</div>

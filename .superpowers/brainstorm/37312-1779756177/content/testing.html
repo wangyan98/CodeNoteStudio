@@ -1,0 +1,77 @@
+<h2>Edge Cases & Testing</h2>
+<p class="subtitle">Error handling and verification strategy</p>
+
+<div class="section">
+  <h3>Edge Cases</h3>
+  <table style="width:100%; border-collapse: collapse; font-size: 12px;">
+    <tr style="background: rgba(255,255,255,0.05);">
+      <th style="padding: 6px 10px; text-align: left;">Scenario</th>
+      <th style="padding: 6px 10px; text-align: left;">Behavior</th>
+    </tr>
+    <tr>
+      <td style="padding: 6px 10px;">Last workspace path deleted/moved</td>
+      <td style="padding: 6px 10px;">Show landing page, prompt to select new folder</td>
+    </tr>
+    <tr>
+      <td style="padding: 6px 10px;">Workspace folder has no write permission</td>
+      <td style="padding: 6px 10px;">Alert: "Cannot open workspace — read-only folder"</td>
+    </tr>
+    <tr>
+      <td style="padding: 6px 10px;">notebook.json is corrupted (invalid JSON)</td>
+      <td style="padding: 6px 10px;">Load defaults, warn: "Config corrupted, using defaults"</td>
+    </tr>
+    <tr>
+      <td style="padding: 6px 10px;">Repo path no longer exists</td>
+      <td style="padding: 6px 10px;">Gray out the repo chip, show tooltip "Path not found"</td>
+    </tr>
+    <tr>
+      <td style="padding: 6px 10px;">Add duplicate repo path</td>
+      <td style="padding: 6px 10px;">No-op or show brief toast "Already linked"</td>
+    </tr>
+    <tr>
+      <td style="padding: 6px 10px;">First launch (no workspace.json yet)</td>
+      <td style="padding: 6px 10px;">Show landing page — same as deleted path</td>
+    </tr>
+    <tr>
+      <td style="padding: 6px 10px;">notesPath in config points to missing dir</td>
+      <td style="padding: 6px 10px;">Create the directory on load (mkdir recursive)</td>
+    </tr>
+    <tr>
+      <td style="padding: 6px 10px;">User cancels folder picker dialog</td>
+      <td style="padding: 6px 10px;">Stay on current workspace or landing page</td>
+    </tr>
+  </table>
+</div>
+
+<div class="section">
+  <h3>Testing Strategy</h3>
+  <div class="mockup">
+    <div class="mockup-body">
+      <p style="margin-bottom: 12px;"><strong>Unit Tests</strong> (vitest)</p>
+      <ul style="font-size: 12px; line-height: 1.8; padding-left: 20px;">
+        <li><code>workspace.ts</code> — read/write workspace.json, path validation</li>
+        <li><code>notebook-config.ts</code> — load/save with default fallback</li>
+        <li><code>WorkspaceToolbar</code> — renders landing page vs toolbar based on workspace state</li>
+        <li><code>CodeDirectory</code> — renders multiple repos, empty state</li>
+      </ul>
+      <p style="margin-bottom: 12px; margin-top: 16px;"><strong>Integration Tests</strong></p>
+      <ul style="font-size: 12px; line-height: 1.8; padding-left: 20px;">
+        <li>IPC: workspace:open → loads config, persists path</li>
+        <li>IPC: dialog:select-folder returns path or null</li>
+        <li>IPC: workspace:get-current returns current path</li>
+        <li>Full flow: open workspace → create note → verify on disk</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h3>Changes NOT in scope</h3>
+  <ul style="font-size: 12px; line-height: 1.8; padding-left: 20px;">
+    <li>Multiple simultaneous workspaces (single-workspace model)</li>
+    <li>Drag-and-drop folder to open (landing page shows text hint only)</li>
+    <li>Workspace-level settings beyond notebook.json</li>
+    <li>LSP integration</li>
+    <li>"Recent workspaces" list (last path only, for now)</li>
+  </ul>
+</div>

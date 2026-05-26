@@ -1,0 +1,26 @@
+<h2>桌面技术栈</h2>
+<p class="subtitle">LSP 集成和本地文件系统是关键需求</p>
+
+<div class="options">
+  <div class="option" data-choice="a" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="content">
+      <h3>Electron + React + Node.js 后端</h3>
+      <p>生态成熟，LSP client 库丰富（vscode-languageserver-node），Monaco Editor 开箱即用，社区资源多。包体积较大但功能最全。</p>
+    </div>
+  </div>
+  <div class="option" data-choice="b" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="content">
+      <h3>Tauri + React + Rust 后端</h3>
+      <p>更轻量（~10MB vs ~150MB），Rust 性能好，安全性高。但 LSP 生态不如 Node.js 成熟，需要更多底层工作。</p>
+    </div>
+  </div>
+  <div class="option" data-choice="c" onclick="toggleSelect(this)">
+    <div class="letter">C</div>
+    <div class="content">
+      <h3>没有偏好，你推荐</h3>
+      <p>让你根据需求权衡后推荐</p>
+    </div>
+  </div>
+</div>

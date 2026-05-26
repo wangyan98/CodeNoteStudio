@@ -20,6 +20,7 @@ export function createWebApiClient() {
 
     // Workspace (read-only in browser)
     selectFolder: () => Promise.resolve(null),
+    createWorkspace: () => Promise.resolve(''),
     openWorkspace: () => Promise.resolve(null as any),
     getWorkspacePath: () => Promise.resolve(null),
 

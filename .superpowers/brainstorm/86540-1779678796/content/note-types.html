@@ -1,0 +1,63 @@
+<h2>笔记类型与嵌套关系</h2>
+<p class="subtitle">我理解有两种核心笔记类型，以及它们之间的嵌入关系——这样对吗？</p>
+
+<div class="mockup" style="margin-bottom: 20px;">
+  <div class="mockup-header">笔记类型关系模型</div>
+  <div class="mockup-body" style="padding: 20px;">
+
+    <!-- 思维导图节点 -->
+    <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 16px; margin-bottom: 16px;">
+      <div style="font-weight: 700; margin-bottom: 10px; font-size: 14px;">🧠 思维文档树 (.mind.json)</div>
+      <div style="padding: 6px 12px; background: var(--bg); border-radius: 4px; margin: 6px 0; border-left: 3px solid #c678dd;">
+        根节点
+        <div style="margin-left: 20px; font-size: 12px;">├─ 子节点 A (可直接写 MD 内容)</div>
+        <div style="margin-left: 20px; font-size: 12px;">├─ 子节点 B (LaTeX 公式)</div>
+        <div style="margin-left: 20px; font-size: 12px;">├─ 🔗 嵌入 MD 文件 → 复杂度分析.md</div>
+        <div style="margin-left: 20px; font-size: 12px;">└─ 🔗 嵌入子思维导图 → 子主题.mind.json</div>
+      </div>
+      <div style="margin-top: 8px; font-size: 11px; color: var(--muted);">每个节点可以有标题、正文（MD/LaTeX）、代码函数映射</div>
+    </div>
+
+    <!-- MD 笔记 -->
+    <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 16px; margin-bottom: 16px;">
+      <div style="font-weight: 700; margin-bottom: 10px; font-size: 14px;">📝 Markdown 笔记 (.md)</div>
+      <div style="padding: 6px 12px; background: var(--bg); border-radius: 4px; margin: 6px 0;">
+        # 标题<br>
+        正文内容...<br>
+        $$T(n) = 2T(n/2) + O(n)$$<br>
+        [[嵌入: 另一个文档.md]]<br>
+        [映射: quicksort() in sort.c]
+      </div>
+      <div style="margin-top: 8px; font-size: 11px; color: var(--muted);">MD 文件可以通过特殊语法嵌入其他 MD 文件</div>
+    </div>
+
+    <!-- 嵌入关系 -->
+    <div style="border: 1px dashed var(--border); border-radius: 8px; padding: 12px; text-align: center;">
+      <div style="font-size: 13px;">🔄 嵌入是 <strong>引用关系</strong>：被嵌入的文件独立存在，修改一处处处更新</div>
+    </div>
+  </div>
+</div>
+
+<div class="options">
+  <div class="option" data-choice="a" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="content">
+      <h3>对，就是这个模型</h3>
+      <p>两种核心类型（思维文档树 + MD），通过引用嵌入互相组合</p>
+    </div>
+  </div>
+  <div class="option" data-choice="b" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="content">
+      <h3>大致对，但嵌入行为不对</h3>
+      <p>嵌入不是引用，而是复制/内联到父文档中</p>
+    </div>
+  </div>
+  <div class="option" data-choice="c" onclick="toggleSelect(this)">
+    <div class="letter">C</div>
+    <div class="content">
+      <h3>还有其他笔记类型需要加入</h3>
+      <p>除了思维导图和 MD，还有其他格式</p>
+    </div>
+  </div>
+</div>

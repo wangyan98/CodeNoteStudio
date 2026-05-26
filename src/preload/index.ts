@@ -9,6 +9,8 @@ const api = {
 
   // Workspace
   selectFolder: (): Promise<string | null> => ipcRenderer.invoke('dialog:select-folder'),
+  createWorkspace: (parentDir: string, name: string): Promise<string> =>
+    ipcRenderer.invoke('workspace:create', parentDir, name),
   openWorkspace: (newPath: string) => ipcRenderer.invoke('workspace:open', newPath),
   getWorkspacePath: (): Promise<string | null> => ipcRenderer.invoke('workspace:get-current'),
 

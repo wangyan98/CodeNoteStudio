@@ -1,0 +1,37 @@
+<h2>技术栈方案 — 匹配 C++/Python/Java 技能</h2>
+<p class="subtitle">避开 JS 生态，用你熟悉的语言构建桌面应用</p>
+
+<div class="options">
+  <div class="option" data-choice="a" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="content">
+      <h3>Python 后端 + 嵌入式 Web 前端</h3>
+      <p><strong>核心：</strong>Python 负责 LSP 客户端、代码解析（tree-sitter）、文件系统、SQLite 索引。前端用 HTML/CSS/JS 做 UI（思维导图、代码高亮、Monaco Editor）。通过 pywebview 或本地 HTTP server + 浏览器窗口打包。</p>
+      <p style="font-size:13px; color: var(--muted);">代码编辑器：Monaco Editor（Web）<br>思维导图：D3.js / Markmap<br>LaTeX：KaTeX<br>打包：PyInstaller + pywebview</p>
+    </div>
+  </div>
+  <div class="option" data-choice="b" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="content">
+      <h3>Qt (C++ / PyQt6) + WebEngine</h3>
+      <p><strong>核心：</strong>Qt 作为桌面框架，UI 部分用 QWebEngineView 嵌入 Web 前端。性能敏感部分（LSP client、tree-sitter 解析）用 C++ 写，其余用 Python 驱动。Qt 原生支持分屏/多面板。</p>
+      <p style="font-size:13px; color: var(--muted);">优点：Qt 原生分屏支持、C++ 性能<br>缺点：Qt 许可需注意（LGPL/GPL）</p>
+    </div>
+  </div>
+  <div class="option" data-choice="c" onclick="toggleSelect(this)">
+    <div class="letter">C</div>
+    <div class="content">
+      <h3>Python + Java（混合后端）</h3>
+      <p><strong>核心：</strong>Java 用 eclipse-lsp4j 做 LSP 集成（Java 的 LSP 库最成熟），Python 负责笔记数据模型、文件管理、API。通过 gRPC/本地 socket 通信。前端仍用 Web 技术。</p>
+      <p style="font-size:13px; color: var(--muted);">LSP 部分用 Java 是最省力的选择</p>
+    </div>
+  </div>
+  <div class="option" data-choice="d" onclick="toggleSelect(this)">
+    <div class="letter">D</div>
+    <div class="content">
+      <h3>纯 Python 全栈 (推荐)</h3>
+      <p><strong>核心：</strong>全部用 Python——LSP 用 pyls 生态、tree-sitter 有 Python binding、SQLite 内置支持、前端用本地 Web UI。技术栈统一，你最容易掌控全部代码。</p>
+      <p style="font-size:13px; color: var(--muted);">最简洁的单人开发方案，Python 生态足够覆盖所有需求</p>
+    </div>
+  </div>
+</div>

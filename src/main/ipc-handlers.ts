@@ -76,9 +76,17 @@ export function registerIpcHandlers(projectPath: string): void {
   ipcMain.handle('dialog:select-folder', async (): Promise<string | null> => {
     const { dialog } = await import('electron')
     const result = await dialog.showOpenDialog({
-      properties: ['openDirectory']
+      properties: ['openDirectory', 'createDirectory']
     })
     return result.canceled ? null : result.filePaths[0]
+  })
+
+  ipcMain.handle('workspace:create', async (_event, parentDir: string, name: string): Promise<string> => {
+    const fs = await import('node:fs/promises')
+    const path = await import('node:path')
+    const workspacePath = path.join(parentDir, name)
+    await fs.mkdir(workspacePath, { recursive: true })
+    return workspacePath
   })
 
   ipcMain.handle('workspace:open', async (_event, newPath: string): Promise<NotebookConfig> => {

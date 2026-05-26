@@ -1,0 +1,29 @@
+<h2>代码集成方式</h2>
+<p class="subtitle">笔记和代码的关系是这个工具的核心——代码怎么进来？</p>
+
+<div class="options">
+  <div class="option" data-choice="a" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="content">
+      <h3>关联外部代码仓库</h3>
+      <p>笔记项目指向本地已有的代码仓库路径，实时读取代码文件，笔记中创建到函数的映射引用。代码属于项目本身，笔记是"叠加层"。</p>
+      <p style="font-size:13px; color: var(--muted);">例：打开 ~/projects/my-app，笔记树指向 src/utils/sort.ts 里的 quicksort()</p>
+    </div>
+  </div>
+  <div class="option" data-choice="b" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="content">
+      <h3>笔记内置代码片段</h3>
+      <p>代码直接写在笔记里（或者粘贴进去），作为笔记的一部分管理。函数映射指向笔记内部的代码块。</p>
+      <p style="font-size:13px; color: var(--muted);">例：在笔记中写一个代码块，标记为 quicksort，然后思维导图节点链接过来</p>
+    </div>
+  </div>
+  <div class="option" data-choice="c" onclick="toggleSelect(this)">
+    <div class="letter">C</div>
+    <div class="content">
+      <h3>两者都支持</h3>
+      <p>既可以关联外部仓库（实时读取），也可以在笔记内嵌代码块。函数映射统一处理。</p>
+      <p style="font-size:13px; color: var(--muted);">复杂度更高，但使用场景更灵活</p>
+    </div>
+  </div>
+</div>

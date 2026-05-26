@@ -1,0 +1,28 @@
+<h2>"树状 LaTeX 公式" 是什么？</h2>
+<p class="subtitle">这个描述可以有不同的理解方式</p>
+
+<div class="options">
+  <div class="option" data-choice="a" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="content">
+      <h3>思维导图节点中的公式</h3>
+      <p>思维导图的每个节点可以包含 LaTeX 公式（行内或块级），公式是节点内容的一部分。树状是指节点之间的父子推导关系。</p>
+      <p style="font-size:13px; color: var(--muted);">例：父节点 "主定理" → 子节点 "T(n) = aT(n/b) + f(n)" → 子子节点 "Case 1: f(n) = O(n^{log_b a - ε})"</p>
+    </div>
+  </div>
+  <div class="option" data-choice="b" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="content">
+      <h3>公式推导树 / 证明树</h3>
+      <p>一种特殊类型的思维导图，专门用于数学推导。每个节点是一个公式步骤，父子关系表示推导方向，自动编号。</p>
+      <p style="font-size:13px; color: var(--muted);">类似自然演绎证明树，但更通用，用于展示公式之间的推导过程</p>
+    </div>
+  </div>
+  <div class="option" data-choice="c" onclick="toggleSelect(this)">
+    <div class="letter">C</div>
+    <div class="content">
+      <h3>两者都有</h3>
+      <p>思维导图节点可以嵌入 LaTeX（常规用法），同时有一种"推导模式"可以显示节点间的公式推导关系</p>
+    </div>
+  </div>
+</div>

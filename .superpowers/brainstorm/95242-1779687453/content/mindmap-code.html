@@ -1,0 +1,84 @@
+<h2>思维导图中嵌入 MD 的代码渲染</h2>
+<p class="subtitle">一致性渲染：不管在 MD 笔记还是思维导图节点里，代码块都一样显示和跳转</p>
+
+<div class="mockup" style="margin-bottom: 20px;">
+  <div class="mockup-header">思维导图视口 (Panel 2) — 节点嵌入 MD 示意</div>
+  <div class="mockup-body" style="padding: 16px;">
+
+    <div style="background: var(--bg); padding: 16px; border-radius: 8px; border: 1px solid var(--border);">
+
+      <!-- 思维导图树 -->
+      <div style="text-align: center;">
+        <!-- Root -->
+        <div style="display: inline-block; background: var(--bg-card); border: 2px solid #c678dd; border-radius: 8px; padding: 8px 16px; margin-bottom: 8px; font-weight: 600;">
+          🧠 排序算法分析
+        </div>
+      </div>
+
+      <div style="display: flex; justify-content: center; gap: 12px;">
+        <!-- Child 1: MD content with code -->
+        <div style="flex: 1; max-width: 320px; background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 12px;">
+          <div style="font-weight: 600; margin-bottom: 6px; font-size: 12px;">📝 快速排序 (MD)</div>
+          <div style="font-size: 11px; margin-bottom: 6px;">分治策略，选取 pivot 进行划分...</div>
+
+          <!-- embedded code block -->
+          <div style="border: 1px solid var(--border); border-radius: 4px; overflow: hidden; margin-top: 6px;">
+            <div style="display: flex; justify-content: space-between; padding: 2px 8px; background: #282c34; color: #abb2bf; font-size: 10px;">
+              <span>java</span>
+              <span style="color: #61afef;">🔗 跳转 ↗</span>
+            </div>
+            <div style="background: #282c34; padding: 6px 10px; font-family: monospace; font-size: 10px; color: #abb2bf;">
+              <span style="color: #c678dd;">void</span> <span style="color: #61afef;">quicksort</span>(...) { }
+            </div>
+            <div style="padding: 2px 8px; font-size: 9px; color: var(--muted); background: var(--bg-card);">
+              ↳ src/sort.c:42
+            </div>
+          </div>
+        </div>
+
+        <!-- Child 2: MD content with code -->
+        <div style="flex: 1; max-width: 320px; background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 12px;">
+          <div style="font-weight: 600; margin-bottom: 6px; font-size: 12px;">📝 归并排序 (MD)</div>
+          <div style="font-size: 11px; margin-bottom: 6px;">稳定排序，分而治之，合并有序子数组...</div>
+
+          <!-- embedded code block -->
+          <div style="border: 1px solid var(--border); border-radius: 4px; overflow: hidden; margin-top: 6px;">
+            <div style="display: flex; justify-content: space-between; padding: 2px 8px; background: #282c34; color: #abb2bf; font-size: 10px;">
+              <span>java</span>
+              <span style="color: #61afef;">🔗 跳转 ↗</span>
+            </div>
+            <div style="background: #282c34; padding: 6px 10px; font-family: monospace; font-size: 10px; color: #abb2bf;">
+              <span style="color: #c678dd;">void</span> <span style="color: #61afef;">mergesort</span>(...) { }
+            </div>
+            <div style="padding: 2px 8px; font-size: 9px; color: var(--muted); background: var(--bg-card);">
+              ↳ src/sort.c:78
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <div style="margin-top: 14px; padding: 8px 12px; background: var(--bg-card); border-radius: 6px; font-size: 12px; text-align: center;">
+      ✅ 同一套代码块渲染组件，MD 笔记和思维导图节点共用
+    </div>
+
+  </div>
+</div>
+
+<div class="options">
+  <div class="option" data-choice="a" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="content">
+      <h3>确认，一致渲染</h3>
+      <p>代码块在任何地方都表现一致</p>
+    </div>
+  </div>
+  <div class="option" data-choice="b" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="content">
+      <h3>需要调整</h3>
+      <p>有不同想法</p>
+    </div>
+  </div>
+</div>

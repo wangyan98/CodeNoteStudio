@@ -18,6 +18,23 @@ export function WorkspaceToolbar() {
     })
   }, [])
 
+  const handleNewWorkspace = useCallback(async () => {
+    const parentDir = await window.electronAPI.selectFolder()
+    if (!parentDir) return
+    const name = window.prompt('Workspace name:')
+    if (!name) return
+    try {
+      const newPath = await window.electronAPI.createWorkspace(parentDir, name)
+      const config = await window.electronAPI.openWorkspace(newPath)
+      dispatch({ type: 'SET_WORKSPACE', path: newPath, name: config.name || name })
+      setCodeRepos(config.codeRepos || [])
+      const notes = await window.electronAPI.listNotes()
+      dispatch({ type: 'SET_NOTES', notes })
+    } catch (err) {
+      console.error('Failed to create workspace:', err)
+    }
+  }, [dispatch])
+
   const handleOpenFolder = useCallback(async () => {
     const folderPath = await window.electronAPI.selectFolder()
     if (!folderPath) return
@@ -59,7 +76,7 @@ export function WorkspaceToolbar() {
           Create a new workspace or open an existing one to get started.
         </div>
         <div className="workspace-landing-actions">
-          <button className="workspace-landing-btn primary" onClick={handleOpenFolder}>
+          <button className="workspace-landing-btn primary" onClick={handleNewWorkspace}>
             New Workspace
           </button>
           <button className="workspace-landing-btn" onClick={handleOpenFolder}>

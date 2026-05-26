@@ -1,0 +1,111 @@
+<h2>整体架构设计</h2>
+<p class="subtitle">Electron + C++ N-API 的分层架构</p>
+
+<div class="mockup" style="margin-bottom: 20px;">
+  <div class="mockup-header">系统分层</div>
+  <div class="mockup-body" style="padding: 16px; font-size: 13px;">
+
+    <div style="display: flex; flex-direction: column; gap: 8px;">
+
+      <!-- UI Layer -->
+      <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 6px; padding: 10px;">
+        <div style="font-weight: 700; color: #61afef;">🖥️ UI 层 (Electron Renderer — HTML/CSS/JS)</div>
+        <div style="display: flex; gap: 8px; margin-top: 4px; font-size: 11px;">
+          <span style="background: var(--bg); padding: 2px 6px; border-radius: 3px;">React 组件树</span>
+          <span style="background: var(--bg); padding: 2px 6px; border-radius: 3px;">Monaco Editor</span>
+          <span style="background: var(--bg); padding: 2px 6px; border-radius: 3px;">D3.js 思维导图</span>
+          <span style="background: var(--bg); padding: 2px 6px; border-radius: 3px;">KaTeX 渲染</span>
+        </div>
+      </div>
+
+      <div style="text-align: center; font-size: 12px; color: var(--muted);">↕ IPC (contextBridge + ipcRenderer/ipcMain)</div>
+
+      <!-- Main Process -->
+      <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 6px; padding: 10px;">
+        <div style="font-weight: 700; color: #98c379;">⚙️ Electron 主进程 (Node.js)</div>
+        <div style="margin-top: 4px; font-size: 11px;">
+          <span style="background: var(--bg); padding: 2px 6px; border-radius: 3px;">窗口管理</span>
+          <span style="background: var(--bg); padding: 2px 6px; border-radius: 3px;">文件系统 (fs)</span>
+          <span style="background: var(--bg); padding: 2px 6px; border-radius: 3px;">SQLite (better-sqlite3)</span>
+          <span style="background: var(--bg); padding: 2px 6px; border-radius: 3px;">HTTP server (web export)</span>
+        </div>
+      </div>
+
+      <div style="text-align: center; font-size: 12px; color: var(--muted);">↕ N-API 直接调用</div>
+
+      <!-- C++ Native Layer -->
+      <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 6px; padding: 10px;">
+        <div style="font-weight: 700; color: #e5c07b;">🔧 C++ Native Addon (N-API)</div>
+        <div style="margin-top: 4px; font-size: 11px;">
+          <span style="background: var(--bg); padding: 2px 6px; border-radius: 3px;">tree-sitter 代码解析</span>
+          <span style="background: var(--bg); padding: 2px 6px; border-radius: 3px;">LSP Client</span>
+          <span style="background: var(--bg); padding: 2px 6px; border-radius: 3px;">文件监控 (watchman/inotify)</span>
+          <span style="background: var(--bg); padding: 2px 6px; border-radius: 3px;">Git 操作 (libgit2)</span>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<div class="mockup" style="margin-bottom: 20px;">
+  <div class="mockup-header">数据模型核心实体</div>
+  <div class="mockup-body" style="padding: 16px; font-size: 12px;">
+
+    <table style="width: 100%; border-collapse: collapse;">
+      <tr style="border-bottom: 1px solid var(--border);">
+        <th style="text-align: left; padding: 6px 8px;">实体</th>
+        <th style="text-align: left; padding: 6px 8px;">存储</th>
+        <th style="text-align: left; padding: 6px 8px;">说明</th>
+      </tr>
+      <tr style="border-bottom: 1px solid var(--border);">
+        <td style="padding: 6px 8px;"><strong>Notebook</strong></td>
+        <td style="padding: 6px 8px;">目录</td>
+        <td style="padding: 6px 8px;">笔记项目，包含配置、关联代码仓库</td>
+      </tr>
+      <tr style="border-bottom: 1px solid var(--border);">
+        <td style="padding: 6px 8px;"><strong>MindNote</strong></td>
+        <td style="padding: 6px 8px;">.mind.json</td>
+        <td style="padding: 6px 8px;">思维文档树，节点可含 MD/LaTeX/代码映射</td>
+      </tr>
+      <tr style="border-bottom: 1px solid var(--border);">
+        <td style="padding: 6px 8px;"><strong>MdNote</strong></td>
+        <td style="padding: 6px 8px;">.md</td>
+        <td style="padding: 6px 8px;">Markdown 笔记，可嵌入其他笔记</td>
+      </tr>
+      <tr style="border-bottom: 1px solid var(--border);">
+        <td style="padding: 6px 8px;"><strong>DerivationTree</strong></td>
+        <td style="padding: 6px 8px;">.derive.json</td>
+        <td style="padding: 6px 8px;">公式推导树（特殊思维导图）</td>
+      </tr>
+      <tr style="border-bottom: 1px solid var(--border);">
+        <td style="padding: 6px 8px;"><strong>CodeRepo</strong></td>
+        <td style="padding: 6px 8px;">配置引用</td>
+        <td style="padding: 6px 8px;">外部代码仓库路径 + git commit SHA</td>
+      </tr>
+      <tr>
+        <td style="padding: 6px 8px;"><strong>CodeMapping</strong></td>
+        <td style="padding: 6px 8px;">SQLite 索引</td>
+        <td style="padding: 6px 8px;">笔记节点 → 函数/类名 → 代码位置，LSP 保持同步</td>
+      </tr>
+    </table>
+
+  </div>
+</div>
+
+<div class="options">
+  <div class="option" data-choice="a" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="content">
+      <h3>架构和数据模型看起来合理</h3>
+      <p>继续细化</p>
+    </div>
+  </div>
+  <div class="option" data-choice="b" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="content">
+      <h3>需要调整某些部分</h3>
+      <p>我有修改意见</p>
+    </div>
+  </div>
+</div>

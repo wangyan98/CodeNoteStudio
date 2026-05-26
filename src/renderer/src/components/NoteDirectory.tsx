@@ -165,14 +165,22 @@ export function NoteDirectory() {
   }, [renameNote])
 
   const handleNewNote = useCallback(async () => {
-    const name = prompt('Note name (include extension: .md, .mind.json, .derive.json):')
-    if (!name) return
+    try {
+      console.log('[NoteDirectory] handleNewNote clicked')
+      const name = window.prompt('Note name (include extension: .md, .mind.json, .derive.json):')
+      console.log('[NoteDirectory] prompt returned:', name)
+      if (!name) return
 
-    let type: NoteType = 'md'
-    if (name.endsWith('.mind.json')) type = 'mind'
-    else if (name.endsWith('.derive.json')) type = 'derive'
+      let type: NoteType = 'md'
+      if (name.endsWith('.mind.json')) type = 'mind'
+      else if (name.endsWith('.derive.json')) type = 'derive'
 
-    await createNote(name, type)
+      console.log('[NoteDirectory] calling createNote:', name, type)
+      await createNote(name, type)
+      console.log('[NoteDirectory] createNote succeeded')
+    } catch (err) {
+      console.error('Failed to create note:', err)
+    }
   }, [createNote])
 
   const filteredTree = searchQuery
