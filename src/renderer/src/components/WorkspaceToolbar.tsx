@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useAppContext } from '../contexts/AppContext'
 import './WorkspaceToolbar.css'
 
@@ -6,6 +6,43 @@ export function WorkspaceToolbar() {
   const { state, dispatch } = useAppContext()
   const { workspacePath, workspaceName } = state
   const [codeRepos, setCodeRepos] = useState<Array<{ path: string; commit: string }>>([])
+  const restoringRef = useRef(false)
+
+  const restoreUiState = useCallback(async () => {
+    const saved = await window.electronAPI.loadUiState()
+    if (!saved) return
+
+    restoringRef.current = true
+
+    // Restore selected note
+    if (saved.selectedNoteId) {
+      const notes = await window.electronAPI.listNotes()
+      dispatch({ type: 'SET_NOTES', notes })
+      const note = notes.find((n) => n.relativePath === saved.selectedNoteId)
+      if (note) {
+        dispatch({ type: 'SELECT_NOTE', noteId: saved.selectedNoteId })
+        const content = await window.electronAPI.readNote(saved.selectedNoteId)
+        dispatch({ type: 'SET_ACTIVE_NOTE_CONTENT', content, noteType: note.type })
+      }
+    }
+
+    // Restore code repo
+    if (saved.codeRepoPath) {
+      dispatch({ type: 'SET_CODE_REPO', path: saved.codeRepoPath })
+    }
+
+    // Restore open code files
+    if (saved.openCodeFiles && saved.openCodeFiles.length > 0) {
+      for (const file of saved.openCodeFiles) {
+        dispatch({ type: 'OPEN_CODE_FILE', file })
+      }
+      if (saved.activeCodeFileIndex >= 0) {
+        dispatch({ type: 'SET_ACTIVE_CODE_FILE', index: saved.activeCodeFileIndex })
+      }
+    }
+
+    restoringRef.current = false
+  }, [dispatch])
 
   useEffect(() => {
     window.electronAPI.getWorkspacePath().then((savedPath) => {
@@ -13,6 +50,7 @@ export function WorkspaceToolbar() {
         window.electronAPI.loadConfig().then((config) => {
           dispatch({ type: 'SET_WORKSPACE', path: savedPath, name: config.name || savedPath })
           setCodeRepos(config.codeRepos || [])
+          restoreUiState()
         })
       }
     })
@@ -35,10 +73,11 @@ export function WorkspaceToolbar() {
           console.error('Failed to index symbols for repo:', repo.path, err)
         })
       }
+      restoreUiState()
     } catch (err) {
       console.error('Failed to create workspace:', err)
     }
-  }, [dispatch])
+  }, [dispatch, restoreUiState])
 
   const handleOpenFolder = useCallback(async () => {
     const folderPath = await window.electronAPI.selectFolder()
@@ -54,10 +93,11 @@ export function WorkspaceToolbar() {
           console.error('Failed to index symbols for repo:', repo.path, err)
         })
       }
+      restoreUiState()
     } catch (err) {
       console.error('Failed to open workspace:', err)
     }
-  }, [dispatch])
+  }, [dispatch, restoreUiState])
 
   const handleAddRepo = useCallback(async () => {
     const repoPath = await window.electronAPI.selectFolder()
@@ -78,6 +118,20 @@ export function WorkspaceToolbar() {
     const config = await window.electronAPI.loadConfig()
     await window.electronAPI.saveConfig({ ...config, codeRepos: newRepos })
   }, [codeRepos])
+
+  // Persist UI state on changes
+  useEffect(() => {
+    if (!workspacePath || restoringRef.current) return
+    const timer = setTimeout(() => {
+      window.electronAPI.saveUiState({
+        selectedNoteId: state.selectedNoteId,
+        codeRepoPath: state.codeRepoPath,
+        openCodeFiles: state.openCodeFiles,
+        activeCodeFileIndex: state.activeCodeFileIndex
+      })
+    }, 500)
+    return () => clearTimeout(timer)
+  }, [workspacePath, state.selectedNoteId, state.codeRepoPath, state.openCodeFiles, state.activeCodeFileIndex])
 
   // Landing page: no workspace open
   if (!workspacePath) {
@@ -105,6 +159,10 @@ export function WorkspaceToolbar() {
     <div className="workspace-toolbar">
       <span className="workspace-toolbar-name">📁 {workspaceName}</span>
       <span className="workspace-toolbar-separator">|</span>
+      <button className="workspace-toolbar-btn" onClick={handleOpenFolder}>
+        Open Folder
+      </button>
+      <div className="workspace-toolbar-spacer" />
       <span className="workspace-toolbar-label">Repos:</span>
       <div className="workspace-toolbar-repos">
         {codeRepos.map((repo) => (
@@ -123,9 +181,6 @@ export function WorkspaceToolbar() {
             {repo.path.split('/').pop() || repo.path}
           </span>
         ))}
-        <button className="workspace-toolbar-btn" onClick={handleAddRepo}>
-          + Add Repo
-        </button>
         {codeRepos.length > 0 && (
           <button
             className="workspace-toolbar-btn"
@@ -143,11 +198,10 @@ export function WorkspaceToolbar() {
             Re-index
           </button>
         )}
+        <button className="workspace-toolbar-btn" onClick={handleAddRepo}>
+          + Add Repo
+        </button>
       </div>
-      <div className="workspace-toolbar-spacer" />
-      <button className="workspace-toolbar-btn" onClick={handleOpenFolder}>
-        Open Folder
-      </button>
     </div>
   )
 }

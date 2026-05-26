@@ -10,6 +10,8 @@ import {
   noteExists
 } from './services/note-service'
 import { initDatabase, closeDatabase } from './services/index-db'
+import { loadUiState, saveUiState } from './services/ui-state'
+import type { UiState } from './services/ui-state'
 import type { NotebookConfig } from './types'
 import type { NoteFileType, NoteListItem } from './types'
 import type { NoteContent } from './services/note-service'
@@ -151,16 +153,29 @@ export function registerIpcHandlers(projectPath: string): void {
     return querySymbols(db, name, filePath, kind, name ? undefined : 50)
   })
 
-  ipcMain.handle('code:resolve-refs', async (_event, _notePath: string, content: string) => {
+  ipcMain.handle('code:resolve-refs', async (_event, notePath: string, content: string) => {
     const { parseRefs, resolveRefs } = await import('./services/ref-resolver')
     const { initSymbolDatabase, querySymbols } = await import('./services/symbol-index')
+    const { loadRefCache, saveRefCache } = await import('./services/ref-cache')
 
     const refs = parseRefs(content)
     if (refs.length === 0) return []
 
     const db = initSymbolDatabase(currentProjectPath!)
     const allSymbols = querySymbols(db)
-    return resolveRefs(refs, allSymbols)
+    const previousMappings = loadRefCache(currentProjectPath!, notePath)
+    const mappings = resolveRefs(refs, allSymbols, previousMappings)
+    saveRefCache(currentProjectPath!, notePath, mappings)
+    return mappings
+  })
+
+  // UI state persistence
+  ipcMain.handle('ui-state:load', async (): Promise<UiState | null> => {
+    return loadUiState(currentProjectPath!)
+  })
+
+  ipcMain.handle('ui-state:save', async (_event, state: UiState): Promise<void> => {
+    return saveUiState(currentProjectPath!, state)
   })
 
   // Live server

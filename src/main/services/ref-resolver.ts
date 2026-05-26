@@ -30,21 +30,70 @@ export function parseRefs(content: string): string[] {
 }
 
 /**
- * Resolve parsed @ref names to CodeMapping objects using a symbol lookup function.
+ * Resolve parsed @ref names to CodeMapping objects.
+ *
+ * Three-tier resolution:
+ * 1. If a previous mapping exists, match by same file + nearby line range
+ * 2. Fall back to exact name match across all symbols
+ * 3. Fall back to Class.method resolution (last dot split)
+ * 4. If nothing matches, the ref is silently dropped (not rendered)
  */
 export function resolveRefs(
   refNames: string[],
-  symbols: CodeSymbol[]
+  symbols: CodeSymbol[],
+  previousMappings: CodeMapping[] = []
 ): CodeMapping[] {
   const mappings: CodeMapping[] = []
   const matched = new Set<string>()
 
+  // Index previous mappings by ref name
+  const prevByName = new Map<string, CodeMapping>()
+  for (const pm of previousMappings) {
+    if (!prevByName.has(pm.functionName)) {
+      prevByName.set(pm.functionName, pm)
+    }
+  }
+
+  // Build a lookup: filePath -> symbols for efficient file+line matching
+  const symbolsByFile = new Map<string, CodeSymbol[]>()
+  for (const s of symbols) {
+    const list = symbolsByFile.get(s.filePath)
+    if (list) {
+      list.push(s)
+    } else {
+      symbolsByFile.set(s.filePath, [s])
+    }
+  }
+
   for (const refName of refNames) {
     if (matched.has(refName)) continue
 
-    // Try exact match by name
-    const match = symbols.find((s) => s.name === refName)
+    // Tier 1: try cached file + nearby line
+    const prev = prevByName.get(refName)
+    if (prev) {
+      const fileSymbols = symbolsByFile.get(prev.filePath)
+      if (fileSymbols) {
+        // Find a symbol with the same name in the same file, within ±20 lines
+        const nearby = fileSymbols.find(
+          (s) =>
+            s.name === refName &&
+            Math.abs(s.startLine - prev.startLine) <= 20
+        )
+        if (nearby) {
+          matched.add(refName)
+          mappings.push({
+            functionName: refName,
+            filePath: nearby.filePath,
+            startLine: nearby.startLine,
+            endLine: nearby.endLine
+          })
+          continue
+        }
+      }
+    }
 
+    // Tier 2: exact name match across all symbols
+    const match = symbols.find((s) => s.name === refName)
     if (match) {
       matched.add(refName)
       mappings.push({
@@ -56,7 +105,7 @@ export function resolveRefs(
       continue
     }
 
-    // Try Class.method resolution: split by last dot
+    // Tier 3: Class.method resolution (split by last dot)
     const lastDot = refName.lastIndexOf('.')
     if (lastDot > 0) {
       const className = refName.slice(0, lastDot)

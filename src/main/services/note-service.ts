@@ -112,6 +112,9 @@ export async function deleteNote(
 ): Promise<void> {
   const fullPath = await getFullPath(projectPath, relativePath)
   await deleteFile(fullPath)
+  // Clean up ref cache sidecar
+  const { deleteRefCache } = await import('./ref-cache')
+  deleteRefCache(projectPath, relativePath)
 }
 
 export async function renameNote(
@@ -123,6 +126,13 @@ export async function renameNote(
   const newPath = await getFullPath(projectPath, newRelativePath)
   await ensureDir(path.dirname(newPath))
   await fs.rename(oldPath, newPath)
+  // Move ref cache sidecar if it exists
+  const { loadRefCache, saveRefCache, deleteRefCache } = await import('./ref-cache')
+  const cached = loadRefCache(projectPath, oldRelativePath)
+  if (cached.length > 0) {
+    saveRefCache(projectPath, newRelativePath, cached)
+    deleteRefCache(projectPath, oldRelativePath)
+  }
 }
 
 export async function noteExists(

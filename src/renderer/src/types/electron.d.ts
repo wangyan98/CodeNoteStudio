@@ -57,6 +57,18 @@ declare global {
       startServer: (port?: number) => Promise<{ running: boolean; port: number; url: string }>
       stopServer: () => Promise<void>
       getServerStatus: () => Promise<{ running: boolean; port: number; url: string }>
+      loadUiState: () => Promise<{
+        selectedNoteId: string | null
+        codeRepoPath: string | null
+        openCodeFiles: Array<{ path: string; name: string; language: string }>
+        activeCodeFileIndex: number
+      } | null>
+      saveUiState: (state: {
+        selectedNoteId: string | null
+        codeRepoPath: string | null
+        openCodeFiles: Array<{ path: string; name: string; language: string }>
+        activeCodeFileIndex: number
+      }) => Promise<void>
     }
   }
 }

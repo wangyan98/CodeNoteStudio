@@ -43,7 +43,11 @@ const api = {
   // Server
   startServer: (port?: number) => ipcRenderer.invoke('server:start', port),
   stopServer: () => ipcRenderer.invoke('server:stop'),
-  getServerStatus: () => ipcRenderer.invoke('server:status')
+  getServerStatus: () => ipcRenderer.invoke('server:status'),
+
+  // UI state
+  loadUiState: () => ipcRenderer.invoke('ui-state:load'),
+  saveUiState: (state: unknown) => ipcRenderer.invoke('ui-state:save', state)
 }
 
 contextBridge.exposeInMainWorld('electronAPI', api)
