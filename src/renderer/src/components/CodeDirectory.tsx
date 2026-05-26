@@ -105,34 +105,31 @@ function buildTree(files: RepoFileNode[]): RepoFileNode[] {
 }
 
 export function CodeDirectory() {
-  const { dispatch } = useAppContext()
+  const { state, dispatch } = useAppContext()
   const [repoFiles, setRepoFiles] = useState<RepoFileNode[]>([])
   const [filter, setFilter] = useState<string>('all')
-  const [repoPath, setRepoPath] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
 
   const fileTypes = ['all', '.ts', '.tsx', '.js', '.py', '.rs', '.go', '.cpp', '.md', '.json']
 
   useEffect(() => {
     async function loadRepo() {
+      if (!state.codeRepoPath) {
+        setRepoFiles([])
+        return
+      }
       setLoading(true)
       try {
-        const config = await window.electronAPI.loadConfig()
-        const repo = config.codeRepos[0]
-        if (repo) {
-          setRepoPath(repo.path)
-          dispatch({ type: 'SET_CODE_REPO', path: repo.path })
-          const files = await window.electronAPI.listRepoFiles(repo.path)
-          setRepoFiles(files)
-        }
+        const files = await window.electronAPI.listRepoFiles(state.codeRepoPath)
+        setRepoFiles(files)
       } catch {
-        setRepoPath(null)
+        setRepoFiles([])
       } finally {
         setLoading(false)
       }
     }
     loadRepo()
-  }, [dispatch])
+  }, [state.codeRepoPath])
 
   const handleFileSelect = useCallback(async (file: RepoFileNode) => {
     if (file.isDirectory) return
@@ -163,10 +160,10 @@ export function CodeDirectory() {
     <div className="panel panel-code-directory">
       <div className="panel-header">Code</div>
       <div className="code-directory">
-        {repoPath ? (
+        {state.codeRepoPath ? (
           <>
             <div className="code-directory-toolbar">
-              <span className="code-repo-path" title={repoPath}>{repoPath}</span>
+              <span className="code-repo-path" title={state.codeRepoPath}>{state.codeRepoPath}</span>
               {fileTypes.map((ft) => (
                 <button
                   key={ft}
@@ -194,7 +191,7 @@ export function CodeDirectory() {
           </>
         ) : (
           <div className="code-no-repo">
-            <p>No code repository configured.<br/>Add a repo in notebook.json to browse code.</p>
+            <p>No code repository selected.<br/>Use the toolbar to add a repo.</p>
           </div>
         )}
       </div>
