@@ -47,6 +47,8 @@ export type AppAction =
   | { type: 'SET_CODE_REPO'; path: string }
   | { type: 'SET_CODE_FILES'; files: CodeFile[] }
   | { type: 'SET_PANEL_WIDTHS'; widths: PanelWidths }
+  | { type: 'SET_WORKSPACE'; path: string; name: string }
+  | { type: 'CLEAR_WORKSPACE' }
 
 export interface AppState {
   notes: NoteItem[]
@@ -60,4 +62,6 @@ export interface AppState {
   codeRepoPath: string | null
   codeFiles: CodeFile[]
   panelWidths: PanelWidths
+  workspacePath: string | null
+  workspaceName: string
 }

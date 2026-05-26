@@ -12,7 +12,9 @@ export const initialState: AppState = {
   activeCodeFileIndex: -1,
   codeRepoPath: null,
   codeFiles: [],
-  panelWidths: { panel1: 18, panel2: 32, panel3: 32, panel4: 18 }
+  panelWidths: { panel1: 18, panel2: 32, panel3: 32, panel4: 18 },
+  workspacePath: null,
+  workspaceName: ''
 }
 
 export function appReducer(state: AppState, action: AppAction): AppState {
@@ -64,6 +66,12 @@ export function appReducer(state: AppState, action: AppAction): AppState {
 
     case 'SET_PANEL_WIDTHS':
       return { ...state, panelWidths: action.widths }
+
+    case 'SET_WORKSPACE':
+      return { ...state, workspacePath: action.path, workspaceName: action.name }
+
+    case 'CLEAR_WORKSPACE':
+      return { ...state, workspacePath: null, workspaceName: '' }
 
     case 'SET_ACTIVE_NOTE_CONTENT':
       return {
