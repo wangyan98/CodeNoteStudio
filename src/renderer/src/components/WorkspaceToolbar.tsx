@@ -8,13 +8,15 @@ export function WorkspaceToolbar() {
   const [codeRepos, setCodeRepos] = useState<Array<{ path: string; commit: string }>>([])
 
   useEffect(() => {
-    if (workspacePath) {
-      window.electronAPI.loadConfig().then((config) => {
-        dispatch({ type: 'SET_WORKSPACE', path: workspacePath, name: config.name || workspacePath })
-        setCodeRepos(config.codeRepos || [])
-      })
-    }
-  }, [workspacePath])
+    window.electronAPI.getWorkspacePath().then((savedPath) => {
+      if (savedPath) {
+        window.electronAPI.loadConfig().then((config) => {
+          dispatch({ type: 'SET_WORKSPACE', path: savedPath, name: config.name || savedPath })
+          setCodeRepos(config.codeRepos || [])
+        })
+      }
+    })
+  }, [])
 
   const handleOpenFolder = useCallback(async () => {
     const folderPath = await window.electronAPI.selectFolder()

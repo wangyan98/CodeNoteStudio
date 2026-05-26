@@ -25,46 +25,46 @@ export function registerIpcHandlers(projectPath: string): void {
 
   // Notebook config
   ipcMain.handle('config:load', async (): Promise<NotebookConfig> => {
-    return loadConfig(projectPath)
+    return loadConfig(currentProjectPath!)
   })
 
   ipcMain.handle('config:save', async (_event, config: NotebookConfig): Promise<void> => {
-    return saveConfig(projectPath, config)
+    return saveConfig(currentProjectPath!, config)
   })
 
   // Notes
   ipcMain.handle('notes:list', async (_event, filterType?: NoteFileType): Promise<NoteListItem[]> => {
-    return listNotes(projectPath, filterType)
+    return listNotes(currentProjectPath!, filterType)
   })
 
   ipcMain.handle('notes:create', async (_event, relativePath: string, type: NoteFileType): Promise<void> => {
-    await createNote(projectPath, relativePath, type)
+    await createNote(currentProjectPath!, relativePath, type)
     const { broadcastMessage } = await import('./services/live-server')
     broadcastMessage('note-created', { relativePath, type })
   })
 
   ipcMain.handle('notes:read', async (_event, relativePath: string): Promise<NoteContent> => {
-    return readNote(projectPath, relativePath)
+    return readNote(currentProjectPath!, relativePath)
   })
 
   ipcMain.handle('notes:update', async (_event, relativePath: string, content: NoteContent): Promise<void> => {
-    await updateNote(projectPath, relativePath, content)
+    await updateNote(currentProjectPath!, relativePath, content)
     const { broadcastMessage } = await import('./services/live-server')
     broadcastMessage('note-updated', { relativePath, content })
   })
 
   ipcMain.handle('notes:delete', async (_event, relativePath: string): Promise<void> => {
-    await deleteNote(projectPath, relativePath)
+    await deleteNote(currentProjectPath!, relativePath)
     const { broadcastMessage } = await import('./services/live-server')
     broadcastMessage('note-deleted', { relativePath })
   })
 
   ipcMain.handle('notes:rename', async (_event, oldPath: string, newPath: string): Promise<void> => {
-    return renameNote(projectPath, oldPath, newPath)
+    return renameNote(currentProjectPath!, oldPath, newPath)
   })
 
   ipcMain.handle('notes:exists', async (_event, relativePath: string): Promise<boolean> => {
-    return noteExists(projectPath, relativePath)
+    return noteExists(currentProjectPath!, relativePath)
   })
 
   // App
