@@ -124,3 +124,39 @@
 .note-action-btn.delete:hover {
   color: #f44747;
 }
+
+.new-note-input-row {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+
+.new-note-input {
+  flex: 1;
+  padding: 3px 6px;
+  font-size: 11px;
+  background: var(--input-bg, #3c3c3c);
+  border: 1px solid var(--accent-color);
+  border-radius: 3px;
+  color: var(--text-color);
+  outline: none;
+}
+
+.new-note-submit-btn {
+  padding: 3px 8px;
+  font-size: 11px;
+  background: var(--accent-color);
+  color: #fff;
+  border: none;
+  border-radius: 3px;
+  cursor: pointer;
+}
+
+.new-note-cancel-btn {
+  padding: 3px 6px;
+  font-size: 11px;
+  background: transparent;
+  border: none;
+  color: var(--header-color);
+  cursor: pointer;
+}
