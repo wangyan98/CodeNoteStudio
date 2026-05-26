@@ -37,9 +37,7 @@ export function WorkspaceToolbar() {
     setCodeRepos(newRepos)
     const config = await window.electronAPI.loadConfig()
     await window.electronAPI.saveConfig({ ...config, codeRepos: newRepos })
-    const files = await window.electronAPI.listRepoFiles(repoPath)
     dispatch({ type: 'SET_CODE_REPO', path: repoPath })
-    dispatch({ type: 'SET_CODE_FILES', files })
   }, [codeRepos, dispatch])
 
   const handleRemoveRepo = useCallback(async (repoPath: string) => {
@@ -79,9 +77,6 @@ export function WorkspaceToolbar() {
             title={repo.path}
             onClick={() => {
               dispatch({ type: 'SET_CODE_REPO', path: repo.path })
-              window.electronAPI.listRepoFiles(repo.path).then((files) => {
-                dispatch({ type: 'SET_CODE_FILES', files })
-              })
             }}
             onContextMenu={(e) => {
               e.preventDefault()
