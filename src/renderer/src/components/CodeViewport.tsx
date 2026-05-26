@@ -53,7 +53,8 @@ export function CodeViewport() {
     )
   }
 
-  const content = fileContents.get(activeFile.path) || ''
+  const content = fileContents.get(activeFile.path)
+  const contentLoaded = fileContents.has(activeFile.path)
 
   return (
     <div className="panel panel-code-viewport">
@@ -92,11 +93,11 @@ export function CodeViewport() {
 
         {/* Editor */}
         <div className="code-editor-container">
-          {content ? (
+          {contentLoaded ? (
             <Editor
               height="100%"
               language={activeFile.language}
-              value={content}
+              value={content || ''}
               theme="vs-dark"
               options={{
                 readOnly: true,

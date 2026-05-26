@@ -17,7 +17,7 @@ export function NoteViewport() {
       <div className="panel panel-note-viewport">
         <div className="panel-header">Note Viewport</div>
         <div className="note-viewport-placeholder">
-          <p>Select a note to view</p>
+          <p>{state.notes.length === 0 ? 'Create a note to get started' : 'Select a note to view'}</p>
         </div>
       </div>
     )
