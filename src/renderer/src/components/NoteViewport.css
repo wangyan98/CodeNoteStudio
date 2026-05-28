@@ -52,3 +52,9 @@
   background: var(--accent-color);
   color: #fff;
 }
+
+.note-viewport-drag-over {
+  background: rgba(100, 180, 255, 0.05);
+  outline: 2px dashed var(--accent-color);
+  outline-offset: -2px;
+}

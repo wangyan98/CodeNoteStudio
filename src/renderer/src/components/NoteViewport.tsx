@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from 'react'
+import { useEffect, useState, useRef, useCallback } from 'react'
 import { useAppContext } from '../contexts/AppContext'
 import { useNotes } from '../hooks/useNotes'
 import { useCodeNavigation } from '../hooks/useCodeNavigation'
@@ -20,6 +20,7 @@ export function NoteViewport() {
 
   const mdEditorRef = useRef<MdEditorHandle>(null)
   const [codeMappings, setCodeMappings] = useState<CodeMapping[]>([])
+  const [dragOver, setDragOver] = useState(false)
 
   // Listen for symbol-insert events from CodeViewport's SymbolPicker
   useEffect(() => {
@@ -49,6 +50,45 @@ export function NoteViewport() {
         setCodeMappings([])
       })
   }, [activeNoteContent, selectedNoteId])
+
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault()
+    e.dataTransfer.dropEffect = 'copy'
+    setDragOver(true)
+  }, [])
+
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
+    if (e.currentTarget === e.target || !e.currentTarget.contains(e.relatedTarget as Node)) {
+      setDragOver(false)
+    }
+  }, [])
+
+  const handleDrop = useCallback(async (e: React.DragEvent) => {
+    e.preventDefault()
+    setDragOver(false)
+
+    const isImage = e.dataTransfer.getData('application/x-image-drag') === 'true'
+    const plainText = e.dataTransfer.getData('text/plain')
+
+    if (!plainText) return
+
+    if (isImage) {
+      const sourcePath = e.dataTransfer.getData('application/x-source-path')
+      if (sourcePath && mdEditorRef.current) {
+        const fileName = sourcePath.split('/').pop() || sourcePath.split('\\').pop() || 'image'
+        try {
+          const result = await window.electronAPI.copyFileToAssets(sourcePath)
+          mdEditorRef.current.insertAtPosition(`![${fileName}](${result.relativePath})`, e.clientX, e.clientY)
+        } catch {
+          mdEditorRef.current.insertAtPosition(`![${fileName}](${sourcePath})`, e.clientX, e.clientY)
+        }
+      }
+    } else {
+      if (mdEditorRef.current) {
+        mdEditorRef.current.insertAtPosition(plainText, e.clientX, e.clientY)
+      }
+    }
+  }, [])
 
   if (!selectedNoteId || activeNoteContent === null) {
     return (
@@ -125,7 +165,12 @@ export function NoteViewport() {
           </>
         )}
       </div>
-      <div className="note-viewport">
+      <div
+        className={`note-viewport${dragOver ? ' note-viewport-drag-over' : ''}`}
+        onDragOver={handleDragOver}
+        onDragLeave={handleDragLeave}
+        onDrop={handleDrop}
+      >
         {renderEditor()}
       </div>
       <CodeMappingsPanel mappings={codeMappings} />
