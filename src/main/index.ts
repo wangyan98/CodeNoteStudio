@@ -40,13 +40,15 @@ ipcMain.handle('get-app-version', () => app.getVersion())
 
 app.whenReady().then(async () => {
   // Register custom protocol to serve workspace files for preview images.
-  // file:// URLs are blocked by Chromium's opaque-origin policy across
-  // different directories, so we use a custom protocol that maps directly
-  // to absolute file paths on disk.
-  protocol.handle('wsfile', (request) => {
-    const filePath = request.url.slice('wsfile://'.length)
-    return net.fetch('file://' + filePath)
-  })
+  try {
+    protocol.handle('wsfile', (request) => {
+      const filePath = request.url.slice('wsfile://'.length)
+      return net.fetch('file://' + filePath)
+    })
+  } catch (err) {
+    console.error('[wsfile] Failed to register wsfile protocol:', err)
+  }
+
   let projectPath = ''
 
   try {
