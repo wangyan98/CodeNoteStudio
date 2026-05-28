@@ -4,7 +4,7 @@ import { useNotes } from '../hooks/useNotes'
 import { useCodeNavigation } from '../hooks/useCodeNavigation'
 import { MdEditor } from './editors/MdEditor'
 import type { MdEditorHandle } from './editors/MdEditor'
-import { MindMapRenderer } from './editors/MindMapRenderer'
+import { MindMapEditor } from './editors/MindMapEditor'
 import { DerivationRenderer } from './editors/DerivationRenderer'
 import { CodeMappingsPanel } from './CodeMappingsPanel'
 import type { MindMapDocument, DerivationDocument } from '../../../main/schemas/note-types'
@@ -132,10 +132,13 @@ export function NoteViewport() {
 
       case 'mind':
         return (
-          <MindMapRenderer
+          <MindMapEditor
             document={activeNoteContent as MindMapDocument}
             onSave={async (doc: MindMapDocument) => {
               await saveNote(selectedNoteId, doc)
+            }}
+            onNavigateToCode={(filePath: string, line: number) => {
+              navigateToCode(filePath, line)
             }}
           />
         )

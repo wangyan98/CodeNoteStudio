@@ -1,0 +1,151 @@
+/* src/renderer/src/components/editors/NodeEditPanel.css */
+.node-edit-panel {
+  background: #1e1e1e;
+  border-top: 1px solid #3c3c3c;
+  height: 100%;
+  overflow: hidden;
+}
+
+.node-edit-panel-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.node-edit-panel-hint {
+  color: #666;
+  font-size: 13px;
+}
+
+.node-edit-panel-scroll {
+  height: 100%;
+  overflow-y: auto;
+  padding: 12px 16px;
+}
+
+.node-edit-panel-field {
+  margin-bottom: 14px;
+}
+
+.node-edit-panel-label {
+  display: block;
+  color: #888;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 4px;
+}
+
+.node-edit-panel-section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 4px;
+}
+
+.node-edit-panel-title-input {
+  width: 100%;
+  padding: 6px 10px;
+  background: #2d2d2d;
+  border: 1px solid #3c3c3c;
+  border-radius: 4px;
+  color: #d4d4d4;
+  font-size: 13px;
+  outline: none;
+  box-sizing: border-box;
+}
+
+.node-edit-panel-title-input:focus {
+  border-color: #007acc;
+}
+
+.node-edit-panel-monaco {
+  border: 1px solid #3c3c3c;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.node-edit-panel-add-btn {
+  background: none;
+  border: 1px solid #555;
+  color: #888;
+  padding: 2px 8px;
+  border-radius: 3px;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.node-edit-panel-add-btn:hover {
+  color: #ccc;
+  border-color: #888;
+}
+
+.node-edit-panel-empty-text {
+  color: #555;
+  font-size: 12px;
+  margin: 4px 0;
+}
+
+.node-edit-panel-mapping-list {
+  list-style: none;
+  padding: 0;
+  margin: 4px 0;
+}
+
+.node-edit-panel-mapping-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 6px;
+  background: #2d2d2d;
+  border-radius: 3px;
+  margin-bottom: 3px;
+  font-size: 11px;
+}
+
+.node-edit-panel-mapping-ref {
+  color: #4ec9b0;
+  cursor: pointer;
+  font-family: monospace;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.node-edit-panel-mapping-ref:hover {
+  text-decoration: underline;
+}
+
+.node-edit-panel-mapping-path {
+  color: #666;
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.node-edit-panel-remove-btn {
+  background: none;
+  border: none;
+  color: #888;
+  cursor: pointer;
+  font-size: 16px;
+  line-height: 1;
+  padding: 0 2px;
+}
+
+.node-edit-panel-remove-btn:hover {
+  color: #e44;
+}
+
+.node-edit-panel-status {
+  padding: 6px 0;
+  font-size: 11px;
+  border-top: 1px solid #2d2d2d;
+  margin-top: 8px;
+}
+
+.node-edit-panel-status-saved { color: #4a4; }
+.node-edit-panel-status-saving { color: #cc0; }
+.node-edit-panel-status-unsaved { color: #888; }
+.node-edit-panel-status-error { color: #e44; }

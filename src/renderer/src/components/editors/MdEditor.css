@@ -39,10 +39,26 @@
   border-color: var(--accent-color);
 }
 
-.md-editor-btn.save {
-  background: var(--accent-color);
-  color: #fff;
-  border-color: var(--accent-color);
+.md-editor-save-status {
+  padding: 2px 10px;
+  font-size: 11px;
+  border-radius: 3px;
+}
+
+.md-editor-save-status-saved {
+  color: #6e6e6e;
+}
+
+.md-editor-save-status-saving {
+  color: var(--accent-color);
+}
+
+.md-editor-save-status-unsaved {
+  color: #cca700;
+}
+
+.md-editor-save-status-error {
+  color: #e44;
 }
 
 .md-editor-content {
