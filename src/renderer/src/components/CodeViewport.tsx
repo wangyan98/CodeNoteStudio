@@ -174,6 +174,15 @@ export function CodeViewport() {
     editor.onMouseDown(async (e) => {
       // Check for double-click (detail === 2)
       if (e.event.detail !== 2) {
+        if (selectedSymbolRef.current && e.target.position) {
+          const sym = selectedSymbolRef.current
+          if (e.target.position.lineNumber === sym.startLine) {
+            // Click on highlighted line — prevent Monaco text selection
+            // so HTML5 drag on the container can fire instead
+            e.event.preventDefault()
+            return
+          }
+        }
         // Single click elsewhere clears selection
         if (selectedSymbolRef.current) {
           clearSelection()
