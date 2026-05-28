@@ -36,8 +36,75 @@ export function CodeViewport() {
   const [gitCommit, setGitCommit] = useState<{ sha: string; message: string; author: string; date: string } | null>(null)
   const [symbolPickerOpen, setSymbolPickerOpen] = useState(false)
   const editorRef = useRef<monaco.editor.IStandaloneCodeEditor | null>(null)
+  const selectedSymbolRef = useRef<CodeSymbol | null>(null)
+  const decorationIdsRef = useRef<string[]>([])
+  const dragEnabledRef = useRef(false)
+  const editorContainerRef = useRef<HTMLDivElement>(null)
   const [zoomedImage, setZoomedImage] = useState<string | null>(null)
   const [zoomLevel, setZoomLevel] = useState(1)
+
+  const clearSelection = useCallback(() => {
+    const editor = editorRef.current
+    if (!editor) return
+    const ids = decorationIdsRef.current
+    if (ids.length > 0) {
+      editor.deltaDecorations(ids, [])
+    }
+    decorationIdsRef.current = []
+    selectedSymbolRef.current = null
+    dragEnabledRef.current = false
+    if (editorContainerRef.current) {
+      editorContainerRef.current.removeAttribute('draggable')
+    }
+  }, [])
+
+  const selectSymbolAtPosition = useCallback(async (
+    editor: monaco.editor.IStandaloneCodeEditor,
+    position: monaco.Position
+  ) => {
+    const model = editor.getModel()
+    if (!model || !activeFile) return
+
+    const word = model.getWordAtPosition(position)
+    if (!word) return
+
+    try {
+      const symbols: CodeSymbol[] = await window.electronAPI.querySymbols(
+        word.word,
+        activeFile.path,
+        undefined
+      )
+      // Find symbol in current file matching the clicked word
+      const match = symbols.find(s =>
+        s.name === word.word && s.filePath === activeFile.path
+      )
+      if (!match) return
+
+      clearSelection()
+
+      // Apply Monaco decoration to highlight the symbol name
+      const ids = editor.deltaDecorations([], [{
+        range: {
+          startLineNumber: position.lineNumber,
+          startColumn: word.startColumn,
+          endLineNumber: position.lineNumber,
+          endColumn: word.endColumn
+        },
+        options: {
+          inlineClassName: 'ref-drag-highlight',
+          description: 'ref-drag-highlight'
+        }
+      }])
+      decorationIdsRef.current = ids
+      selectedSymbolRef.current = match
+      dragEnabledRef.current = true
+      if (editorContainerRef.current) {
+        editorContainerRef.current.setAttribute('draggable', 'true')
+      }
+    } catch {
+      // Symbol query failed — silently ignore
+    }
+  }, [activeFile, clearSelection])
 
   const handleSymbolSelect = useCallback((sym: CodeSymbol) => {
     let relPath = sym.filePath
@@ -93,11 +160,27 @@ export function CodeViewport() {
 
   const handleEditorMount = useCallback((editor: monaco.editor.IStandaloneCodeEditor) => {
     editorRef.current = editor
+
+    // Scroll to pending line if applicable
     if (state.pendingScroll && activeFile && activeFile.path === state.pendingScroll.filePath) {
       editor.revealLineInCenter(state.pendingScroll.line)
       dispatch({ type: 'CLEAR_PENDING_SCROLL' })
     }
-  }, [state.pendingScroll, activeFile, dispatch])
+
+    // Double-click to select symbol for drag
+    editor.onMouseDown(async (e) => {
+      // Check for double-click (detail === 2)
+      if (e.event.detail !== 2) {
+        // Single click elsewhere clears selection
+        if (selectedSymbolRef.current) {
+          clearSelection()
+        }
+        return
+      }
+      if (!e.target.position) return
+      await selectSymbolAtPosition(editor, e.target.position)
+    })
+  }, [state.pendingScroll, activeFile, dispatch, clearSelection, selectSymbolAtPosition])
 
   useEffect(() => {
     if (!zoomedImage) return
@@ -191,7 +274,28 @@ export function CodeViewport() {
         </div>
 
         {/* Editor or Image */}
-        <div className="code-editor-container">
+        <div
+          className="code-editor-container"
+          ref={editorContainerRef}
+          onDragStart={(e) => {
+            const sym = selectedSymbolRef.current
+            if (!sym || !activeFile) {
+              e.preventDefault()
+              return
+            }
+            let relPath = sym.filePath
+            if (codeRepoPath) {
+              const prefix = codeRepoPath.endsWith('/') ? codeRepoPath : codeRepoPath + '/'
+              if (sym.filePath.startsWith(prefix)) {
+                relPath = sym.filePath.slice(prefix.length)
+              }
+            }
+            const displayName = sym.parentName ? `${sym.parentName}.${sym.name}` : sym.name
+            const refText = `@ref(${relPath}:${sym.startLine}:${displayName})`
+            e.dataTransfer.effectAllowed = 'copy'
+            e.dataTransfer.setData('text/plain', refText)
+          }}
+        >
           {contentLoaded && activeFile && isImageFile(activeFile.path) ? (
             content === '// Error loading file' ? (
               <div style={{ padding: 16, color: 'var(--placeholder-color)' }}>Error loading image</div>
