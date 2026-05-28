@@ -47,6 +47,31 @@ export async function ensureDir(dirPath: string): Promise<void> {
   await fs.mkdir(dirPath, { recursive: true })
 }
 
+export async function copyFileToAssets(
+  sourcePath: string,
+  workspacePath: string
+): Promise<{ relativePath: string }> {
+  const destDir = path.join(workspacePath, 'assets')
+  await ensureDir(destDir)
+
+  const originalName = path.basename(sourcePath)
+  let destName = originalName
+  let destPath = path.join(destDir, destName)
+
+  // Deduplicate: icon.png → icon-1.png if exists
+  let counter = 1
+  while (await fileExists(destPath)) {
+    const ext = path.extname(originalName)
+    const base = path.basename(originalName, ext)
+    destName = `${base}-${counter}${ext}`
+    destPath = path.join(destDir, destName)
+    counter++
+  }
+
+  await fs.copyFile(sourcePath, destPath)
+  return { relativePath: `./assets/${destName}` }
+}
+
 export interface RepoFileEntry {
   name: string
   relativePath: string

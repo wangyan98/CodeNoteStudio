@@ -174,6 +174,11 @@ export function registerIpcHandlers(projectPath: string): void {
     return mappings
   })
 
+  ipcMain.handle('code:copy-file-to-assets', async (_event, sourcePath: string) => {
+    const { copyFileToAssets } = await import('./services/file-system')
+    return copyFileToAssets(sourcePath, currentProjectPath!)
+  })
+
   // UI state persistence
   ipcMain.handle('ui-state:load', async (): Promise<UiState | null> => {
     return loadUiState(currentProjectPath!)

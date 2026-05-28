@@ -40,6 +40,8 @@ const api = {
   resolveRefs: (notePath: string, content: string) => ipcRenderer.invoke('code:resolve-refs', notePath, content),
   querySymbols: (name?: string, filePath?: string, kind?: string) =>
     ipcRenderer.invoke('code:query-symbols', name, filePath, kind),
+  copyFileToAssets: (sourcePath: string) =>
+    ipcRenderer.invoke('code:copy-file-to-assets', sourcePath),
 
   // Server
   startServer: (port?: number) => ipcRenderer.invoke('server:start', port),
