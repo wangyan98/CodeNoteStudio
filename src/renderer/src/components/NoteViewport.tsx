@@ -20,7 +20,6 @@ export function NoteViewport() {
 
   const mdEditorRef = useRef<MdEditorHandle>(null)
   const [codeMappings, setCodeMappings] = useState<CodeMapping[]>([])
-  const [matchedRaws, setMatchedRaws] = useState<string[]>([])
 
   // Listen for symbol-insert events from CodeViewport's SymbolPicker
   useEffect(() => {
@@ -45,11 +44,9 @@ export function NoteViewport() {
     window.electronAPI.resolveRefs(selectedNoteId, contentStr)
       .then((mappings: CodeMapping[]) => {
         setCodeMappings(mappings)
-        setMatchedRaws(mappings.map((m) => m.raw))
       })
       .catch(() => {
         setCodeMappings([])
-        setMatchedRaws([])
       })
   }, [activeNoteContent, selectedNoteId])
 
@@ -72,7 +69,7 @@ export function NoteViewport() {
             ref={mdEditorRef}
             content={activeNoteContent as string}
             notePath={selectedNoteId}
-            matchedRaws={matchedRaws}
+            codeMappings={codeMappings}
             onSave={async (content: string) => {
               await saveNote(selectedNoteId, content)
             }}

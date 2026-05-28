@@ -2,6 +2,7 @@ import { useState, useCallback, useEffect, useRef, forwardRef, useImperativeHand
 import Editor from '@monaco-editor/react'
 import type * as monaco from 'monaco-editor'
 import { registerRefCompletionProvider } from '../../services/monaco-completion'
+import type { CodeMapping, CodeSnippet } from '../../types'
 import './MdEditor.css'
 
 interface MdEditorProps {
@@ -9,7 +10,7 @@ interface MdEditorProps {
   notePath: string
   onSave: (content: string) => Promise<void>
   onRefClick?: (refName: string) => void
-  matchedRaws?: string[]   // raw ref strings that resolved successfully
+  codeMappings?: CodeMapping[]
 }
 
 export interface MdEditorHandle {
@@ -17,7 +18,7 @@ export interface MdEditorHandle {
 }
 
 export const MdEditor = forwardRef<MdEditorHandle, MdEditorProps>(
-  function MdEditor({ content, notePath, onSave, onRefClick, matchedRaws }, ref) {
+  function MdEditor({ content, notePath, onSave, onRefClick, codeMappings }, ref) {
   const [value, setValue] = useState(content)
   const [showPreview, setShowPreview] = useState(false)
   const [saving, setSaving] = useState(false)
@@ -82,7 +83,7 @@ export const MdEditor = forwardRef<MdEditorHandle, MdEditorProps>(
             <div
               className="md-preview-content"
               dangerouslySetInnerHTML={{
-                __html: renderMarkdown(value, new Set(matchedRaws ?? []))
+                __html: renderMarkdown(value, codeMappings ?? [])
               }}
               onClick={(e) => {
                 const target = (e.target as HTMLElement).closest('.ref-link') as HTMLElement | null
@@ -116,7 +117,43 @@ export const MdEditor = forwardRef<MdEditorHandle, MdEditorProps>(
   )
 })
 
-function renderMarkdown(md: string, matchedRaws: Set<string>): string {
+function escapeHtml(text: string): string {
+  return text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+}
+
+function tokenizeLine(line: string): string {
+  return line
+    .replace(/(\/\/.*$)/g, '<span class="token-comment">$1</span>')
+    .replace(/("(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*')/g, '<span class="token-string">$1</span>')
+    .replace(/\b(function|return|if|else|for|while|class|const|let|var|import|export|from|def|async|await|new|try|catch|throw|typedef|struct|enum|static|void|int|float|double|bool|char|public|private|protected|virtual|override|type|interface)\b/g, '<span class="token-keyword">$1</span>')
+    .replace(/\b([A-Z][a-zA-Z0-9]*)\b/g, '<span class="token-type">$1</span>')
+}
+
+function renderCodeSnippet(snippet: CodeSnippet): string {
+  const lines = snippet.lines.map((line, i) => {
+    const lineNum = snippet.startLine + i
+    const isHighlight = lineNum === snippet.highlightLine
+    const cls = isHighlight ? 'ref-code-line ref-highlight-line' : 'ref-code-line'
+    const escaped = escapeHtml(line)
+    const tokenized = tokenizeLine(escaped)
+    return `<span class="${cls}"><span class="line-number">${lineNum}</span>${tokenized}</span>`
+  }).join('')
+  return `<pre class="ref-code-block"><code>${lines}</code></pre>`
+}
+
+function renderMarkdown(md: string, codeMappings: CodeMapping[]): string {
+  const snippetByRaw = new Map<string, CodeSnippet>()
+  const matchedRaws = new Set<string>()
+  for (const m of codeMappings) {
+    matchedRaws.add(m.raw)
+    if (m.codeSnippet) {
+      snippetByRaw.set(m.raw, m.codeSnippet)
+    }
+  }
+
   let html = md
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
@@ -126,10 +163,15 @@ function renderMarkdown(md: string, matchedRaws: Set<string>): string {
   html = html.replace(
     /@ref\(([a-zA-Z0-9._/\-:]+)\)/g,
     (_fullMatch: string, refBody: string) => {
-      if (matchedRaws.has(refBody)) {
-        return `<span class="ref-link" data-ref-name="${refBody}">@ref(${refBody})</span>`
+      if (!matchedRaws.has(refBody)) {
+        return `@ref(${refBody})`
       }
-      return `@ref(${refBody})`
+      const snippet = snippetByRaw.get(refBody)
+      let result = `<span class="ref-link" data-ref-name="${refBody}">@ref(${refBody})</span>`
+      if (snippet) {
+        result += renderCodeSnippet(snippet)
+      }
+      return result
     }
   )
 
