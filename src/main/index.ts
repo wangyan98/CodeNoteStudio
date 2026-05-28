@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, shell } from 'electron'
+import { app, BrowserWindow, ipcMain, shell, protocol, net } from 'electron'
 import { join } from 'node:path'
 import { registerIpcHandlers, unregisterIpcHandlers } from './ipc-handlers'
 import { stopServer } from './services/live-server'
@@ -37,6 +37,15 @@ function createWindow(): void {
 }
 
 ipcMain.handle('get-app-version', () => app.getVersion())
+
+// Register custom protocol to serve workspace files for preview images.
+// file:// URLs are blocked by Chromium's opaque-origin policy across
+// different directories, so we use a custom protocol that maps directly
+// to absolute file paths on disk.
+protocol.handle('wsfile', (request) => {
+  const filePath = request.url.slice('wsfile://'.length)
+  return net.fetch('file://' + filePath)
+})
 
 app.whenReady().then(async () => {
   let projectPath = ''

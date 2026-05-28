@@ -81,12 +81,12 @@ export function NoteViewport() {
         try {
           const result = await window.electronAPI.copyFileToAssets(sourcePath)
           mdEditorRef.current.insertAtPosition(
-            `![${fileName}](file://${result.absolutePath})`,
+            `![${fileName}](wsfile://${result.absolutePath})`,
             e.clientX, e.clientY
           )
         } catch {
           mdEditorRef.current.insertAtPosition(
-            `![${fileName}](file://${sourcePath})`,
+            `![${fileName}](wsfile://${sourcePath})`,
             e.clientX, e.clientY
           )
         }
