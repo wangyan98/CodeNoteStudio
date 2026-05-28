@@ -138,7 +138,9 @@ export function CodeDirectory() {
     const langMap: Record<string, string> = {
       ts: 'typescript', tsx: 'typescript', js: 'javascript', jsx: 'javascript',
       py: 'python', rs: 'rust', go: 'go', cpp: 'cpp', c: 'c',
-      css: 'css', html: 'html', json: 'json', md: 'markdown'
+      css: 'css', html: 'html', json: 'json', md: 'markdown',
+      png: 'image', jpg: 'image', jpeg: 'image', gif: 'image',
+      webp: 'image', bmp: 'image', svg: 'image'
     }
 
     const codeFile: CodeFile = {
