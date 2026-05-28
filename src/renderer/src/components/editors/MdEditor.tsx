@@ -15,6 +15,7 @@ interface MdEditorProps {
 
 export interface MdEditorHandle {
   insertAtCursor: (text: string) => void
+  insertAtPosition: (text: string, clientX: number, clientY: number) => void
 }
 
 export const MdEditor = forwardRef<MdEditorHandle, MdEditorProps>(
@@ -27,6 +28,24 @@ export const MdEditor = forwardRef<MdEditorHandle, MdEditorProps>(
   useImperativeHandle(ref, () => ({
     insertAtCursor(text: string) {
       editorMonacoRef.current?.trigger('keyboard', 'type', { text })
+    },
+    insertAtPosition(text: string, clientX: number, clientY: number) {
+      const editor = editorMonacoRef.current
+      if (!editor) return
+      const target = editor.getTargetAtClientPoint(clientX, clientY)
+      if (target && target.position) {
+        editor.executeEdits('drag-drop', [
+          { range: {
+            startLineNumber: target.position.lineNumber,
+            startColumn: target.position.column,
+            endLineNumber: target.position.lineNumber,
+            endColumn: target.position.column
+          }, text }
+        ])
+      } else {
+        // Fallback to cursor position
+        editor.trigger('keyboard', 'type', { text })
+      }
     }
   }))
 
