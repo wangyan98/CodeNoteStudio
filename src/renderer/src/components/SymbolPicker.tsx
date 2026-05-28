@@ -14,13 +14,16 @@ interface SymbolPickerProps {
   isOpen: boolean
   onClose: () => void
   onSelectSymbol: (symbolName: string) => void
+  activeFilePath?: string
 }
 
 const KINDS = ['', 'function', 'method', 'class', 'interface', 'type', 'variable', 'enum']
+const SCOPES = ['local', 'global'] as const
 
-export function SymbolPicker({ isOpen, onClose, onSelectSymbol }: SymbolPickerProps) {
+export function SymbolPicker({ isOpen, onClose, onSelectSymbol, activeFilePath }: SymbolPickerProps) {
   const [search, setSearch] = useState('')
   const [kindFilter, setKindFilter] = useState('')
+  const [scope, setScope] = useState<'local' | 'global'>('local')
   const [symbols, setSymbols] = useState<CodeSymbol[]>([])
   const [selectedIndex, setSelectedIndex] = useState(0)
   const [loading, setLoading] = useState(false)
@@ -33,9 +36,10 @@ export function SymbolPicker({ isOpen, onClose, onSelectSymbol }: SymbolPickerPr
     const timer = setTimeout(async () => {
       setLoading(true)
       try {
+        const filePath = (scope === 'local' && activeFilePath) ? activeFilePath : undefined
         const results = await window.electronAPI.querySymbols(
           search || undefined,
-          undefined,
+          filePath,
           kindFilter || undefined
         )
         setSymbols(results)
@@ -49,13 +53,14 @@ export function SymbolPicker({ isOpen, onClose, onSelectSymbol }: SymbolPickerPr
       }
     }, 300)
     return () => clearTimeout(timer)
-  }, [search, kindFilter, isOpen])
+  }, [search, kindFilter, scope, isOpen, activeFilePath])
 
   useEffect(() => {
     if (isOpen && inputRef.current) {
       inputRef.current.focus()
       setSearch('')
       setKindFilter('')
+      setScope('local')
       setError(false)
     }
   }, [isOpen])
@@ -97,6 +102,15 @@ export function SymbolPicker({ isOpen, onClose, onSelectSymbol }: SymbolPickerPr
           >
             {KINDS.map((k) => (
               <option key={k} value={k}>{k || 'All kinds'}</option>
+            ))}
+          </select>
+          <select
+            className="symbol-picker-scope-filter"
+            value={scope}
+            onChange={(e) => setScope(e.target.value as 'local' | 'global')}
+          >
+            {SCOPES.map((s) => (
+              <option key={s} value={s}>{s}</option>
             ))}
           </select>
           <button className="symbol-picker-close" onClick={onClose}>x</button>

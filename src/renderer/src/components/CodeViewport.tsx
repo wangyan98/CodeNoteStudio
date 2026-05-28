@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import Editor from '@monaco-editor/react'
 import { useAppContext } from '../contexts/AppContext'
+import { SymbolPicker } from './SymbolPicker'
 import type * as monaco from 'monaco-editor'
 import './CodeViewport.css'
 
@@ -9,7 +10,13 @@ export function CodeViewport() {
   const { openCodeFiles, activeCodeFileIndex, codeRepoPath } = state
   const [fileContents, setFileContents] = useState<Map<string, string>>(new Map())
   const [gitCommit, setGitCommit] = useState<{ sha: string; message: string; author: string; date: string } | null>(null)
+  const [symbolPickerOpen, setSymbolPickerOpen] = useState(false)
   const editorRef = useRef<monaco.editor.IStandaloneCodeEditor | null>(null)
+
+  const handleSymbolSelect = useCallback((name: string) => {
+    navigator.clipboard.writeText(`@ref(${name})`)
+    setSymbolPickerOpen(false)
+  }, [])
 
   const activeFile = activeCodeFileIndex >= 0 ? openCodeFiles[activeCodeFileIndex] : null
 
@@ -64,10 +71,23 @@ export function CodeViewport() {
   if (!activeFile) {
     return (
       <div className="panel panel-code-viewport">
-        <div className="panel-header">Code Viewport</div>
+        <div className="panel-header">
+          Code Viewport
+          <button
+            className="code-viewport-symbols-btn"
+            onClick={() => setSymbolPickerOpen(true)}
+          >
+            Symbols
+          </button>
+        </div>
         <div className="code-viewport-placeholder">
           <p>No code file open</p>
         </div>
+        <SymbolPicker
+          isOpen={symbolPickerOpen}
+          onClose={() => setSymbolPickerOpen(false)}
+          onSelectSymbol={handleSymbolSelect}
+        />
       </div>
     )
   }
@@ -77,7 +97,15 @@ export function CodeViewport() {
 
   return (
     <div className="panel panel-code-viewport">
-      <div className="panel-header">Code Viewport</div>
+      <div className="panel-header">
+        Code Viewport
+        <button
+          className="code-viewport-symbols-btn"
+          onClick={() => setSymbolPickerOpen(true)}
+        >
+          Symbols
+        </button>
+      </div>
       <div className="code-viewport">
         {/* Tab bar */}
         <div className="code-tab-bar">
@@ -136,6 +164,12 @@ export function CodeViewport() {
           )}
         </div>
       </div>
+      <SymbolPicker
+        isOpen={symbolPickerOpen}
+        onClose={() => setSymbolPickerOpen(false)}
+        onSelectSymbol={handleSymbolSelect}
+        activeFilePath={activeFile?.path}
+      />
     </div>
   )
 }

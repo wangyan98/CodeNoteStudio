@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef, useCallback } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { useAppContext } from '../contexts/AppContext'
 import { useNotes } from '../hooks/useNotes'
 import { useCodeNavigation } from '../hooks/useCodeNavigation'
@@ -7,7 +7,6 @@ import type { MdEditorHandle } from './editors/MdEditor'
 import { MindMapRenderer } from './editors/MindMapRenderer'
 import { DerivationRenderer } from './editors/DerivationRenderer'
 import { CodeMappingsPanel } from './CodeMappingsPanel'
-import { SymbolPicker } from './SymbolPicker'
 import type { MindMapDocument, DerivationDocument } from '../../../main/schemas/note-types'
 import type { CodeMapping } from '../types'
 import './NoteViewport.css'
@@ -22,16 +21,6 @@ export function NoteViewport() {
   const mdEditorRef = useRef<MdEditorHandle>(null)
   const [codeMappings, setCodeMappings] = useState<CodeMapping[]>([])
   const [matchedRaws, setMatchedRaws] = useState<string[]>([])
-  const [symbolPickerOpen, setSymbolPickerOpen] = useState(false)
-
-  const handleSymbolSelect = useCallback((name: string) => {
-    if (activeNoteType === 'md') {
-      mdEditorRef.current?.insertAtCursor(`@ref(${name})`)
-    } else {
-      navigator.clipboard.writeText(`@ref(${name})`)
-    }
-    setSymbolPickerOpen(false)
-  }, [activeNoteType])
 
   useEffect(() => {
     if (!activeNoteContent || !selectedNoteId) {
@@ -126,19 +115,11 @@ export function NoteViewport() {
             </span>
           </>
         )}
-        <button className="note-viewport-symbols-btn" onClick={() => setSymbolPickerOpen(true)}>
-          Symbols
-        </button>
       </div>
       <div className="note-viewport">
         {renderEditor()}
       </div>
       <CodeMappingsPanel mappings={codeMappings} />
-      <SymbolPicker
-        isOpen={symbolPickerOpen}
-        onClose={() => setSymbolPickerOpen(false)}
-        onSelectSymbol={handleSymbolSelect}
-      />
     </div>
   )
 }
