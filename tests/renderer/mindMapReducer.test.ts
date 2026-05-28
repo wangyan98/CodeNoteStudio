@@ -190,6 +190,22 @@ describe('mindMapReducer', () => {
       expect(result.root.id).toBe('new-root')
     })
   })
+
+  describe('immutability', () => {
+    it('does not mutate the original document on UPDATE_TITLE', () => {
+      const original = makeDoc()
+      const originalJson = JSON.stringify(original)
+      dispatch(original, { type: 'UPDATE_TITLE', nodeId: 'child-1', title: 'Changed' })
+      expect(JSON.stringify(original)).toBe(originalJson)
+    })
+
+    it('does not mutate the original document on DELETE_NODE', () => {
+      const original = makeDoc()
+      const originalJson = JSON.stringify(original)
+      dispatch(original, { type: 'DELETE_NODE', nodeId: 'child-2' })
+      expect(JSON.stringify(original)).toBe(originalJson)
+    })
+  })
 })
 
 describe('findNode', () => {

@@ -99,15 +99,25 @@ function deleteNodeFromClone(node: MindMapNode, targetId: string): MindMapNode {
   }
 }
 
-function removeNodeFromParent(node: MindMapNode, targetId: string): MindMapNode | null {
+function removeNodeFromParent(node: MindMapNode, targetId: string): { updatedRoot: MindMapNode; removed: MindMapNode } | null {
   const index = node.children.findIndex((c) => c.id === targetId)
   if (index >= 0) {
-    const [removed] = node.children.splice(index, 1)
-    return removed
+    return {
+      updatedRoot: {
+        ...node,
+        children: [...node.children.slice(0, index), ...node.children.slice(index + 1)]
+      },
+      removed: node.children[index]
+    }
   }
   for (const child of node.children) {
     const found = removeNodeFromParent(child, targetId)
-    if (found) return found
+    if (found) {
+      return {
+        updatedRoot: { ...node, children: node.children.map((c) => c.id === child.id ? found.updatedRoot : c) },
+        removed: found.removed
+      }
+    }
   }
   return null
 }
@@ -164,21 +174,21 @@ export function mindMapReducer(doc: MindMapDocument, action: MindMapAction): Min
 
     case 'REPARENT': {
       if (isAncestor(doc, action.newParentId!, action.nodeId!)) return doc
-
       const cloned = cloneDoc(doc)
-      const movedNode = removeNodeFromParent(cloned.root, action.nodeId!)
-      if (!movedNode) return doc
-
+      const result = removeNodeFromParent(cloned.root, action.nodeId!)
+      if (!result) return doc
+      cloned.root = result.updatedRoot
       cloned.root = updateNodeInClone(cloned.root, action.newParentId!, (n) => ({
         ...n,
         children: action.index !== undefined
-          ? [...n.children.slice(0, action.index), movedNode, ...n.children.slice(action.index)]
-          : [...n.children, movedNode]
+          ? [...n.children.slice(0, action.index), result.removed, ...n.children.slice(action.index)]
+          : [...n.children, result.removed]
       }))
       return cloned
     }
 
     case 'REORDER': {
+      if (action.newIndex === undefined || action.newIndex < 0) return doc
       const parentInfo = findParentAndIndex(doc, action.nodeId!)
       if (!parentInfo) return doc
       const cloned = cloneDoc(doc)
