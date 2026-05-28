@@ -53,7 +53,7 @@ export function NoteViewport() {
       })
   }, [activeNoteContent, selectedNoteId])
 
-  if (!selectedNoteId || !activeNoteContent) {
+  if (!selectedNoteId || activeNoteContent === null) {
     return (
       <div className="panel panel-note-viewport">
         <div className="panel-header">Note Viewport</div>
