@@ -244,7 +244,7 @@ function createApp(projectPath: string): Express {
   app.get('/api/code/resolve-refs', async (req: Request, res: Response) => {
     try {
       const { parseRefs, resolveRefs } = await import('./ref-resolver')
-      const { loadRefCache, saveRefCache } = await import('./ref-cache')
+      const { saveRefCache } = await import('./ref-cache')
       const content = req.query.content as string
       const notePath = req.query.notePath as string | undefined
 
@@ -261,8 +261,7 @@ function createApp(projectPath: string): Express {
 
       const db = getDb(projectPath)
       const allSymbols = querySymbols(db)
-      const previousMappings = notePath ? loadRefCache(projectPath, notePath) : []
-      const mappings = resolveRefs(refs, allSymbols, previousMappings)
+      const mappings = resolveRefs(refs, allSymbols)
       if (notePath) {
         saveRefCache(projectPath, notePath, mappings)
       }

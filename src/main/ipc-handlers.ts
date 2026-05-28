@@ -156,15 +156,14 @@ export function registerIpcHandlers(projectPath: string): void {
   ipcMain.handle('code:resolve-refs', async (_event, notePath: string, content: string) => {
     const { parseRefs, resolveRefs } = await import('./services/ref-resolver')
     const { initSymbolDatabase, querySymbols } = await import('./services/symbol-index')
-    const { loadRefCache, saveRefCache } = await import('./services/ref-cache')
+    const { saveRefCache } = await import('./services/ref-cache')
 
     const refs = parseRefs(content)
     if (refs.length === 0) return []
 
     const db = initSymbolDatabase(currentProjectPath!)
     const allSymbols = querySymbols(db)
-    const previousMappings = loadRefCache(currentProjectPath!, notePath)
-    const mappings = resolveRefs(refs, allSymbols, previousMappings)
+    const mappings = resolveRefs(refs, allSymbols)
     saveRefCache(currentProjectPath!, notePath, mappings)
     return mappings
   })

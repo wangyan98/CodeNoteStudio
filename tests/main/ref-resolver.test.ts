@@ -218,13 +218,16 @@ describe('resolveRefs', () => {
     expect(mappings[0].functionName).toBe('main')
   })
 
-  // Tier 5: duplicate name returns first by line order
+  // Tier 5: duplicate name returns first match (stable by symbol iteration order)
   it('T5: resolves duplicate name to first match', () => {
     const refs: RefSpec[] = [
       { raw: 'parse', name: 'parse' }
     ]
     const mappings = resolveRefs(refs, mockSymbols)
     expect(mappings).toHaveLength(1)
+    expect(mappings[0].filePath).toBe('src/utils.cpp')
+    expect(mappings[0].startLine).toBe(42)
+    expect(mappings[0].functionName).toBe('parse')
   })
 
   // Tier 6: no match at all

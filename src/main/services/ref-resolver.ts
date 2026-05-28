@@ -73,8 +73,7 @@ function classifyRef(raw: string): RefSpec {
  */
 export function resolveRefs(
   refs: RefSpec[],
-  symbols: CodeSymbol[],
-  previousMappings: CodeMapping[] = []
+  symbols: CodeSymbol[]
 ): CodeMapping[] {
   const mappings: CodeMapping[] = []
 
