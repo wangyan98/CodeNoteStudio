@@ -53,6 +53,7 @@ export function NoteViewport() {
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault()
+    e.stopPropagation()
     e.dataTransfer.dropEffect = 'copy'
     setDragOver(true)
   }, [])
@@ -65,6 +66,7 @@ export function NoteViewport() {
 
   const handleDrop = useCallback(async (e: React.DragEvent) => {
     e.preventDefault()
+    e.stopPropagation()
     setDragOver(false)
 
     const isImage = e.dataTransfer.getData('application/x-image-drag') === 'true'
@@ -167,9 +169,9 @@ export function NoteViewport() {
       </div>
       <div
         className={`note-viewport${dragOver ? ' note-viewport-drag-over' : ''}`}
-        onDragOver={handleDragOver}
+        onDragOverCapture={handleDragOver}
         onDragLeave={handleDragLeave}
-        onDrop={handleDrop}
+        onDropCapture={handleDrop}
       >
         {renderEditor()}
       </div>
