@@ -129,7 +129,7 @@ export function registerIpcHandlers(projectPath: string): void {
   })
 
   ipcMain.handle('code:index-symbols', async (_event, repoPath: string) => {
-    const { initSymbolDatabase, indexSymbols } = await import('./services/symbol-index')
+    const { initSymbolDatabase, indexSymbols, clearSymbols } = await import('./services/symbol-index')
     const { extractSymbols, initParser } = await import('./services/code-parser')
     const { listRepoFiles } = await import('./services/file-system')
 
@@ -140,6 +140,7 @@ export function registerIpcHandlers(projectPath: string): void {
     console.log(`[code:index-symbols] Found ${codeFiles.length} code files`)
 
     const db = initSymbolDatabase(currentProjectPath!)
+    clearSymbols(db)
     const symbols = await extractSymbols(codeFiles)
     indexSymbols(db, symbols)
     console.log(`[code:index-symbols] Indexed ${symbols.length} symbols`)
