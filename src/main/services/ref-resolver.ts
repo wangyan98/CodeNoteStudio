@@ -1,6 +1,14 @@
 import type { CodeSymbol } from './code-parser'
 
+export interface RefSpec {
+  raw: string          // original text inside @ref(...)
+  filePath?: string    // classified file segment (contains '/')
+  line?: number        // classified line segment (pure digits)
+  name?: string        // classified name segment (may include '.' for Class.method)
+}
+
 export interface CodeMapping {
+  raw: string
   functionName: string
   filePath: string
   startLine: number
@@ -82,6 +90,7 @@ export function resolveRefs(
         if (nearby) {
           matched.add(refName)
           mappings.push({
+            raw: refName,
             functionName: refName,
             filePath: nearby.filePath,
             startLine: nearby.startLine,
@@ -97,6 +106,7 @@ export function resolveRefs(
     if (match) {
       matched.add(refName)
       mappings.push({
+        raw: refName,
         functionName: refName,
         filePath: match.filePath,
         startLine: match.startLine,
@@ -118,6 +128,7 @@ export function resolveRefs(
       if (methodMatch) {
         matched.add(refName)
         mappings.push({
+          raw: refName,
           functionName: refName,
           filePath: methodMatch.filePath,
           startLine: methodMatch.startLine,

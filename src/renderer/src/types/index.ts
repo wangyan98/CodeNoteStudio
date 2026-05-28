@@ -20,6 +20,7 @@ export interface CodeRepo {
 }
 
 export interface CodeMapping {
+  raw: string
   functionName: string
   filePath: string
   startLine: number
