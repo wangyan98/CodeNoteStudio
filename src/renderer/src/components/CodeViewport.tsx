@@ -193,14 +193,18 @@ export function CodeViewport() {
         {/* Editor or Image */}
         <div className="code-editor-container">
           {contentLoaded && activeFile && isImageFile(activeFile.path) ? (
-            <div className="image-container">
-              <img
-                src={`data:${getMimeType(activeFile.path)};base64,${content || ''}`}
-                alt={activeFile.name}
-                className="image-preview"
-                onClick={() => setZoomedImage(content || '')}
-              />
-            </div>
+            content === '// Error loading file' ? (
+              <div style={{ padding: 16, color: 'var(--placeholder-color)' }}>Error loading image</div>
+            ) : (
+              <div className="image-container">
+                <img
+                  src={`data:${getMimeType(activeFile.path)};base64,${content || ''}`}
+                  alt={activeFile.name}
+                  className="image-preview"
+                  onClick={() => setZoomedImage(content || '')}
+                />
+              </div>
+            )
           ) : contentLoaded ? (
             <Editor
               height="100%"
