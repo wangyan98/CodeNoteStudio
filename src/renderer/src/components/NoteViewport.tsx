@@ -78,13 +78,19 @@ export function NoteViewport() {
       const sourcePath = e.dataTransfer.getData('application/x-source-path')
       if (sourcePath && mdEditorRef.current) {
         const fileName = sourcePath.split('/').pop() || sourcePath.split('\\').pop() || 'image'
+        const ext = fileName.split('.').pop()?.toLowerCase() || 'png'
+        const mimeMap: Record<string, string> = {
+          png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg',
+          gif: 'image/gif', webp: 'image/webp', bmp: 'image/bmp', svg: 'image/svg+xml'
+        }
+        const mime = mimeMap[ext] || 'image/png'
         try {
           const result = await window.electronAPI.copyFileToAssets(sourcePath)
-          const fileUrl = `file://${result.absolutePath}`
-          mdEditorRef.current.insertAtPosition(`![${fileName}](${fileUrl})`, e.clientX, e.clientY)
+          const base64 = await window.electronAPI.readBinaryFile(result.absolutePath)
+          mdEditorRef.current.insertAtPosition(`![${fileName}](data:${mime};base64,${base64})`, e.clientX, e.clientY)
         } catch {
-          const fileUrl = `file://${sourcePath}`
-          mdEditorRef.current.insertAtPosition(`![${fileName}](${fileUrl})`, e.clientX, e.clientY)
+          const base64 = await window.electronAPI.readBinaryFile(sourcePath)
+          mdEditorRef.current.insertAtPosition(`![${fileName}](data:${mime};base64,${base64})`, e.clientX, e.clientY)
         }
       }
     } else {
