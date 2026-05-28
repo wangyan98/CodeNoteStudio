@@ -264,11 +264,29 @@ export async function parseCodeFile(filePath: string): Promise<CodeSymbol[]> {
   }
 }
 
+// Reset parser every N files to prevent WASM memory exhaustion
+const PARSER_RESET_INTERVAL = 500
+
 export async function extractSymbols(filePaths: string[]): Promise<CodeSymbol[]> {
   const allSymbols: CodeSymbol[] = []
-  for (const filePath of filePaths) {
-    const symbols = await parseCodeFile(filePath)
+  let skipped = 0
+
+  for (let i = 0; i < filePaths.length; i++) {
+    // Periodically reset parser to free accumulated WASM memory
+    if (i > 0 && i % PARSER_RESET_INTERVAL === 0) {
+      resetParser()
+    }
+
+    const symbols = await parseCodeFile(filePaths[i])
+    if (symbols.length === 0) {
+      skipped++
+    }
     allSymbols.push(...symbols)
   }
+
+  if (skipped > 0) {
+    console.log(`[code-parser] Skipped ${skipped}/${filePaths.length} files`)
+  }
+
   return allSymbols
 }
