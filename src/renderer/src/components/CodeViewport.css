@@ -99,3 +99,44 @@
   color: var(--placeholder-color);
   font-size: 13px;
 }
+
+.image-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  background: #1e1e1e;
+  padding: 16px;
+}
+
+.image-preview {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: opacity 0.15s;
+}
+
+.image-preview:hover {
+  opacity: 0.9;
+}
+
+.image-zoom-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.85);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  cursor: pointer;
+}
+
+.image-zoom-content {
+  max-width: 90vw;
+  max-height: 90vh;
+  object-fit: contain;
+  cursor: default;
+  transition: transform 0.15s ease-out;
+}

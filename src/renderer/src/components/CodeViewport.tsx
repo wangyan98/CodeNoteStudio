@@ -6,6 +6,29 @@ import type { CodeSymbol } from './SymbolPicker'
 import type * as monaco from 'monaco-editor'
 import './CodeViewport.css'
 
+const IMAGE_EXTS = new Set(['png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp'])
+
+const MIME_MAP: Record<string, string> = {
+  png: 'image/png',
+  jpg: 'image/jpeg',
+  jpeg: 'image/jpeg',
+  gif: 'image/gif',
+  webp: 'image/webp',
+  bmp: 'image/bmp',
+}
+
+function getImageExt(filePath: string): string {
+  return filePath.split('.').pop()?.toLowerCase() || ''
+}
+
+function isImageFile(filePath: string): boolean {
+  return IMAGE_EXTS.has(getImageExt(filePath))
+}
+
+function getMimeType(filePath: string): string {
+  return MIME_MAP[getImageExt(filePath)] || 'image/png'
+}
+
 export function CodeViewport() {
   const { state, dispatch } = useAppContext()
   const { openCodeFiles, activeCodeFileIndex, codeRepoPath } = state
@@ -13,6 +36,8 @@ export function CodeViewport() {
   const [gitCommit, setGitCommit] = useState<{ sha: string; message: string; author: string; date: string } | null>(null)
   const [symbolPickerOpen, setSymbolPickerOpen] = useState(false)
   const editorRef = useRef<monaco.editor.IStandaloneCodeEditor | null>(null)
+  const [zoomedImage, setZoomedImage] = useState<string | null>(null)
+  const [zoomLevel, setZoomLevel] = useState(1)
 
   const handleSymbolSelect = useCallback((sym: CodeSymbol) => {
     let relPath = sym.filePath
@@ -41,7 +66,10 @@ export function CodeViewport() {
   const loadFileContent = useCallback(async (filePath: string) => {
     if (fileContents.has(filePath)) return
     try {
-      const content = await window.electronAPI.readCodeFile(filePath)
+      const img = isImageFile(filePath)
+      const content = img
+        ? await window.electronAPI.readBinaryFile(filePath)
+        : await window.electronAPI.readCodeFile(filePath)
       setFileContents((prev) => new Map(prev).set(filePath, content))
     } catch {
       setFileContents((prev) => new Map(prev).set(filePath, '// Error loading file'))
@@ -70,6 +98,18 @@ export function CodeViewport() {
       dispatch({ type: 'CLEAR_PENDING_SCROLL' })
     }
   }, [state.pendingScroll, activeFile, dispatch])
+
+  useEffect(() => {
+    if (!zoomedImage) return
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setZoomedImage(null)
+        setZoomLevel(1)
+      }
+    }
+    window.addEventListener('keydown', handleKey)
+    return () => window.removeEventListener('keydown', handleKey)
+  }, [zoomedImage])
 
   const handleCloseTab = useCallback((index: number, e: React.MouseEvent) => {
     e.stopPropagation()
@@ -150,9 +190,18 @@ export function CodeViewport() {
           <span>{activeFile.name}</span>
         </div>
 
-        {/* Editor */}
+        {/* Editor or Image */}
         <div className="code-editor-container">
-          {contentLoaded ? (
+          {contentLoaded && activeFile && isImageFile(activeFile.path) ? (
+            <div className="image-container">
+              <img
+                src={`data:${getMimeType(activeFile.path)};base64,${content || ''}`}
+                alt={activeFile.name}
+                className="image-preview"
+                onClick={() => setZoomedImage(content || '')}
+              />
+            </div>
+          ) : contentLoaded ? (
             <Editor
               height="100%"
               language={activeFile.language}
@@ -175,6 +224,30 @@ export function CodeViewport() {
             <div style={{ padding: 16, color: 'var(--placeholder-color)' }}>Loading...</div>
           )}
         </div>
+
+        {/* Zoom overlay */}
+        {zoomedImage && activeFile && (
+          <div
+            className="image-zoom-overlay"
+            onClick={() => { setZoomedImage(null); setZoomLevel(1) }}
+          >
+            <img
+              src={`data:${getMimeType(activeFile.path)};base64,${zoomedImage}`}
+              alt="zoom preview"
+              className="image-zoom-content"
+              style={{ transform: `scale(${zoomLevel})` }}
+              onClick={(e) => e.stopPropagation()}
+              onWheel={(e) => {
+                e.preventDefault()
+                e.stopPropagation()
+                setZoomLevel((prev) => {
+                  const delta = e.deltaY > 0 ? -0.1 : 0.1
+                  return Math.max(0.1, Math.min(5, prev + delta))
+                })
+              }}
+            />
+          </div>
+        )}
       </div>
       <SymbolPicker
         isOpen={symbolPickerOpen}
