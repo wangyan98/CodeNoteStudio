@@ -113,11 +113,16 @@ export function WorkspaceToolbar() {
   }, [codeRepos, dispatch])
 
   const handleRemoveRepo = useCallback(async (repoPath: string) => {
+    const repoName = repoPath.split('/').pop() || repoPath.split('\\').pop() || repoPath
+    if (!confirm(`Remove code repository "${repoName}"?`)) return
     const newRepos = codeRepos.filter((r) => r.path !== repoPath)
     setCodeRepos(newRepos)
+    if (state.codeRepoPath === repoPath) {
+      dispatch({ type: 'SET_CODE_REPO', path: '' })
+    }
     const config = await window.electronAPI.loadConfig()
     await window.electronAPI.saveConfig({ ...config, codeRepos: newRepos })
-  }, [codeRepos])
+  }, [codeRepos, state.codeRepoPath, dispatch])
 
   // Persist UI state on changes
   useEffect(() => {
