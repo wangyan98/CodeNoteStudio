@@ -22,6 +22,18 @@ export function NoteViewport() {
   const [codeMappings, setCodeMappings] = useState<CodeMapping[]>([])
   const [matchedRaws, setMatchedRaws] = useState<string[]>([])
 
+  // Listen for symbol-insert events from CodeViewport's SymbolPicker
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const text = (e as CustomEvent<string>).detail
+      if (mdEditorRef.current) {
+        mdEditorRef.current.insertAtCursor(text)
+      }
+    }
+    window.addEventListener('symbol-insert', handler)
+    return () => window.removeEventListener('symbol-insert', handler)
+  }, [])
+
   useEffect(() => {
     if (!activeNoteContent || !selectedNoteId) {
       setCodeMappings([])

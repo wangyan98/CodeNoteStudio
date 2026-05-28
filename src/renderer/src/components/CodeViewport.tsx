@@ -14,7 +14,7 @@ export function CodeViewport() {
   const editorRef = useRef<monaco.editor.IStandaloneCodeEditor | null>(null)
 
   const handleSymbolSelect = useCallback((name: string) => {
-    navigator.clipboard.writeText(`@ref(${name})`)
+    window.dispatchEvent(new CustomEvent('symbol-insert', { detail: `@ref(${name})` }))
     setSymbolPickerOpen(false)
   }, [])
 
