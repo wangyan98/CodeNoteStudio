@@ -20,6 +20,15 @@ export function registerRefCompletionProvider(): monaco.IDisposable {
           undefined
         )
 
+        // Convert absolute paths to project-relative paths
+        const projectPath = await window.electronAPI.getProjectPath()
+        const toRelPath = (absPath: string): string => {
+          if (projectPath && absPath.startsWith(projectPath + '/')) {
+            return absPath.slice(projectPath.length + 1)
+          }
+          return absPath
+        }
+
         // Detect names that appear in multiple files
         const nameFileCount = new Map<string, number>()
         for (const sym of symbols) {
@@ -34,14 +43,15 @@ export function registerRefCompletionProvider(): monaco.IDisposable {
         const suggestions: monaco.languages.CompletionItem[] = []
 
         for (const sym of symbols) {
-          const fileName = sym.filePath.split('/').pop() || sym.filePath
+          const relPath = toRelPath(sym.filePath)
+          const fileName = relPath.split('/').pop() || relPath
 
           if (duplicateNames.has(sym.name)) {
             suggestions.push({
-              label: `${sym.filePath}:${sym.name}`,
+              label: `${relPath}:${sym.name}`,
               kind: mapKind(sym.kind),
               detail: `${sym.kind} · ${fileName}:${sym.startLine}`,
-              insertText: `${sym.filePath}:${sym.name}`,
+              insertText: `${relPath}:${sym.name}`,
               range: {
                 startLineNumber: position.lineNumber,
                 endLineNumber: position.lineNumber,
