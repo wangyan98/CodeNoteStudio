@@ -126,36 +126,47 @@ interface TreeNode {
 }
 
 function getSymbolKind(nodeType: string): CodeSymbol['kind'] | null {
-  if (nodeType.includes('function_declaration') || nodeType === 'function_definition') return 'function'
-  if (nodeType.includes('method_definition') || nodeType === 'method_declaration') return 'method'
-  if (nodeType.includes('class_declaration') || nodeType === 'class_definition') return 'class'
+  // C++ uses function_definition, TS/JS use function_declaration
+  if (nodeType.includes('function_definition') || nodeType.includes('function_declaration')) return 'function'
+  // C++ method_definition, TS method_definition/method_declaration
+  if (nodeType.includes('method_definition') || nodeType.includes('method_declaration')) return 'method'
+  // C++ class_specifier, TS class_declaration, Python class_definition
+  if (nodeType.includes('class_specifier') || nodeType.includes('struct_specifier') || nodeType.includes('class_declaration') || nodeType === 'class_definition') return 'class'
   if (nodeType.includes('interface_declaration')) return 'interface'
   if (nodeType.includes('type_alias_declaration')) return 'type'
   if (nodeType.includes('variable_declaration') || nodeType === 'variable_declarator') return 'variable'
-  if (nodeType.includes('enum_declaration')) return 'enum'
+  // C++ enum_specifier, TS enum_declaration
+  if (nodeType.includes('enum_specifier') || nodeType.includes('enum_declaration')) return 'enum'
   return null
 }
 
 function extractName(node: TreeNode, nodeType: string): string | null {
-  const nameNode =
-    node.childForFieldName?.('name')
-
+  const nameNode = node.childForFieldName?.('name')
   if (nameNode && nameNode.text) return nameNode.text
 
-  // Try children for identifier
   const children = node.children || []
   for (const child of children) {
-    if (
-      child.type === 'identifier' ||
-      child.type === 'property_identifier'
-    ) {
+    if (child.type === 'identifier' || child.type === 'property_identifier') {
       if (child.text) return child.text
     }
-    // For variable_declarator, the name is in the first identifier
     if (child.type === 'variable_declarator') {
       const grandkids = child.children || []
       for (const gk of grandkids) {
         if (gk.type === 'identifier' && gk.text) return gk.text
+      }
+    }
+    // C++ function_declarator contains the function name as identifier
+    if (child.type === 'function_declarator') {
+      const declKids = child.children || []
+      for (const dk of declKids) {
+        if (dk.type === 'identifier' && dk.text) return dk.text
+        // Handle function_declarator → declarator → identifier (pointer/reference functions)
+        if (dk.type === 'declarator' || dk.type === 'reference_declarator' || dk.type === 'pointer_declarator') {
+          const innerKids = dk.children || []
+          for (const ik of innerKids) {
+            if (ik.type === 'identifier' && ik.text) return ik.text
+          }
+        }
       }
     }
   }
