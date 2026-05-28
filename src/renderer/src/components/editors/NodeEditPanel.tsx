@@ -13,6 +13,13 @@ interface NodeEditPanelProps {
   saveStatus: 'saved' | 'saving' | 'unsaved' | 'error'
 }
 
+const statusLabels: Record<string, string> = {
+  saved: '已保存',
+  saving: '保存中...',
+  unsaved: '未保存',
+  error: '保存失败'
+}
+
 export function NodeEditPanel({ node, dispatch, onNavigateToCode, saveStatus }: NodeEditPanelProps) {
   const [title, setTitle] = useState('')
   const editorRef = useRef<monaco.editor.IStandaloneCodeEditor | null>(null)
@@ -33,6 +40,19 @@ export function NodeEditPanel({ node, dispatch, onNavigateToCode, saveStatus }: 
       }
     }
   }, [node?.id]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    return () => {
+      if (titleTimerRef.current) clearTimeout(titleTimerRef.current)
+      if (contentTimerRef.current) clearTimeout(contentTimerRef.current)
+    }
+  }, [])
+
+  useEffect(() => {
+    return () => {
+      completionDisposableRef.current?.dispose()
+    }
+  }, [])
 
   const handleEditorMount: OnMount = useCallback((editor) => {
     editorRef.current = editor
@@ -82,8 +102,8 @@ export function NodeEditPanel({ node, dispatch, onNavigateToCode, saveStatus }: 
         }
         dispatch({ type: 'ADD_CODE_MAPPING', nodeId: node.id, mapping })
       }
-    } catch {
-      // silently fail
+    } catch (e) {
+      console.error('Failed to add mapping:', e)
     }
   }, [node, dispatch])
 
@@ -94,8 +114,8 @@ export function NodeEditPanel({ node, dispatch, onNavigateToCode, saveStatus }: 
       if (notes.length > 0) {
         dispatch({ type: 'ADD_EMBED_REF', nodeId: node.id, ref: notes[0].relativePath })
       }
-    } catch {
-      // silently fail
+    } catch (e) {
+      console.error('Failed to add embed ref:', e)
     }
   }, [node, dispatch])
 
@@ -105,13 +125,6 @@ export function NodeEditPanel({ node, dispatch, onNavigateToCode, saveStatus }: 
         <p className="node-edit-panel-hint">Click a node to edit</p>
       </div>
     )
-  }
-
-  const statusLabels: Record<string, string> = {
-    saved: '已保存',
-    saving: '保存中...',
-    unsaved: '未保存',
-    error: '保存失败'
   }
 
   return (
@@ -159,7 +172,7 @@ export function NodeEditPanel({ node, dispatch, onNavigateToCode, saveStatus }: 
           ) : (
             <ul className="node-edit-panel-mapping-list">
               {node.codeMappings.map((m, i) => (
-                <li key={i} className="node-edit-panel-mapping-item">
+                <li key={`${m.filePath}:${m.startLine}:${m.functionName}`} className="node-edit-panel-mapping-item">
                   <span
                     className="node-edit-panel-mapping-ref"
                     onClick={() => onNavigateToCode?.(m.filePath, m.startLine)}
@@ -188,7 +201,7 @@ export function NodeEditPanel({ node, dispatch, onNavigateToCode, saveStatus }: 
           ) : (
             <ul className="node-edit-panel-mapping-list">
               {node.embedRefs.map((ref, i) => (
-                <li key={i} className="node-edit-panel-mapping-item">
+                <li key={ref} className="node-edit-panel-mapping-item">
                   <span className="node-edit-panel-mapping-ref">{ref}</span>
                   <button
                     className="node-edit-panel-remove-btn"
