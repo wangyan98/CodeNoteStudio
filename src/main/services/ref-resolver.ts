@@ -88,10 +88,22 @@ export function resolveRefs(
     }
   }
 
+  // Match absolute or project-relative paths against absolute paths in DB
+  const getFileSymbols = (refPath: string): CodeSymbol[] | undefined => {
+    const direct = symbolsByFile.get(refPath)
+    if (direct) return direct
+    for (const [absPath, syms] of symbolsByFile) {
+      if (absPath.endsWith('/' + refPath) || absPath === refPath) {
+        return syms
+      }
+    }
+    return undefined
+  }
+
   for (const ref of refs) {
     // T1: file + line + name
     if (ref.filePath && ref.line !== undefined && ref.name) {
-      const fileSymbols = symbolsByFile.get(ref.filePath)
+      const fileSymbols = getFileSymbols(ref.filePath)
       if (fileSymbols) {
         const match = fileSymbols.find(
           (s) =>
@@ -108,7 +120,7 @@ export function resolveRefs(
 
     // T2: file + line
     if (ref.filePath && ref.line !== undefined) {
-      const fileSymbols = symbolsByFile.get(ref.filePath)
+      const fileSymbols = getFileSymbols(ref.filePath)
       if (fileSymbols) {
         const match = fileSymbols.find(
           (s) => s.startLine <= ref.line! && s.endLine >= ref.line!
@@ -122,7 +134,7 @@ export function resolveRefs(
 
     // T3: file + name
     if (ref.filePath && ref.name) {
-      const fileSymbols = symbolsByFile.get(ref.filePath)
+      const fileSymbols = getFileSymbols(ref.filePath)
       if (fileSymbols) {
         const match = findSymbolByName(fileSymbols, ref.name)
         if (match) {
