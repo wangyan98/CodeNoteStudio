@@ -23,6 +23,7 @@ export const MdEditor = forwardRef<MdEditorHandle, MdEditorProps>(
   const [value, setValue] = useState(content)
   const [showPreview, setShowPreview] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [previewMappings, setPreviewMappings] = useState<CodeMapping[]>([])
   const editorMonacoRef = useRef<monaco.editor.IStandaloneCodeEditor | null>(null)
 
   useImperativeHandle(ref, () => ({
@@ -53,6 +54,21 @@ export const MdEditor = forwardRef<MdEditorHandle, MdEditorProps>(
     const disposable = registerRefCompletionProvider()
     return () => disposable.dispose()
   }, [])
+
+  // Re-resolve refs from current editor content when switching to preview,
+  // so newly added @ref(...) references render immediately.
+  useEffect(() => {
+    if (!showPreview) return
+    let cancelled = false
+    window.electronAPI.resolveRefs(notePath, value)
+      .then((mappings: CodeMapping[]) => {
+        if (!cancelled) setPreviewMappings(mappings)
+      })
+      .catch(() => {
+        if (!cancelled) setPreviewMappings([])
+      })
+    return () => { cancelled = true }
+  }, [showPreview, value, notePath])
 
   const handleChange = useCallback((val: string | undefined) => {
     setValue(val || '')
@@ -102,7 +118,7 @@ export const MdEditor = forwardRef<MdEditorHandle, MdEditorProps>(
             <div
               className="md-preview-content"
               dangerouslySetInnerHTML={{
-                __html: renderMarkdown(value, codeMappings ?? [])
+                __html: renderMarkdown(value, previewMappings.length > 0 ? previewMappings : (codeMappings ?? []))
               }}
               onClick={(e) => {
                 const target = (e.target as HTMLElement).closest('.ref-link') as HTMLElement | null
