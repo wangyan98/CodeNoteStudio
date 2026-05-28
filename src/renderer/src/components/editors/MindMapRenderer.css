@@ -16,3 +16,49 @@
 .mind-link {
   transition: stroke 0.15s;
 }
+
+/* Context menu */
+.node-context-menu {
+  position: fixed;
+  background: #2d2d2d;
+  border: 1px solid #555;
+  border-radius: 6px;
+  padding: 4px 0;
+  min-width: 180px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+  z-index: 10000;
+}
+
+.node-context-menu-item {
+  padding: 6px 14px;
+  color: #ccc;
+  font-size: 12px;
+  cursor: pointer;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.node-context-menu-item:hover {
+  background: #094771;
+}
+
+.node-context-menu-item-danger {
+  color: #e44;
+}
+
+.node-context-menu-item-danger:hover {
+  background: #5a1d1d;
+}
+
+.node-context-menu-shortcut {
+  color: #666;
+  font-size: 11px;
+  margin-left: 24px;
+}
+
+.node-context-menu-separator {
+  height: 1px;
+  background: #555;
+  margin: 4px 0;
+}
