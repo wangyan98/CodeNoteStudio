@@ -32,6 +32,7 @@ function getMimeType(filePath: string): string {
 export function CodeViewport() {
   const { state, dispatch } = useAppContext()
   const { openCodeFiles, activeCodeFileIndex, codeRepoPath } = state
+  const activeFile = activeCodeFileIndex >= 0 ? openCodeFiles[activeCodeFileIndex] : null
   const [fileContents, setFileContents] = useState<Map<string, string>>(new Map())
   const [gitCommit, setGitCommit] = useState<{ sha: string; message: string; author: string; date: string } | null>(null)
   const [symbolPickerOpen, setSymbolPickerOpen] = useState(false)
@@ -42,6 +43,7 @@ export function CodeViewport() {
   const [zoomedImage, setZoomedImage] = useState<string | null>(null)
   const [zoomLevel, setZoomLevel] = useState(1)
   const activeFileRef = useRef(activeFile)
+  activeFileRef.current = activeFile
 
   const clearSelection = useCallback(() => {
     const editor = editorRef.current
@@ -124,10 +126,6 @@ export function CodeViewport() {
     window.dispatchEvent(new CustomEvent('symbol-insert', { detail: refText }))
     setSymbolPickerOpen(false)
   }, [codeRepoPath])
-
-  const activeFile = activeCodeFileIndex >= 0 ? openCodeFiles[activeCodeFileIndex] : null
-
-  activeFileRef.current = activeFile
 
   useEffect(() => {
     if (codeRepoPath) {
