@@ -21,6 +21,7 @@ export function NoteViewport() {
 
   const mdEditorRef = useRef<MdEditorHandle>(null)
   const [codeMappings, setCodeMappings] = useState<CodeMapping[]>([])
+  const [matchedRaws, setMatchedRaws] = useState<string[]>([])
   const [symbolPickerOpen, setSymbolPickerOpen] = useState(false)
 
   const handleSymbolSelect = useCallback((name: string) => {
@@ -41,8 +42,14 @@ export function NoteViewport() {
       ? activeNoteContent
       : JSON.stringify(activeNoteContent)
     window.electronAPI.resolveRefs(selectedNoteId, contentStr)
-      .then(setCodeMappings)
-      .catch(() => setCodeMappings([]))
+      .then((mappings: CodeMapping[]) => {
+        setCodeMappings(mappings)
+        setMatchedRaws(mappings.map((m) => m.raw))
+      })
+      .catch(() => {
+        setCodeMappings([])
+        setMatchedRaws([])
+      })
   }, [activeNoteContent, selectedNoteId])
 
   if (!selectedNoteId || !activeNoteContent) {
@@ -64,6 +71,7 @@ export function NoteViewport() {
             ref={mdEditorRef}
             content={activeNoteContent as string}
             notePath={selectedNoteId}
+            matchedRaws={matchedRaws}
             onSave={async (content: string) => {
               await saveNote(selectedNoteId, content)
             }}

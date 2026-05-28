@@ -9,6 +9,7 @@ interface MdEditorProps {
   notePath: string
   onSave: (content: string) => Promise<void>
   onRefClick?: (refName: string) => void
+  matchedRaws?: string[]   // raw ref strings that resolved successfully
 }
 
 export interface MdEditorHandle {
@@ -16,7 +17,7 @@ export interface MdEditorHandle {
 }
 
 export const MdEditor = forwardRef<MdEditorHandle, MdEditorProps>(
-  function MdEditor({ content, notePath, onSave, onRefClick }, ref) {
+  function MdEditor({ content, notePath, onSave, onRefClick, matchedRaws }, ref) {
   const [value, setValue] = useState(content)
   const [showPreview, setShowPreview] = useState(false)
   const [saving, setSaving] = useState(false)
@@ -81,7 +82,7 @@ export const MdEditor = forwardRef<MdEditorHandle, MdEditorProps>(
             <div
               className="md-preview-content"
               dangerouslySetInnerHTML={{
-                __html: renderMarkdown(value)
+                __html: renderMarkdown(value, new Set(matchedRaws ?? []))
               }}
               onClick={(e) => {
                 const target = (e.target as HTMLElement).closest('.ref-link') as HTMLElement | null
@@ -115,16 +116,21 @@ export const MdEditor = forwardRef<MdEditorHandle, MdEditorProps>(
   )
 })
 
-function renderMarkdown(md: string): string {
+function renderMarkdown(md: string, matchedRaws: Set<string>): string {
   let html = md
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
 
-  // Convert @ref(name) to styled spans
+  // Convert @ref(...) — handle all colon-separated formats
   html = html.replace(
-    /@ref\(([a-zA-Z0-9._-]+)\)/g,
-    '<span class="ref-link" data-ref-name="$1">@ref($1)</span>'
+    /@ref\(([a-zA-Z0-9._/\-:]+)\)/g,
+    (_fullMatch: string, refBody: string) => {
+      if (matchedRaws.has(refBody)) {
+        return `<span class="ref-link" data-ref-name="${refBody}">@ref(${refBody})</span>`
+      }
+      return `@ref(${refBody})`
+    }
   )
 
   html = html.replace(/```(\w*)\n([\s\S]*?)```/g, '<pre><code class="language-$1">$2</code></pre>')
