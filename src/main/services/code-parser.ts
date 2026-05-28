@@ -1,5 +1,5 @@
 import { Parser, Language } from 'web-tree-sitter'
-import { readFileSync, existsSync } from 'node:fs'
+import { readFileSync, existsSync, statSync } from 'node:fs'
 import path from 'node:path'
 
 export interface CodeSymbol {
@@ -223,10 +223,16 @@ function traverseTree(
   }
 }
 
-export async function parseCodeFile(filePath: string): Promise<CodeSymbol[]> {
-  const p = await initParser()
-  const langName = detectLanguage(filePath)
+// Maximum file size to parse (1MB) — larger files can crash the WASM parser
+const MAX_FILE_SIZE = 1024 * 1024
 
+// Reset the parser singleton so the next call to initParser() creates a fresh one
+function resetParser(): void {
+  parser = null
+}
+
+export async function parseCodeFile(filePath: string): Promise<CodeSymbol[]> {
+  const langName = detectLanguage(filePath)
   if (!langName) return []
 
   const lang = languageCache.get(langName)
@@ -234,20 +240,28 @@ export async function parseCodeFile(filePath: string): Promise<CodeSymbol[]> {
 
   let source: string
   try {
+    const stat = statSync(filePath)
+    if (stat.size > MAX_FILE_SIZE) return []
     source = readFileSync(filePath, 'utf-8')
   } catch {
     return []
   }
 
-  p.setLanguage(lang)
-  const tree = p.parse(source)
-  if (!tree) return []
+  try {
+    const p = await initParser()
+    p.setLanguage(lang)
+    const tree = p.parse(source)
+    if (!tree) return []
 
-  const rootNode = tree.rootNode as unknown as TreeNode
-
-  const symbols: CodeSymbol[] = []
-  traverseTree(rootNode, filePath, symbols)
-  return symbols
+    const rootNode = tree.rootNode as unknown as TreeNode
+    const symbols: CodeSymbol[] = []
+    traverseTree(rootNode, filePath, symbols)
+    return symbols
+  } catch {
+    // WASM parser crashed (OOM, stack overflow, etc.) — reset and skip this file
+    resetParser()
+    return []
+  }
 }
 
 export async function extractSymbols(filePaths: string[]): Promise<CodeSymbol[]> {
