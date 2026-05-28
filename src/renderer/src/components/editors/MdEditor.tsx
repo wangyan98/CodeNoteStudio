@@ -18,13 +18,17 @@ export interface MdEditorHandle {
   insertAtPosition: (text: string, clientX: number, clientY: number) => void
 }
 
+type SaveStatus = 'saved' | 'saving' | 'unsaved' | 'error'
+
 export const MdEditor = forwardRef<MdEditorHandle, MdEditorProps>(
   function MdEditor({ content, notePath, onSave, onRefClick, codeMappings }, ref) {
   const [value, setValue] = useState(content)
   const [showPreview, setShowPreview] = useState(false)
-  const [saving, setSaving] = useState(false)
+  const [saveStatus, setSaveStatus] = useState<SaveStatus>('saved')
   const [previewMappings, setPreviewMappings] = useState<CodeMapping[]>([])
   const editorMonacoRef = useRef<monaco.editor.IStandaloneCodeEditor | null>(null)
+  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const oldContentRef = useRef(content)
 
   useImperativeHandle(ref, () => ({
     insertAtCursor(text: string) {
@@ -70,28 +74,66 @@ export const MdEditor = forwardRef<MdEditorHandle, MdEditorProps>(
     return () => { cancelled = true }
   }, [showPreview, value, notePath])
 
+  // Reset when opening a different note
+  useEffect(() => {
+    setValue(content)
+    setSaveStatus('saved')
+    oldContentRef.current = content
+  }, [content, notePath])
+
+  // Auto-save with 300ms debounce
+  useEffect(() => {
+    if (value === oldContentRef.current) return
+    oldContentRef.current = value
+
+    setSaveStatus('unsaved')
+    if (saveTimerRef.current) clearTimeout(saveTimerRef.current)
+
+    saveTimerRef.current = setTimeout(async () => {
+      setSaveStatus('saving')
+      try {
+        await onSave(value)
+        setSaveStatus('saved')
+      } catch {
+        setSaveStatus('error')
+      }
+    }, 300)
+  }, [value, onSave])
+
   const handleChange = useCallback((val: string | undefined) => {
     setValue(val || '')
   }, [])
 
-  const handleSave = useCallback(async () => {
-    setSaving(true)
-    try {
-      await onSave(value)
-    } finally {
-      setSaving(false)
+  // Cleanup save timer on unmount
+  useEffect(() => {
+    return () => {
+      if (saveTimerRef.current) clearTimeout(saveTimerRef.current)
     }
+  }, [])
+
+  // Ctrl+S immediate save
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 's') {
+        e.preventDefault()
+        if (saveTimerRef.current) clearTimeout(saveTimerRef.current)
+        setSaveStatus('saving')
+        onSave(value).then(() => setSaveStatus('saved')).catch(() => setSaveStatus('error'))
+      }
+    }
+    window.addEventListener('keydown', handler)
+    return () => window.removeEventListener('keydown', handler)
   }, [value, onSave])
 
-  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
-    if ((e.metaKey || e.ctrlKey) && e.key === 's') {
-      e.preventDefault()
-      handleSave()
-    }
-  }, [handleSave])
+  const statusLabel: Record<SaveStatus, string> = {
+    saved: 'Saved',
+    saving: 'Saving...',
+    unsaved: 'Unsaved',
+    error: 'Error'
+  }
 
   return (
-    <div className="md-editor" onKeyDown={handleKeyDown}>
+    <div className="md-editor">
       <div className="md-editor-toolbar">
         <span className="md-editor-path">{notePath}</span>
         <div className="md-editor-actions">
@@ -107,9 +149,9 @@ export const MdEditor = forwardRef<MdEditorHandle, MdEditorProps>(
           >
             Preview
           </button>
-          <button className="md-editor-btn save" onClick={handleSave} disabled={saving}>
-            {saving ? 'Saving...' : 'Save'}
-          </button>
+          <span className={`md-editor-save-status md-editor-save-status-${saveStatus}`}>
+            {statusLabel[saveStatus]}
+          </span>
         </div>
       </div>
       <div className="md-editor-content">
