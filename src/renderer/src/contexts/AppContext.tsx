@@ -22,7 +22,7 @@ export const initialState: AppState = {
 export function appReducer(state: AppState, action: AppAction): AppState {
   switch (action.type) {
     case 'SELECT_NOTE':
-      return { ...state, selectedNoteId: action.noteId }
+      return { ...state, selectedNoteId: action.noteId, activeNoteContent: null, activeNoteType: null }
 
     case 'SET_NOTE_FILTER':
       return { ...state, noteFilter: action.filter }
