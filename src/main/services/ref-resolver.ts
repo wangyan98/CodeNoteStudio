@@ -1,4 +1,7 @@
 import type { CodeSymbol } from './code-parser'
+import { readTextFile } from './file-system'
+
+const CONTEXT_LINES = 10
 
 export interface RefSpec {
   raw: string          // original text inside @ref(...)
@@ -7,12 +10,19 @@ export interface RefSpec {
   name?: string        // classified name segment (may include '.' for Class.method)
 }
 
+export interface CodeSnippet {
+  lines: string[]
+  startLine: number
+  highlightLine: number
+}
+
 export interface CodeMapping {
   raw: string
   functionName: string
   filePath: string
   startLine: number
   endLine: number
+  codeSnippet?: CodeSnippet
 }
 
 /**
@@ -61,6 +71,22 @@ function classifyRef(raw: string): RefSpec {
   return { raw, filePath, line, name }
 }
 
+async function extractCodeSnippet(
+  filePath: string,
+  targetLine: number
+): Promise<CodeSnippet | undefined> {
+  try {
+    const content = await readTextFile(filePath)
+    const allLines = content.split('\n')
+    const start = Math.max(1, targetLine - CONTEXT_LINES)
+    const end = Math.min(allLines.length, targetLine + CONTEXT_LINES)
+    const lines = allLines.slice(start - 1, end)
+    return { lines, startLine: start, highlightLine: targetLine }
+  } catch {
+    return undefined
+  }
+}
+
 /**
  * Resolve RefSpecs to CodeMapping objects using a 5-tier priority.
  * Only matched refs are returned. Unmatched refs are silently dropped.
@@ -71,10 +97,10 @@ function classifyRef(raw: string): RefSpec {
  * T4: Class.method        — split by last ".", match across all files
  * T5: name only           — first match across all files
  */
-export function resolveRefs(
+export async function resolveRefs(
   refs: RefSpec[],
   symbols: CodeSymbol[]
-): CodeMapping[] {
+): Promise<CodeMapping[]> {
   const mappings: CodeMapping[] = []
 
   // Build lookup: filePath -> symbols
@@ -112,7 +138,11 @@ export function resolveRefs(
             symbolMatchesName(s, ref.name!)
         )
         if (match) {
-          mappings.push(toMapping(ref, match))
+          const mapping = toMapping(ref, match)
+          if (mapping.filePath && mapping.startLine) {
+            mapping.codeSnippet = await extractCodeSnippet(mapping.filePath, mapping.startLine)
+          }
+          mappings.push(mapping)
           continue
         }
       }
@@ -126,7 +156,11 @@ export function resolveRefs(
           (s) => s.startLine <= ref.line! && s.endLine >= ref.line!
         )
         if (match) {
-          mappings.push(toMapping(ref, match))
+          const mapping = toMapping(ref, match)
+          if (mapping.filePath && mapping.startLine) {
+            mapping.codeSnippet = await extractCodeSnippet(mapping.filePath, mapping.startLine)
+          }
+          mappings.push(mapping)
           continue
         }
       }
@@ -138,7 +172,11 @@ export function resolveRefs(
       if (fileSymbols) {
         const match = findSymbolByName(fileSymbols, ref.name)
         if (match) {
-          mappings.push(toMapping(ref, match))
+          const mapping = toMapping(ref, match)
+          if (mapping.filePath && mapping.startLine) {
+            mapping.codeSnippet = await extractCodeSnippet(mapping.filePath, mapping.startLine)
+          }
+          mappings.push(mapping)
           continue
         }
       }
@@ -148,7 +186,11 @@ export function resolveRefs(
     if (ref.name && ref.name.includes('.')) {
       const match = findSymbolByName(symbols, ref.name)
       if (match) {
-        mappings.push(toMapping(ref, match))
+        const mapping = toMapping(ref, match)
+        if (mapping.filePath && mapping.startLine) {
+          mapping.codeSnippet = await extractCodeSnippet(mapping.filePath, mapping.startLine)
+        }
+        mappings.push(mapping)
         continue
       }
     }
@@ -157,7 +199,11 @@ export function resolveRefs(
     if (ref.name) {
       const match = symbols.find((s) => s.name === ref.name)
       if (match) {
-        mappings.push(toMapping(ref, match))
+        const mapping = toMapping(ref, match)
+        if (mapping.filePath && mapping.startLine) {
+          mapping.codeSnippet = await extractCodeSnippet(mapping.filePath, mapping.startLine)
+        }
+        mappings.push(mapping)
         continue
       }
     }

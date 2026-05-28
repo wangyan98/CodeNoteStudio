@@ -19,12 +19,19 @@ export interface CodeRepo {
   commit: string
 }
 
+export interface CodeSnippet {
+  lines: string[]
+  startLine: number
+  highlightLine: number
+}
+
 export interface CodeMapping {
   raw: string
   functionName: string
   filePath: string
   startLine: number
   endLine: number
+  codeSnippet?: CodeSnippet
 }
 
 export interface NotebookConfig {
