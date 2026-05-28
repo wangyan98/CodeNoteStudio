@@ -38,10 +38,10 @@ export function CodeViewport() {
   const editorRef = useRef<monaco.editor.IStandaloneCodeEditor | null>(null)
   const selectedSymbolRef = useRef<CodeSymbol | null>(null)
   const decorationIdsRef = useRef<string[]>([])
-  const dragEnabledRef = useRef(false)
   const editorContainerRef = useRef<HTMLDivElement>(null)
   const [zoomedImage, setZoomedImage] = useState<string | null>(null)
   const [zoomLevel, setZoomLevel] = useState(1)
+  const activeFileRef = useRef(activeFile)
 
   const clearSelection = useCallback(() => {
     const editor = editorRef.current
@@ -52,18 +52,22 @@ export function CodeViewport() {
     }
     decorationIdsRef.current = []
     selectedSymbolRef.current = null
-    dragEnabledRef.current = false
     if (editorContainerRef.current) {
       editorContainerRef.current.removeAttribute('draggable')
     }
   }, [])
+
+  useEffect(() => {
+    clearSelection()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeFile?.path])
 
   const selectSymbolAtPosition = useCallback(async (
     editor: monaco.editor.IStandaloneCodeEditor,
     position: monaco.Position
   ) => {
     const model = editor.getModel()
-    if (!model || !activeFile) return
+    if (!model || !activeFileRef.current) return
 
     const word = model.getWordAtPosition(position)
     if (!word) return
@@ -71,12 +75,12 @@ export function CodeViewport() {
     try {
       const symbols: CodeSymbol[] = await window.electronAPI.querySymbols(
         word.word,
-        activeFile.path,
+        activeFileRef.current.path,
         undefined
       )
       // Find symbol in current file matching the clicked word
       const match = symbols.find(s =>
-        s.name === word.word && s.filePath === activeFile.path
+        s.name === word.word && s.filePath === activeFileRef.current.path
       )
       if (!match) return
 
@@ -97,14 +101,13 @@ export function CodeViewport() {
       }])
       decorationIdsRef.current = ids
       selectedSymbolRef.current = match
-      dragEnabledRef.current = true
       if (editorContainerRef.current) {
         editorContainerRef.current.setAttribute('draggable', 'true')
       }
     } catch {
       // Symbol query failed — silently ignore
     }
-  }, [activeFile, clearSelection])
+  }, [clearSelection])
 
   const handleSymbolSelect = useCallback((sym: CodeSymbol) => {
     let relPath = sym.filePath
@@ -123,6 +126,8 @@ export function CodeViewport() {
   }, [codeRepoPath])
 
   const activeFile = activeCodeFileIndex >= 0 ? openCodeFiles[activeCodeFileIndex] : null
+
+  activeFileRef.current = activeFile
 
   useEffect(() => {
     if (codeRepoPath) {
@@ -180,7 +185,7 @@ export function CodeViewport() {
       if (!e.target.position) return
       await selectSymbolAtPosition(editor, e.target.position)
     })
-  }, [state.pendingScroll, activeFile, dispatch, clearSelection, selectSymbolAtPosition])
+  }, [state.pendingScroll, dispatch, clearSelection, selectSymbolAtPosition])
 
   useEffect(() => {
     if (!zoomedImage) return
