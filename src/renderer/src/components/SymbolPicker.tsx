@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import { useCodeNavigation } from '../hooks/useCodeNavigation'
 import './SymbolPicker.css'
 
-interface CodeSymbol {
+export interface CodeSymbol {
   name: string
   kind: string
   filePath: string
@@ -13,7 +13,7 @@ interface CodeSymbol {
 interface SymbolPickerProps {
   isOpen: boolean
   onClose: () => void
-  onSelectSymbol: (symbolName: string) => void
+  onSelectSymbol: (symbol: CodeSymbol) => void
   activeFilePath?: string
 }
 
@@ -75,7 +75,7 @@ export function SymbolPicker({ isOpen, onClose, onSelectSymbol, activeFilePath }
       e.preventDefault()
       setSelectedIndex((prev) => Math.max(prev - 1, 0))
     } else if (e.key === 'Enter' && symbols[selectedIndex]) {
-      onSelectSymbol(symbols[selectedIndex].name)
+      onSelectSymbol(symbols[selectedIndex])
       onClose()
     }
   }, [symbols, selectedIndex, onSelectSymbol, onClose])
@@ -131,7 +131,7 @@ export function SymbolPicker({ isOpen, onClose, onSelectSymbol, activeFilePath }
               <div
                 key={`${sym.name}-${sym.filePath}-${sym.startLine}`}
                 className={`symbol-picker-item ${i === selectedIndex ? 'selected' : ''}`}
-                onClick={() => { onSelectSymbol(sym.name); onClose() }}
+                onClick={() => { onSelectSymbol(sym); onClose() }}
                 onMouseEnter={() => setSelectedIndex(i)}
               >
                 <span className={`symbol-kind-badge kind-${sym.kind}`}>{sym.kind}</span>

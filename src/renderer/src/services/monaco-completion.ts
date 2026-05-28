@@ -29,46 +29,24 @@ export function registerRefCompletionProvider(): monaco.IDisposable {
           return absPath
         }
 
-        // Detect names that appear in multiple files
-        const nameFileCount = new Map<string, number>()
-        for (const sym of symbols) {
-          nameFileCount.set(sym.name, (nameFileCount.get(sym.name) || 0) + 1)
-        }
-        const duplicateNames = new Set(
-          [...nameFileCount.entries()]
-            .filter(([, count]) => count > 1)
-            .map(([name]) => name)
-        )
-
         const suggestions: monaco.languages.CompletionItem[] = []
 
         for (const sym of symbols) {
           const relPath = toRelPath(sym.filePath)
           const fileName = relPath.split('/').pop() || relPath
+          const displayName = sym.parentName ? `${sym.parentName}.${sym.name}` : sym.name
+          const fullRef = `${relPath}:${sym.startLine}:${displayName}`
 
-          if (duplicateNames.has(sym.name)) {
-            suggestions.push({
-              label: `${relPath}:${sym.name}`,
-              kind: mapKind(sym.kind),
-              detail: `${sym.kind} · ${fileName}:${sym.startLine}`,
-              insertText: `${relPath}:${sym.name}`,
-              range: {
-                startLineNumber: position.lineNumber,
-                endLineNumber: position.lineNumber,
-                startColumn: position.column - partialName.length,
-                endColumn: position.column
-              },
-              sortText: partialName
-                ? (sym.name.startsWith(partialName) ? '0' : '1') + sym.name
-                : sym.name
-            })
-          }
+          const detail = sym.parentName
+            ? `${sym.kind} · ${sym.parentName} · ${fileName}:${sym.startLine}`
+            : `${sym.kind} · ${fileName}:${sym.startLine}`
 
           suggestions.push({
-            label: sym.name,
+            label: fullRef,
             kind: mapKind(sym.kind),
-            detail: `${sym.kind} · ${fileName}:${sym.startLine}`,
-            insertText: sym.name,
+            detail,
+            insertText: fullRef,
+            filterText: displayName,
             range: {
               startLineNumber: position.lineNumber,
               endLineNumber: position.lineNumber,

@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import Editor from '@monaco-editor/react'
 import { useAppContext } from '../contexts/AppContext'
 import { SymbolPicker } from './SymbolPicker'
+import type { CodeSymbol } from './SymbolPicker'
 import type * as monaco from 'monaco-editor'
 import './CodeViewport.css'
 
@@ -13,10 +14,21 @@ export function CodeViewport() {
   const [symbolPickerOpen, setSymbolPickerOpen] = useState(false)
   const editorRef = useRef<monaco.editor.IStandaloneCodeEditor | null>(null)
 
-  const handleSymbolSelect = useCallback((name: string) => {
-    window.dispatchEvent(new CustomEvent('symbol-insert', { detail: `@ref(${name})` }))
+  const handleSymbolSelect = useCallback((sym: CodeSymbol) => {
+    let relPath = sym.filePath
+    if (codeRepoPath) {
+      const prefix = codeRepoPath.endsWith('/') ? codeRepoPath : codeRepoPath + '/'
+      if (sym.filePath.startsWith(prefix)) {
+        relPath = sym.filePath.slice(prefix.length)
+      }
+    }
+
+    const displayName = sym.parentName ? `${sym.parentName}.${sym.name}` : sym.name
+    const refText = `@ref(${relPath}:${sym.startLine}:${displayName})`
+
+    window.dispatchEvent(new CustomEvent('symbol-insert', { detail: refText }))
     setSymbolPickerOpen(false)
-  }, [])
+  }, [codeRepoPath])
 
   const activeFile = activeCodeFileIndex >= 0 ? openCodeFiles[activeCodeFileIndex] : null
 
