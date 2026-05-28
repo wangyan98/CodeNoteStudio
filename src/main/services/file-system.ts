@@ -15,6 +15,11 @@ export async function readTextFile(filePath: string): Promise<string> {
   return fs.readFile(filePath, 'utf-8')
 }
 
+export async function readBinaryFile(filePath: string): Promise<string> {
+  const buffer = await fs.readFile(filePath)
+  return buffer.toString('base64')
+}
+
 export async function writeTextFile(filePath: string, content: string): Promise<void> {
   await fs.mkdir(path.dirname(filePath), { recursive: true })
   await fs.writeFile(filePath, content, 'utf-8')
