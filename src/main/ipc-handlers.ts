@@ -129,28 +129,38 @@ export function registerIpcHandlers(projectPath: string): void {
   })
 
   ipcMain.handle('code:parse-symbols', async (_event, filePaths: string[]) => {
-    const { extractSymbols } = await import('./services/code-parser')
-    return extractSymbols(filePaths)
+    try {
+      const { extractSymbols } = await import('./services/code-parser')
+      return extractSymbols(filePaths)
+    } catch (err) {
+      console.error('[code:parse-symbols] Parse failed:', err)
+      return []
+    }
   })
 
   ipcMain.handle('code:index-symbols', async (_event, repoPath: string) => {
-    const { initSymbolDatabase, indexSymbols, clearSymbols } = await import('./services/symbol-index')
-    const { extractSymbols, initParser } = await import('./services/code-parser')
-    const { listRepoFiles } = await import('./services/file-system')
+    try {
+      const { initSymbolDatabase, indexSymbols, clearSymbols } = await import('./services/symbol-index')
+      const { extractSymbols, initParser } = await import('./services/code-parser')
+      const { listRepoFiles } = await import('./services/file-system')
 
-    console.log('[code:index-symbols] Starting index for:', repoPath)
-    await initParser()
-    const files = await listRepoFiles(repoPath)
-    const codeFiles = files.filter((f) => !f.isDirectory).map((f) => f.absolutePath)
-    console.log(`[code:index-symbols] Found ${codeFiles.length} code files`)
+      console.log('[code:index-symbols] Starting index for:', repoPath)
+      await initParser()
+      const files = await listRepoFiles(repoPath)
+      const codeFiles = files.filter((f) => !f.isDirectory).map((f) => f.absolutePath)
+      console.log(`[code:index-symbols] Found ${codeFiles.length} code files`)
 
-    const db = initSymbolDatabase(currentProjectPath!)
-    clearSymbols(db)
-    const symbols = await extractSymbols(codeFiles)
-    indexSymbols(db, symbols)
-    console.log(`[code:index-symbols] Indexed ${symbols.length} symbols`)
+      const db = initSymbolDatabase(currentProjectPath!)
+      clearSymbols(db)
+      const symbols = await extractSymbols(codeFiles)
+      indexSymbols(db, symbols)
+      console.log(`[code:index-symbols] Indexed ${symbols.length} symbols`)
 
-    return { indexed: symbols.length, totalFiles: codeFiles.length }
+      return { indexed: symbols.length, totalFiles: codeFiles.length }
+    } catch (err) {
+      console.error('[code:index-symbols] Indexing failed:', err)
+      return { indexed: 0, totalFiles: 0, error: String(err) }
+    }
   })
 
   ipcMain.handle('code:query-symbols', async (_event, name?: string, filePath?: string, kind?: string) => {

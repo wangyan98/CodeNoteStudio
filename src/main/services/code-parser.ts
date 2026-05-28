@@ -14,6 +14,7 @@ export interface CodeSymbol {
 }
 
 let parser: Parser | null = null
+let wasmReady = false
 const languageCache = new Map<string, Language>()
 
 const EXT_TO_LANG: Record<string, string> = {
@@ -73,12 +74,23 @@ function getGrammarDir(): string {
 export async function initParser(): Promise<Parser> {
   if (parser) return parser
 
-  const treeSitterWasmPath = getTreeSitterWasmPath()
-  await Parser.init({
-    locateFile(_scriptName: string) {
-      return treeSitterWasmPath
+  // WASM runtime can only be initialized once — subsequent calls just
+  // create a fresh Parser instance to reset accumulated memory.
+  if (!wasmReady) {
+    const treeSitterWasmPath = getTreeSitterWasmPath()
+    try {
+      await Parser.init({
+        locateFile(_scriptName: string) {
+          return treeSitterWasmPath
+        }
+      })
+      wasmReady = true
+    } catch (err) {
+      console.error('[code-parser] Failed to initialize WASM runtime:', err)
+      throw err
     }
-  })
+  }
+
   parser = new Parser()
 
   const grammarDir = getGrammarDir()
@@ -94,15 +106,18 @@ export async function initParser(): Promise<Parser> {
     cpp: 'tree-sitter-cpp'
   }
 
-  for (const [langName, wasmFile] of Object.entries(langMap)) {
-    try {
-      const wasmPath = path.join(grammarDir, `${wasmFile}.wasm`)
-      if (existsSync(wasmPath)) {
-        const lang = await Language.load(wasmPath)
-        languageCache.set(langName, lang)
+  // Only load languages once — they stay in languageCache
+  if (languageCache.size === 0) {
+    for (const [langName, wasmFile] of Object.entries(langMap)) {
+      try {
+        const wasmPath = path.join(grammarDir, `${wasmFile}.wasm`)
+        if (existsSync(wasmPath)) {
+          const lang = await Language.load(wasmPath)
+          languageCache.set(langName, lang)
+        }
+      } catch {
+        // Language not available — skip gracefully
       }
-    } catch {
-      // Language not available — skip gracefully
     }
   }
 
