@@ -181,9 +181,15 @@ export function WorkspaceToolbar() {
             {repo.path.split('/').pop() || repo.path}
           </span>
         ))}
+        <button
+          className="workspace-toolbar-btn workspace-toolbar-action"
+          onClick={handleAddRepo}
+        >
+          + Add Repo
+        </button>
         {codeRepos.length > 0 && (
           <button
-            className="workspace-toolbar-btn"
+            className="workspace-toolbar-btn workspace-toolbar-action"
             onClick={() => {
               for (const repo of codeRepos) {
                 window.electronAPI.indexSymbols(repo.path).then((result) => {
@@ -198,9 +204,6 @@ export function WorkspaceToolbar() {
             Re-index
           </button>
         )}
-        <button className="workspace-toolbar-btn" onClick={handleAddRepo}>
-          + Add Repo
-        </button>
       </div>
     </div>
   )

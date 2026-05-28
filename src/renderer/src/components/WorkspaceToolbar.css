@@ -62,6 +62,17 @@
   color: var(--text-color);
 }
 
+.workspace-toolbar-action {
+  background: var(--accent-color);
+  color: #fff;
+  border-color: var(--accent-color);
+}
+
+.workspace-toolbar-action:hover {
+  opacity: 0.85;
+  color: #fff;
+}
+
 .workspace-toolbar-spacer {
   flex: 1;
 }
