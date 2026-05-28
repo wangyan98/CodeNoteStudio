@@ -80,9 +80,11 @@ export function NoteViewport() {
         const fileName = sourcePath.split('/').pop() || sourcePath.split('\\').pop() || 'image'
         try {
           const result = await window.electronAPI.copyFileToAssets(sourcePath)
-          mdEditorRef.current.insertAtPosition(`![${fileName}](${result.relativePath})`, e.clientX, e.clientY)
+          const fileUrl = `file://${result.absolutePath}`
+          mdEditorRef.current.insertAtPosition(`![${fileName}](${fileUrl})`, e.clientX, e.clientY)
         } catch {
-          mdEditorRef.current.insertAtPosition(`![${fileName}](${sourcePath})`, e.clientX, e.clientY)
+          const fileUrl = `file://${sourcePath}`
+          mdEditorRef.current.insertAtPosition(`![${fileName}](${fileUrl})`, e.clientX, e.clientY)
         }
       }
     } else {

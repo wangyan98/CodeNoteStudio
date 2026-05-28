@@ -50,7 +50,7 @@ export async function ensureDir(dirPath: string): Promise<void> {
 export async function copyFileToAssets(
   sourcePath: string,
   workspacePath: string
-): Promise<{ relativePath: string }> {
+): Promise<{ relativePath: string; absolutePath: string }> {
   const destDir = path.join(workspacePath, 'assets')
   await ensureDir(destDir)
 
@@ -69,7 +69,7 @@ export async function copyFileToAssets(
   }
 
   await fs.copyFile(sourcePath, destPath)
-  return { relativePath: `./assets/${destName}` }
+  return { relativePath: `./assets/${destName}`, absolutePath: destPath }
 }
 
 export interface RepoFileEntry {
