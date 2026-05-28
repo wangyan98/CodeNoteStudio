@@ -228,6 +228,70 @@ export const MindMapCanvas = forwardRef<MindMapCanvasHandle, MindMapCanvasProps>
         }
       }
 
+      // Inline title editing — handled synchronously at end of render so it
+      // fires reliably regardless of React effect scheduling
+      if (focusNodeIdRef.current) {
+        const activeTag = (document.activeElement as HTMLElement)?.tagName
+        if (activeTag !== 'INPUT' && activeTag !== 'TEXTAREA') {
+          const editNodeId = focusNodeIdRef.current
+          focusNodeIdRef.current = null
+
+          const editNodeElement = svgNode?.querySelector(`[data-node-id="${editNodeId}"]`)
+          if (editNodeElement) {
+            const editNode = findNode(doc, editNodeId)
+            if (editNode) {
+              // Defer DOM insertion so the D3 rebuild finishes first
+              requestAnimationFrame(() => {
+                const nodeRect = (editNodeElement as SVGGElement).getBoundingClientRect()
+                const input = document.createElement('input')
+                input.value = editNode.title
+                input.style.position = 'fixed'
+                input.style.left = `${nodeRect.left}px`
+                input.style.top = `${nodeRect.top}px`
+                input.style.width = `${130}px`
+                input.style.height = `${24}px`
+                input.style.fontSize = '11px'
+                input.style.padding = '2px 6px'
+                input.style.background = '#1e1e1e'
+                input.style.color = '#d4d4d4'
+                input.style.border = '2px solid #007acc'
+                input.style.borderRadius = '4px'
+                input.style.zIndex = '9999'
+                input.style.outline = 'none'
+                input.className = 'mind-inline-title-input'
+
+                document.body.appendChild(input)
+                input.focus()
+                input.select()
+
+                const commit = () => {
+                  const newTitle = input.value.trim()
+                  if (document.body.contains(input)) {
+                    document.body.removeChild(input)
+                  }
+                  if (newTitle && newTitle !== editNode.title) {
+                    dispatch({ type: 'UPDATE_TITLE', nodeId: editNodeId, title: newTitle })
+                  }
+                }
+
+                input.addEventListener('blur', commit)
+                input.addEventListener('keydown', (e) => {
+                  if (e.key === 'Enter') commit()
+                  if (e.key === 'Escape') {
+                    if (document.body.contains(input)) {
+                      document.body.removeChild(input)
+                    }
+                  }
+                  e.stopPropagation()
+                })
+              })
+            }
+          }
+        } else {
+          focusNodeIdRef.current = null
+        }
+      }
+
     }, [doc, selectedNodeId, collapsedIds, dispatch, onContextMenu, onHoverNode])
 
     useEffect(() => { render() }, [render])
@@ -239,71 +303,6 @@ export const MindMapCanvas = forwardRef<MindMapCanvasHandle, MindMapCanvasProps>
       observer.observe(container)
       return () => observer.disconnect()
     }, [render])
-
-    // Inline title editing overlay
-    useEffect(() => {
-      if (!focusNodeIdRef.current) return
-      // Don't create inline editor if user is already typing in an input field
-      const activeTag = (document.activeElement as HTMLElement)?.tagName
-      if (activeTag === 'INPUT' || activeTag === 'TEXTAREA') {
-        focusNodeIdRef.current = null
-        return
-      }
-      const nodeId = focusNodeIdRef.current
-      focusNodeIdRef.current = null
-
-      const svgNode = svgRef.current
-      if (!svgNode) return
-
-      const nodeElement = svgNode.querySelector(`[data-node-id="${nodeId}"]`)
-      if (!nodeElement) return
-
-      const node = findNode(doc, nodeId)
-      if (!node) return
-
-      const nodeRect = (nodeElement as SVGGElement).getBoundingClientRect()
-      const input = document.createElement('input')
-      input.value = node.title
-      input.style.position = 'fixed'
-      input.style.left = `${nodeRect.left}px`
-      input.style.top = `${nodeRect.top}px`
-      input.style.width = `${130}px`
-      input.style.height = `${24}px`
-      input.style.fontSize = '11px'
-      input.style.padding = '2px 6px'
-      input.style.background = '#1e1e1e'
-      input.style.color = '#d4d4d4'
-      input.style.border = '2px solid #007acc'
-      input.style.borderRadius = '4px'
-      input.style.zIndex = '9999'
-      input.style.outline = 'none'
-      input.className = 'mind-inline-title-input'
-
-      document.body.appendChild(input)
-      input.focus()
-      input.select()
-
-      const commit = () => {
-        const newTitle = input.value.trim()
-        if (document.body.contains(input)) {
-          document.body.removeChild(input)
-        }
-        if (newTitle && newTitle !== node.title) {
-          dispatch({ type: 'UPDATE_TITLE', nodeId, title: newTitle })
-        }
-      }
-
-      input.addEventListener('blur', commit)
-      input.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter') commit()
-        if (e.key === 'Escape') {
-          if (document.body.contains(input)) {
-            document.body.removeChild(input)
-          }
-        }
-        e.stopPropagation()
-      })
-    }, [doc, selectedNodeId, dispatch])
 
     return (
       <div
