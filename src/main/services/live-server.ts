@@ -123,10 +123,6 @@ function createApp(projectPath: string): Express {
     app.use('/monaco-vs', express.static(monacoVsDir))
   }
 
-  // Serve workspace assets directory for images embedded in notes
-  const assetsDir = path.join(projectPath, 'assets')
-  app.use('/assets', express.static(assetsDir))
-
   // ===== REST API =====
 
   app.get('/api/config', async (_req: Request, res: Response) => {

@@ -1,0 +1,115 @@
+<h2>Implementation Approaches</h2>
+<p class="subtitle">Two strategies for adding drag-and-drop @ref creation</p>
+
+<div class="split">
+  <div class="mockup">
+    <div class="mockup-header">Approach A: Lightweight HTML5 DnD</div>
+    <div class="mockup-body">
+      <div style="padding:12px;">
+        <div class="label">Interaction Flow</div>
+        <div style="display:flex;align-items:center;gap:8px;margin:12px 0;font-size:13px;">
+          <div style="background:#1e1e1e;padding:8px 12px;border-radius:4px;text-align:center;">
+            <span style="color:#888;">Code Viewport</span><br/>
+            <span style="color:#dcdcaa;">getUserById</span><br/>
+            <span style="font-size:10px;color:#888;">double-click → highlighted</span>
+          </div>
+          <span>→ drag →</span>
+          <div style="background:#1e1e1e;padding:8px 12px;border-radius:4px;text-align:center;">
+            <span style="color:#888;">Note Viewport</span><br/>
+            <span style="color:#ce9178;">@ref(</span><span style="color:#9cdcfe;">src/utils.ts:42:getUserById</span><span style="color:#ce9178;">)</span><br/>
+            <span style="font-size:10px;color:#888;">inserted at cursor</span>
+          </div>
+        </div>
+
+        <div class="label">What the user sees</div>
+        <ul style="font-size:13px;line-height:1.8;">
+          <li>Double-click → function name gets a <span style="background:rgba(100,180,255,0.3);padding:0 4px;border-radius:2px;">blue highlight</span></li>
+          <li>Drag → browser default ghost (transparent copy of the highlighted text)</li>
+          <li>Drop → @ref appears at cursor position in MdEditor</li>
+          <li>Code Directory: drag a file → <code>[filename](rel/path)</code> or <code>![img](./assets/img.png)</code></li>
+        </ul>
+
+        <div class="label">Architecture</div>
+        <div style="font-family:monospace;font-size:11px;line-height:1.6;margin-top:8px;">
+          CodeViewport<br/>
+          ├─ Monaco decoration (highlight)<br/>
+          ├─ onMouseDown → detect dbl-click → IPC querySymbol<br/>
+          └─ HTML5 draggable on editor container<br/>
+          <br/>
+          CodeDirectory<br/>
+          └─ draggable="true" on file items<br/>
+          <br/>
+          NoteViewport<br/>
+          └─ onDrop → screen coords → Monaco position → insertText<br/>
+          <br/>
+          Main Process<br/>
+          └─ IPC: copy-file-to-assets (for images)
+        </div>
+      </div>
+      <div class="pros-cons">
+        <div class="pros"><h4>Pros</h4><ul><li>~150 lines of new code</li><li>Follows existing CustomEvent pattern</li><li>No new dependencies or context providers</li><li>Browser-native drag, works reliably</li></ul></div>
+        <div class="cons"><h4>Cons</h4><ul><li>Default drag ghost looks basic</li><li>No drop-zone indicator in NoteViewport</li><li>User must guess where @ref will land</li></ul></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="mockup">
+    <div class="mockup-header">Approach B: Rich DnD with Visual Feedback</div>
+    <div class="mockup-body">
+      <div style="padding:12px;">
+        <div class="label">Interaction Flow</div>
+        <div style="display:flex;align-items:center;gap:8px;margin:12px 0;font-size:13px;">
+          <div style="background:#1e1e1e;padding:8px 12px;border-radius:4px;text-align:center;">
+            <span style="color:#888;">Code Viewport</span><br/>
+            <span style="color:#dcdcaa;">getUserById</span><br/>
+            <span style="font-size:10px;color:#888;">double-click → pill appears</span>
+          </div>
+          <span>→ drag →</span>
+          <div style="background:#1e1e1e;padding:8px 12px;border-radius:4px;text-align:center;border:2px dashed rgba(100,180,255,0.5);">
+            <span style="color:#888;">Note Viewport</span><br/>
+            <span style="color:#888;">drop indicator ▏</span><br/>
+            <span style="font-size:10px;color:#4fc1ff;">shows where text lands</span>
+          </div>
+        </div>
+
+        <div class="label">What the user sees</div>
+        <ul style="font-size:13px;line-height:1.8;">
+          <li>Double-click → a <span style="background:#264f78;color:#fff;padding:2px 8px;border-radius:12px;font-size:11px;">fn getName</span> pill appears beside the line</li>
+          <li>Drag → custom drag ghost: same pill follows cursor</li>
+          <li>Hover over NoteViewport → <span style="border:2px dashed rgba(100,180,255,0.5);padding:2px 4px;">drop zone highlight</span> with a cursor-line indicator</li>
+          <li>Code Directory drag → shows file-type-specific ghost (📄 file vs 🖼 image)</li>
+          <li>Drop → smooth insertion with a brief flash animation on the inserted @ref</li>
+        </ul>
+
+        <div class="label">Architecture</div>
+        <div style="font-family:monospace;font-size:11px;line-height:1.6;margin-top:8px;">
+          DragContext (new React context)<br/>
+          ├─ dragState: { source, symbol, ghostElement }<br/>
+          ├─ onDragStart / onDragEnd<br/>
+          └─ consumed by all 4 panels<br/>
+          <br/>
+          CodeViewport<br/>
+          ├─ Monaco decoration + floating pill component<br/>
+          └─ uses DragContext.startDrag()<br/>
+          <br/>
+          NoteViewport<br/>
+          ├─ DropZone wrapper component<br/>
+          ├─ shows insertion line indicator on dragover<br/>
+          └─ uses DragContext.onDrop()<br/>
+          <br/>
+          Main Process<br/>
+          └─ IPC: copy-file-to-assets (for images)
+        </div>
+      </div>
+      <div class="pros-cons">
+        <div class="pros"><h4>Pros</h4><ul><li>Polished, professional feel</li><li>Clear affordance at every step</li><li>No guesswork about where text lands</li></ul></div>
+        <div class="cons"><h4>Cons</h4><ul><li>~400+ lines of new code</li><li>New DragContext adds complexity</li><li>Floating pill positioning is fiddly</li><li>More surface area for bugs</li></ul></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section" style="margin-top:16px;">
+  <h3>My Recommendation: Approach A</h3>
+  <p>Given that the user already chose the simplest selection style (C: inline highlight) and the simplest file reference format (B: standard markdown link), <strong>Approach A</strong> aligns with the pattern of keeping things minimal. The default browser drag ghost is adequate for an initial implementation, and we can always add visual polish (drop indicators, custom ghosts) later without changing the architecture.</p>
+</div>

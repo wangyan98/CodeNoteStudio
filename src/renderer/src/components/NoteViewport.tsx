@@ -64,17 +64,6 @@ export function NoteViewport() {
     }
   }, [])
 
-  const ensureServerUrl = async (): Promise<string> => {
-    try {
-      const status = await window.electronAPI.getServerStatus()
-      if (status.running) return status.url
-      const newStatus = await window.electronAPI.startServer()
-      return newStatus.url
-    } catch {
-      return ''
-    }
-  }
-
   const handleDrop = useCallback(async (e: React.DragEvent) => {
     e.preventDefault()
     e.stopPropagation()
@@ -89,39 +78,17 @@ export function NoteViewport() {
       const sourcePath = e.dataTransfer.getData('application/x-source-path')
       if (sourcePath && mdEditorRef.current) {
         const fileName = sourcePath.split('/').pop() || sourcePath.split('\\').pop() || 'image'
-        const ext = fileName.split('.').pop()?.toLowerCase() || 'png'
-        const mimeMap: Record<string, string> = {
-          png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg',
-          gif: 'image/gif', webp: 'image/webp', bmp: 'image/bmp', svg: 'image/svg+xml'
-        }
-        const mime = mimeMap[ext] || 'image/png'
-
-        // Try copy-to-assets + server URL first
         try {
           const result = await window.electronAPI.copyFileToAssets(sourcePath)
-          const serverUrl = await ensureServerUrl()
-          if (serverUrl) {
-            const assetName = result.relativePath.replace(/^\.\/assets\//, '')
-            mdEditorRef.current.insertAtPosition(
-              `![${fileName}](${serverUrl}/assets/${encodeURIComponent(assetName)})`,
-              e.clientX, e.clientY
-            )
-          } else {
-            const base64 = await window.electronAPI.readBinaryFile(result.absolutePath)
-            mdEditorRef.current.insertAtPosition(`![${fileName}](data:${mime};base64,${base64})`, e.clientX, e.clientY)
-          }
+          mdEditorRef.current.insertAtPosition(
+            `![${fileName}](file://${result.absolutePath})`,
+            e.clientX, e.clientY
+          )
         } catch {
-          // Fallback: try server URL for original path, then data URI
-          const serverUrl = await ensureServerUrl()
-          if (serverUrl) {
-            mdEditorRef.current.insertAtPosition(
-              `![${fileName}](${serverUrl}/assets/${encodeURIComponent(fileName)})`,
-              e.clientX, e.clientY
-            )
-          } else {
-            const base64 = await window.electronAPI.readBinaryFile(sourcePath)
-            mdEditorRef.current.insertAtPosition(`![${fileName}](data:${mime};base64,${base64})`, e.clientX, e.clientY)
-          }
+          mdEditorRef.current.insertAtPosition(
+            `![${fileName}](file://${sourcePath})`,
+            e.clientX, e.clientY
+          )
         }
       }
     } else {
