@@ -54,7 +54,6 @@ export const MindMapCanvas = forwardRef<MindMapCanvasHandle, MindMapCanvasProps>
 
       const width = container.clientWidth || 800
       const height = container.clientHeight || 600
-      console.log('[MindMapCanvas] render called, container:', width, 'x', height, 'nodes:', doc.root.children?.length || 0)
       svg.attr('width', width).attr('height', height)
 
       svg.selectAll('g').remove()
@@ -147,13 +146,8 @@ export const MindMapCanvas = forwardRef<MindMapCanvasHandle, MindMapCanvasProps>
       // --- Events ---
 
       nodeGroup.on('click', (event: MouseEvent, d: d3.HierarchyNode<MindMapNode>) => {
-        try {
-          event.stopPropagation()
-          console.log('[MindMapCanvas] node clicked:', d.data.id, d.data.title)
-          dispatch({ type: 'SELECT_NODE', nodeId: d.data.id })
-        } catch (err) {
-          console.error('[MindMapCanvas] node click error:', err)
-        }
+        event.stopPropagation()
+        dispatch({ type: 'SELECT_NODE', nodeId: d.data.id })
       })
 
       nodeGroup.on('dblclick', (event: MouseEvent, d: d3.HierarchyNode<MindMapNode>) => {
@@ -177,7 +171,8 @@ export const MindMapCanvas = forwardRef<MindMapCanvasHandle, MindMapCanvasProps>
         onHoverNode?.(null)
       })
 
-      // Drag (visual only in v1)
+      // Drag (visual only in v1) — note: do NOT call render() in end handler,
+      // it would remove DOM elements before the click event fires
       const dragHandler = d3.drag<SVGGElement, d3.HierarchyNode<MindMapNode>>()
         .on('start', function () {
           d3.select(this).raise()
@@ -186,15 +181,19 @@ export const MindMapCanvas = forwardRef<MindMapCanvasHandle, MindMapCanvasProps>
         .on('drag', function (event: d3.D3DragEvent<SVGGElement, unknown, unknown>, d: d3.HierarchyNode<MindMapNode>) {
           d3.select(this).attr('transform', `translate(${d.y! + event.x},${d.x! + event.y})`)
         })
-        .on('end', function () {
-          render()
+        .on('end', function (_event: d3.D3DragEvent<SVGGElement, unknown, unknown>, d: d3.HierarchyNode<MindMapNode>) {
+          // Snap back to original position, restore stroke
+          d3.select(this).attr('transform', `translate(${d.y!},${d.x!})`)
+          const isSelected = d.data.id === selectedNodeId
+          d3.select(this).select('rect')
+            .attr('stroke', isSelected ? '#ff0' : (d.depth === 0 ? '#007acc' : '#555'))
+            .attr('stroke-width', isSelected ? 2 : 1)
         })
 
       nodeGroup.call(dragHandler as any)
 
       // SVG background click: deselect
       svg.on('click', () => {
-        console.log('[MindMapCanvas] SVG background clicked, deselecting')
         dispatch({ type: 'SELECT_NODE', nodeId: '' })
       })
 
@@ -224,17 +223,6 @@ export const MindMapCanvas = forwardRef<MindMapCanvasHandle, MindMapCanvasProps>
     }, [doc, selectedNodeId, collapsedIds, dispatch, onContextMenu, onHoverNode])
 
     useEffect(() => { render() }, [render])
-
-    // Debug: test if clicks reach the container at all
-    useEffect(() => {
-      const container = containerRef.current
-      if (!container) return
-      const handler = (e: MouseEvent) => {
-        console.log('[MindMapCanvas] raw DOM click on CONTAINER, target:', (e.target as Element).tagName, (e.target as Element).className, 'clientX/Y:', e.clientX, e.clientY)
-      }
-      container.addEventListener('click', handler)
-      return () => container.removeEventListener('click', handler)
-    }, [])
 
     useEffect(() => {
       const container = containerRef.current

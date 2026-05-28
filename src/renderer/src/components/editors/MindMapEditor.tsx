@@ -38,7 +38,6 @@ export function MindMapEditor({ document: initialDoc, onSave, onNavigateToCode }
 
   // Intercept SELECT_NODE and TOGGLE_COLLAPSE to manage external state
   const wrappedDispatch = useCallback((action: MindMapAction) => {
-    console.log('[MindMapEditor] wrappedDispatch:', action.type, action.nodeId)
     if (action.type === 'SELECT_NODE') {
       setSelectedNodeId(action.nodeId || null)
     }
@@ -105,7 +104,6 @@ export function MindMapEditor({ document: initialDoc, onSave, onNavigateToCode }
   }, [])
 
   const selectedNode = selectedNodeId ? findNode(doc, selectedNodeId) : null
-  console.log('[MindMapEditor] selectedNodeId:', selectedNodeId, 'selectedNode:', selectedNode?.title)
 
   const contextMenuItems = contextMenu ? [
     { label: 'Add Child', shortcut: 'Tab', action: () => wrappedDispatch({ type: 'ADD_CHILD', parentId: contextMenu.nodeId }) },
