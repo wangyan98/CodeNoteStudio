@@ -62,3 +62,33 @@
   background: #555;
   margin: 4px 0;
 }
+
+.mind-editor {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+}
+
+.mind-editor-canvas {
+  flex: 1;
+  min-height: 120px;
+  overflow: hidden;
+}
+
+.mind-editor-panel-resize-handle {
+  height: 4px;
+  background: #3c3c3c;
+  cursor: ns-resize;
+  flex-shrink: 0;
+}
+
+.mind-editor-panel-resize-handle:hover {
+  background: #007acc;
+}
+
+.mind-editor-panel {
+  flex: 0 0 35%;
+  min-height: 80px;
+  overflow: hidden;
+}
