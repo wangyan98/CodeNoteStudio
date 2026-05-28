@@ -11,7 +11,8 @@ import {
   fileExists,
   listDirectory,
   ensureDir,
-  listRepoFiles
+  listRepoFiles,
+  copyFileToAssets
 } from '../../src/main/services/file-system'
 
 describe('file-system', () => {
@@ -123,6 +124,27 @@ describe('file-system', () => {
       await writeTextFile(join(testDir, 'node_modules', 'dep', 'index.js'), 'js')
       const files = await listRepoFiles(testDir)
       expect(files).toHaveLength(2)
+    })
+  })
+
+  describe('copyFileToAssets', () => {
+    it('copies a file to the assets directory', async () => {
+      const sourcePath = join(testDir, 'img.png')
+      await writeTextFile(sourcePath, 'fake-image-data')
+      const result = await copyFileToAssets(sourcePath, testDir)
+      expect(result.relativePath).toBe('./assets/img.png')
+      const copiedExists = await fileExists(join(testDir, 'assets', 'img.png'))
+      expect(copiedExists).toBe(true)
+    })
+
+    it('deduplicates when filename already exists', async () => {
+      const sourcePath = join(testDir, 'icon.png')
+      await writeTextFile(sourcePath, 'data')
+      // Create a file at the destination first
+      await ensureDir(join(testDir, 'assets'))
+      await writeTextFile(join(testDir, 'assets', 'icon.png'), 'existing')
+      const result = await copyFileToAssets(sourcePath, testDir)
+      expect(result.relativePath).toBe('./assets/icon-1.png')
     })
   })
 })
