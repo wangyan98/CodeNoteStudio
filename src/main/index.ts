@@ -38,16 +38,15 @@ function createWindow(): void {
 
 ipcMain.handle('get-app-version', () => app.getVersion())
 
-// Register custom protocol to serve workspace files for preview images.
-// file:// URLs are blocked by Chromium's opaque-origin policy across
-// different directories, so we use a custom protocol that maps directly
-// to absolute file paths on disk.
-protocol.handle('wsfile', (request) => {
-  const filePath = request.url.slice('wsfile://'.length)
-  return net.fetch('file://' + filePath)
-})
-
 app.whenReady().then(async () => {
+  // Register custom protocol to serve workspace files for preview images.
+  // file:// URLs are blocked by Chromium's opaque-origin policy across
+  // different directories, so we use a custom protocol that maps directly
+  // to absolute file paths on disk.
+  protocol.handle('wsfile', (request) => {
+    const filePath = request.url.slice('wsfile://'.length)
+    return net.fetch('file://' + filePath)
+  })
   let projectPath = ''
 
   try {
