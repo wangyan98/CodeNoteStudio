@@ -98,6 +98,8 @@ function createApp(projectPath: string): Express {
   const rendererDir = getRendererDir()
   const notesDir = path.resolve(projectPath, 'notes')
 
+  app.use(express.json())
+
   // ===== CORS middleware for all /api/* routes =====
   app.use('/api', (_req: Request, res: Response, next) => {
     res.setHeader('Access-Control-Allow-Origin', '*')
@@ -116,6 +118,10 @@ function createApp(projectPath: string): Express {
     } catch (e) {
       res.status(500).json({ error: String(e) })
     }
+  })
+
+  app.get('/api/workspace', (_req: Request, res: Response) => {
+    res.json({ path: projectPath })
   })
 
   app.get('/api/notes', async (req: Request, res: Response) => {
@@ -246,6 +252,26 @@ function createApp(projectPath: string): Express {
         saveRefCache(projectPath, notePath, mappings)
       }
       res.json(mappings)
+    } catch (e) {
+      res.status(500).json({ error: String(e) })
+    }
+  })
+
+  // UI state persistence
+  app.get('/api/ui-state', (_req: Request, res: Response) => {
+    try {
+      const { loadUiState } = require('./ui-state')
+      res.json(loadUiState(projectPath))
+    } catch {
+      res.json(null)
+    }
+  })
+
+  app.post('/api/ui-state', (req: Request, res: Response) => {
+    try {
+      const { saveUiState } = require('./ui-state')
+      saveUiState(projectPath, req.body)
+      res.json({ ok: true })
     } catch (e) {
       res.status(500).json({ error: String(e) })
     }

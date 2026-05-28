@@ -10,19 +10,38 @@ async function get<T>(url: string): Promise<T> {
   return res.text() as unknown as T
 }
 
+async function post<T>(url: string, body: unknown): Promise<T> {
+  const res = await fetch(BASE + url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body)
+  })
+  if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`)
+  return res.json()
+}
+
+async function getWorkspacePathFromServer(): Promise<string | null> {
+  try {
+    const data = await get<{ path: string }>('/api/workspace')
+    return data.path || null
+  } catch {
+    return null
+  }
+}
+
 export function createWebApiClient() {
   return {
     platform: 'browser',
 
     getAppVersion: () => Promise.resolve('web'),
 
-    getProjectPath: () => Promise.resolve(null),
+    getProjectPath: () => getWorkspacePathFromServer(),
 
     // Workspace (read-only in browser)
     selectFolder: () => Promise.resolve(null),
     createWorkspace: () => Promise.resolve(''),
     openWorkspace: () => Promise.resolve(null as any),
-    getWorkspacePath: () => Promise.resolve(null),
+    getWorkspacePath: () => getWorkspacePathFromServer(),
 
     // Config
     loadConfig: () => get('/api/config'),
@@ -48,8 +67,11 @@ export function createWebApiClient() {
       get(`/api/code/git-commit?repo=${encodeURIComponent(repoPath)}`),
     parseSymbols: () => Promise.resolve([]),
     indexSymbols: () => Promise.resolve({ indexed: 0, totalFiles: 0 }),
-    resolveRefs: (_notePath: string, content: string) =>
-      get(`/api/code/resolve-refs?content=${encodeURIComponent(content)}`),
+    resolveRefs: (notePath: string, content: string) => {
+      const params = new URLSearchParams({ content })
+      if (notePath) params.set('notePath', notePath)
+      return get(`/api/code/resolve-refs?${params.toString()}`)
+    },
     querySymbols: (name?: string, filePath?: string, kind?: string) => {
       const params = new URLSearchParams()
       if (name) params.set('name', name)
@@ -57,6 +79,10 @@ export function createWebApiClient() {
       if (kind) params.set('kind', kind)
       return get(`/api/code/symbols?${params.toString()}`)
     },
+
+    // UI state
+    loadUiState: () => get('/api/ui-state').catch(() => null),
+    saveUiState: (state: unknown) => post('/api/ui-state', state).catch(() => {}),
 
     // Server (no-op in browser)
     startServer: () => Promise.resolve({ running: false, port: 0, url: '' }),
