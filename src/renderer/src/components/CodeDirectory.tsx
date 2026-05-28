@@ -23,6 +23,13 @@ function FileTreeItem({
   const [expanded, setExpanded] = useState(depth < 1)
   const icon = file.isDirectory ? (expanded ? '▾' : '▸') : getFileIcon(file.name)
 
+  const IMAGE_EXTS = new Set(['png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp', 'svg'])
+
+  function isImageFileName(name: string): boolean {
+    const ext = name.split('.').pop()?.toLowerCase() || ''
+    return IMAGE_EXTS.has(ext)
+  }
+
   const handleClick = useCallback(() => {
     if (file.isDirectory) {
       setExpanded(!expanded)
@@ -31,12 +38,25 @@ function FileTreeItem({
     }
   }, [file, expanded, onSelect])
 
+  const handleDragStart = useCallback((e: React.DragEvent) => {
+    if (file.isDirectory) return
+    const isImage = isImageFileName(file.name)
+    e.dataTransfer.effectAllowed = 'copy'
+    if (isImage) {
+      e.dataTransfer.setData('application/x-image-drag', 'true')
+      e.dataTransfer.setData('application/x-source-path', file.absolutePath)
+    }
+    e.dataTransfer.setData('text/plain', `[${file.name}](${file.relativePath})`)
+  }, [file])
+
   return (
     <>
       <div
         className={`code-file-item ${file.isDirectory ? 'folder' : ''}`}
         style={{ '--depth': depth } as React.CSSProperties}
         onClick={handleClick}
+        draggable={!file.isDirectory}
+        onDragStart={handleDragStart}
       >
         <span className="code-file-icon">{icon}</span>
         <span>{file.name}</span>
