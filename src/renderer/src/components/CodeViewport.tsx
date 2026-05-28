@@ -329,6 +329,7 @@ export function CodeViewport() {
               theme="vs-dark"
               options={{
                 readOnly: true,
+                dragAndDrop: false,
                 minimap: { enabled: true },
                 fontSize: 12,
                 lineNumbers: 'on',
