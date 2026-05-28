@@ -174,40 +174,52 @@ function extractName(node: TreeNode, nodeType: string): string | null {
   return null
 }
 
+interface StackFrame {
+  node: TreeNode
+  parentName?: string
+}
+
 function traverseTree(
-  node: TreeNode,
+  rootNode: TreeNode,
   filePath: string,
   symbols: CodeSymbol[],
   parentName?: string
 ): void {
-  const kind = getSymbolKind(node.type)
-  if (kind) {
-    const name = extractName(node, node.type)
-    if (name) {
-      symbols.push({
-        name,
-        kind,
-        filePath,
-        startLine: (node.startPosition?.row ?? 0) + 1,
-        endLine: (node.endPosition?.row ?? 0) + 1,
-        startColumn: (node.startPosition?.column ?? 0) + 1,
-        endColumn: (node.endPosition?.column ?? 0) + 1,
-        parentName
-      })
+  const stack: StackFrame[] = [{ node: rootNode, parentName }]
 
-      // Recurse into children with this symbol as parent
-      const nextParent = kind === 'class' ? name : parentName
-      const children = node.children || []
-      for (const child of children) {
-        traverseTree(child, filePath, symbols, nextParent)
+  while (stack.length > 0) {
+    const frame = stack.pop()!
+    const { node, parentName: pn } = frame
+    const kind = getSymbolKind(node.type)
+
+    if (kind) {
+      const name = extractName(node, node.type)
+      if (name) {
+        symbols.push({
+          name,
+          kind,
+          filePath,
+          startLine: (node.startPosition?.row ?? 0) + 1,
+          endLine: (node.endPosition?.row ?? 0) + 1,
+          startColumn: (node.startPosition?.column ?? 0) + 1,
+          endColumn: (node.endPosition?.column ?? 0) + 1,
+          parentName: pn
+        })
+
+        const nextParent = kind === 'class' ? name : pn
+        const children = node.children || []
+        // Push in reverse order to preserve original traversal order
+        for (let i = children.length - 1; i >= 0; i--) {
+          stack.push({ node: children[i], parentName: nextParent })
+        }
+        continue
       }
-      return
     }
-  }
 
-  const children = node.children || []
-  for (const child of children) {
-    traverseTree(child, filePath, symbols, parentName)
+    const children = node.children || []
+    for (let i = children.length - 1; i >= 0; i--) {
+      stack.push({ node: children[i], parentName: pn })
+    }
   }
 }
 
