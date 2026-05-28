@@ -77,7 +77,7 @@ export const MindMapCanvas = forwardRef<MindMapCanvasHandle, MindMapCanvasProps>
 
       const visibleRoot = getVisibleRoot(doc.root)
       const root = d3.hierarchy<MindMapNode>(visibleRoot, (d) => d.children)
-      const treeLayout = d3.tree<MindMapNode>().nodeSize([60, 120])
+      const treeLayout = d3.tree<MindMapNode>().nodeSize([60, 180])
       treeLayout(root)
 
       // Links
@@ -86,7 +86,7 @@ export const MindMapCanvas = forwardRef<MindMapCanvasHandle, MindMapCanvasProps>
         .join('path')
         .attr('class', 'mind-link')
         .attr('d', (d) => {
-          return `M${d.source.y!},${d.source.x!} C${d.source.y! + 60},${d.source.x!} ${d.target.y! - 60},${d.target.x!} ${d.target.y!},${d.target.x!}`
+          return `M${d.source.y!},${d.source.x!} C${d.source.y! + 90},${d.source.x!} ${d.target.y! - 90},${d.target.x!} ${d.target.y!},${d.target.x!}`
         })
         .attr('fill', 'none')
         .attr('stroke', '#555')
