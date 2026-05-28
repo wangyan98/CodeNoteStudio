@@ -56,6 +56,7 @@ declare global {
         endColumn: number
         parentName?: string
       }>>
+      copyFileToAssets: (sourcePath: string) => Promise<{ relativePath: string }>
       startServer: (port?: number) => Promise<{ running: boolean; port: number; url: string }>
       stopServer: () => Promise<void>
       getServerStatus: () => Promise<{ running: boolean; port: number; url: string }>
