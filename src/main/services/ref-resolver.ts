@@ -62,31 +62,23 @@ function classifyRef(raw: string): RefSpec {
 }
 
 /**
- * Resolve parsed @ref names to CodeMapping objects.
+ * Resolve RefSpecs to CodeMapping objects using a 5-tier priority.
+ * Only matched refs are returned. Unmatched refs are silently dropped.
  *
- * Three-tier resolution:
- * 1. If a previous mapping exists, match by same file + nearby line range
- * 2. Fall back to exact name match across all symbols
- * 3. Fall back to Class.method resolution (last dot split)
- * 4. If nothing matches, the ref is silently dropped (not rendered)
+ * T1: file + line + name  — exact symbol at that line in that file
+ * T2: file + line         — any symbol spanning that line in that file
+ * T3: file + name         — named symbol in that file (with Class.method support)
+ * T4: Class.method        — split by last ".", match across all files
+ * T5: name only           — first match across all files
  */
 export function resolveRefs(
-  refNames: string[],
+  refs: RefSpec[],
   symbols: CodeSymbol[],
   previousMappings: CodeMapping[] = []
 ): CodeMapping[] {
   const mappings: CodeMapping[] = []
-  const matched = new Set<string>()
 
-  // Index previous mappings by ref name
-  const prevByName = new Map<string, CodeMapping>()
-  for (const pm of previousMappings) {
-    if (!prevByName.has(pm.functionName)) {
-      prevByName.set(pm.functionName, pm)
-    }
-  }
-
-  // Build a lookup: filePath -> symbols for efficient file+line matching
+  // Build lookup: filePath -> symbols
   const symbolsByFile = new Map<string, CodeSymbol[]>()
   for (const s of symbols) {
     const list = symbolsByFile.get(s.filePath)
@@ -97,70 +89,123 @@ export function resolveRefs(
     }
   }
 
-  for (const refName of refNames) {
-    if (matched.has(refName)) continue
-
-    // Tier 1: try cached file + nearby line
-    const prev = prevByName.get(refName)
-    if (prev) {
-      const fileSymbols = symbolsByFile.get(prev.filePath)
+  for (const ref of refs) {
+    // T1: file + line + name
+    if (ref.filePath && ref.line !== undefined && ref.name) {
+      const fileSymbols = symbolsByFile.get(ref.filePath)
       if (fileSymbols) {
-        // Find a symbol with the same name in the same file, within ±20 lines
-        const nearby = fileSymbols.find(
+        const match = fileSymbols.find(
           (s) =>
-            s.name === refName &&
-            Math.abs(s.startLine - prev.startLine) <= 20
+            s.startLine <= ref.line! &&
+            s.endLine >= ref.line! &&
+            symbolMatchesName(s, ref.name!)
         )
-        if (nearby) {
-          matched.add(refName)
-          mappings.push({
-            raw: refName,
-            functionName: refName,
-            filePath: nearby.filePath,
-            startLine: nearby.startLine,
-            endLine: nearby.endLine
-          })
+        if (match) {
+          mappings.push(toMapping(ref, match))
           continue
         }
       }
     }
 
-    // Tier 2: exact name match across all symbols
-    const match = symbols.find((s) => s.name === refName)
-    if (match) {
-      matched.add(refName)
-      mappings.push({
-        raw: refName,
-        functionName: refName,
-        filePath: match.filePath,
-        startLine: match.startLine,
-        endLine: match.endLine
-      })
-      continue
-    }
-
-    // Tier 3: Class.method resolution (split by last dot)
-    const lastDot = refName.lastIndexOf('.')
-    if (lastDot > 0) {
-      const className = refName.slice(0, lastDot)
-      const methodName = refName.slice(lastDot + 1)
-
-      const methodMatch = symbols.find(
-        (s) => s.name === methodName && s.parentName === className
-      )
-
-      if (methodMatch) {
-        matched.add(refName)
-        mappings.push({
-          raw: refName,
-          functionName: refName,
-          filePath: methodMatch.filePath,
-          startLine: methodMatch.startLine,
-          endLine: methodMatch.endLine
-        })
+    // T2: file + line
+    if (ref.filePath && ref.line !== undefined) {
+      const fileSymbols = symbolsByFile.get(ref.filePath)
+      if (fileSymbols) {
+        const match = fileSymbols.find(
+          (s) => s.startLine <= ref.line! && s.endLine >= ref.line!
+        )
+        if (match) {
+          mappings.push(toMapping(ref, match))
+          continue
+        }
       }
     }
+
+    // T3: file + name
+    if (ref.filePath && ref.name) {
+      const fileSymbols = symbolsByFile.get(ref.filePath)
+      if (fileSymbols) {
+        const match = findSymbolByName(fileSymbols, ref.name)
+        if (match) {
+          mappings.push(toMapping(ref, match))
+          continue
+        }
+      }
+    }
+
+    // T4: Class.method (name with dot, across all files)
+    if (ref.name && ref.name.includes('.')) {
+      const match = findSymbolByName(symbols, ref.name)
+      if (match) {
+        mappings.push(toMapping(ref, match))
+        continue
+      }
+    }
+
+    // T5: name only (first match across all files)
+    if (ref.name) {
+      const match = symbols.find((s) => s.name === ref.name)
+      if (match) {
+        mappings.push(toMapping(ref, match))
+        continue
+      }
+    }
+
+    // T6: no match — silently drop
   }
 
   return mappings
+}
+
+/**
+ * Check if a symbol matches a ref name, supporting both
+ * direct name match and Class.method resolution.
+ */
+function symbolMatchesName(sym: CodeSymbol, refName: string): boolean {
+  if (sym.name === refName) return true
+
+  const lastDot = refName.lastIndexOf('.')
+  if (lastDot > 0) {
+    const className = refName.slice(0, lastDot)
+    const methodName = refName.slice(lastDot + 1)
+    return sym.name === methodName && sym.parentName === className
+  }
+
+  return false
+}
+
+/**
+ * Find a symbol by name in a list, trying direct match first,
+ * then Class.method resolution.
+ */
+function findSymbolByName(symbols: CodeSymbol[], refName: string): CodeSymbol | undefined {
+  const direct = symbols.find((s) => s.name === refName)
+  if (direct) return direct
+
+  const lastDot = refName.lastIndexOf('.')
+  if (lastDot > 0) {
+    const className = refName.slice(0, lastDot)
+    const methodName = refName.slice(lastDot + 1)
+    return symbols.find(
+      (s) => s.name === methodName && s.parentName === className
+    )
+  }
+
+  return undefined
+}
+
+function toMapping(ref: RefSpec, sym: CodeSymbol): CodeMapping {
+  let displayName: string
+  if (ref.name && ref.name.includes('.')) {
+    displayName = ref.name
+  } else {
+    displayName = sym.name
+  }
+  return {
+    raw: ref.raw,
+    functionName: displayName,
+    filePath: sym.filePath,
+    startLine: sym.startLine,
+    endLine: sym.endLine
+  }
 }
