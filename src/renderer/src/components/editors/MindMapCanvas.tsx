@@ -38,10 +38,12 @@ export const MindMapCanvas = forwardRef<MindMapCanvasHandle, MindMapCanvasProps>
         const scale = Math.min(w / (bbox.width + 120), h / (bbox.height + 80), 1.5)
         const tx = (w - bbox.width * scale) / 2 - bbox.x * scale
         const ty = (h - bbox.height * scale) / 2 - bbox.y * scale
-        ;(svg.transition().duration(300) as any).call(
-          d3.zoom<SVGSVGElement, unknown>().transform,
-          d3.zoomIdentity.translate(tx, ty).scale(scale)
-        )
+        const transform = d3.zoomIdentity.translate(tx, ty).scale(scale)
+        if (zoomRef.current) {
+          ;(svg.transition().duration(300) as any).call(zoomRef.current.transform, transform)
+        } else {
+          g.attr('transform', `translate(${tx},${ty}) scale(${scale})`)
+        }
       }
     }))
 
@@ -199,6 +201,15 @@ export const MindMapCanvas = forwardRef<MindMapCanvasHandle, MindMapCanvasProps>
             }
           })
         ;(svg as any).call(zoomRef.current)
+      }
+
+      // Re-apply current zoom transform to the new g after tree rebuild
+      const svgNode = svg.node()
+      if (svgNode && zoomRef.current) {
+        const transform = d3.zoomTransform(svgNode)
+        if (transform.x !== 0 || transform.y !== 0 || transform.k !== 1) {
+          g.attr('transform', `translate(${transform.x},${transform.y}) scale(${transform.k})`)
+        }
       }
 
     }, [doc, selectedNodeId, collapsedIds, dispatch, onContextMenu, onHoverNode])
