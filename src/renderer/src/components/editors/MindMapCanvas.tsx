@@ -54,6 +54,7 @@ export const MindMapCanvas = forwardRef<MindMapCanvasHandle, MindMapCanvasProps>
 
       const width = container.clientWidth || 800
       const height = container.clientHeight || 600
+      console.log('[MindMapCanvas] render called, container:', width, 'x', height, 'nodes:', doc.root.children?.length || 0)
       svg.attr('width', width).attr('height', height)
 
       svg.selectAll('g').remove()
@@ -147,6 +148,7 @@ export const MindMapCanvas = forwardRef<MindMapCanvasHandle, MindMapCanvasProps>
 
       nodeGroup.on('click', (event: MouseEvent, d: d3.HierarchyNode<MindMapNode>) => {
         event.stopPropagation()
+        console.log('[MindMapCanvas] node clicked:', d.data.id, d.data.title)
         dispatch({ type: 'SELECT_NODE', nodeId: d.data.id })
       })
 
@@ -188,6 +190,7 @@ export const MindMapCanvas = forwardRef<MindMapCanvasHandle, MindMapCanvasProps>
 
       // SVG background click: deselect
       svg.on('click', () => {
+        console.log('[MindMapCanvas] SVG background clicked, deselecting')
         dispatch({ type: 'SELECT_NODE', nodeId: '' })
       })
 
@@ -215,6 +218,17 @@ export const MindMapCanvas = forwardRef<MindMapCanvasHandle, MindMapCanvasProps>
     }, [doc, selectedNodeId, collapsedIds, dispatch, onContextMenu, onHoverNode])
 
     useEffect(() => { render() }, [render])
+
+    // Direct DOM listener to verify clicks reach the SVG (debugging)
+    useEffect(() => {
+      const svg = svgRef.current
+      if (!svg) return
+      const handler = (e: MouseEvent) => {
+        console.log('[MindMapCanvas] raw DOM click on SVG, target:', (e.target as Element).tagName, (e.target as Element).className)
+      }
+      svg.addEventListener('click', handler)
+      return () => svg.removeEventListener('click', handler)
+    }, [])
 
     useEffect(() => {
       const container = containerRef.current
