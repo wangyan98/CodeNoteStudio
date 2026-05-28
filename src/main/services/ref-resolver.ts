@@ -16,25 +16,49 @@ export interface CodeMapping {
 }
 
 /**
- * Extract @ref(name) references from arbitrary text content.
- * Works with Markdown, JSON (mind maps, derivation trees), and plain text.
+ * Extract @ref(...) references from text content and classify each
+ * colon-separated segment as filePath, line, or name.
  */
-export function parseRefs(content: string): string[] {
+export function parseRefs(content: string): RefSpec[] {
   if (!content) return []
 
-  const refs: string[] = []
-  // Match @ref(name) where name can contain letters, digits, dots, underscores, hyphens
-  const regex = /@ref\(([a-zA-Z0-9._-]+)\)/g
+  const refs: RefSpec[] = []
+  const seen = new Set<string>()
+
+  // Match @ref(...) — allow / : . digits letters underscores hyphens inside parens
+  const regex = /@ref\(([a-zA-Z0-9._/\-:]+)\)/g
   let match: RegExpExecArray | null
 
   while ((match = regex.exec(content)) !== null) {
-    const name = match[1]
-    if (!refs.includes(name)) {
-      refs.push(name)
-    }
+    const raw = match[1]
+    if (seen.has(raw)) continue
+    seen.add(raw)
+
+    const spec = classifyRef(raw)
+    refs.push(spec)
   }
 
   return refs
+}
+
+function classifyRef(raw: string): RefSpec {
+  const parts = raw.split(':')
+
+  let filePath: string | undefined
+  let line: number | undefined
+  let name: string | undefined
+
+  for (const part of parts) {
+    if (part.includes('/')) {
+      filePath = part
+    } else if (/^\d+$/.test(part)) {
+      line = parseInt(part, 10)
+    } else {
+      name = part
+    }
+  }
+
+  return { raw, filePath, line, name }
 }
 
 /**
