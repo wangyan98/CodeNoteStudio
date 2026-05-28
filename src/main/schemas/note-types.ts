@@ -3,6 +3,7 @@ import { v4 as uuidv4 } from 'uuid'
 // --- Code Mapping ---
 
 export interface CodeMapping {
+  raw: string
   functionName: string
   filePath: string
   startLine: number
