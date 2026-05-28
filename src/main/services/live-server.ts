@@ -108,6 +108,21 @@ function createApp(projectPath: string): Express {
 
   app.use(express.static(rendererDir))
 
+  // Serve monaco-editor locally (avoids CDN load blocked by CSP)
+  const monacoVsDir = (() => {
+    const candidates = [
+      path.join(process.cwd(), 'node_modules', 'monaco-editor', 'min', 'vs'),
+      path.join(__dirname, '..', '..', '..', 'node_modules', 'monaco-editor', 'min', 'vs')
+    ]
+    for (const dir of candidates) {
+      if (fs.existsSync(dir)) return dir
+    }
+    return null
+  })()
+  if (monacoVsDir) {
+    app.use('/monaco-vs', express.static(monacoVsDir))
+  }
+
   // ===== REST API =====
 
   app.get('/api/config', async (_req: Request, res: Response) => {
