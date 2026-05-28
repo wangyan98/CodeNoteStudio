@@ -147,9 +147,13 @@ export const MindMapCanvas = forwardRef<MindMapCanvasHandle, MindMapCanvasProps>
       // --- Events ---
 
       nodeGroup.on('click', (event: MouseEvent, d: d3.HierarchyNode<MindMapNode>) => {
-        event.stopPropagation()
-        console.log('[MindMapCanvas] node clicked:', d.data.id, d.data.title)
-        dispatch({ type: 'SELECT_NODE', nodeId: d.data.id })
+        try {
+          event.stopPropagation()
+          console.log('[MindMapCanvas] node clicked:', d.data.id, d.data.title)
+          dispatch({ type: 'SELECT_NODE', nodeId: d.data.id })
+        } catch (err) {
+          console.error('[MindMapCanvas] node click error:', err)
+        }
       })
 
       nodeGroup.on('dblclick', (event: MouseEvent, d: d3.HierarchyNode<MindMapNode>) => {
@@ -204,6 +208,8 @@ export const MindMapCanvas = forwardRef<MindMapCanvasHandle, MindMapCanvasProps>
             }
           })
         ;(svg as any).call(zoomRef.current)
+        // Center the root node initially (80px from left, vertically centered)
+        ;(svg as any).call(zoomRef.current.transform, d3.zoomIdentity.translate(80, height / 2))
       }
 
       // Re-apply current zoom transform to the new g after tree rebuild
@@ -219,15 +225,15 @@ export const MindMapCanvas = forwardRef<MindMapCanvasHandle, MindMapCanvasProps>
 
     useEffect(() => { render() }, [render])
 
-    // Direct DOM listener to verify clicks reach the SVG (debugging)
+    // Debug: test if clicks reach the container at all
     useEffect(() => {
-      const svg = svgRef.current
-      if (!svg) return
+      const container = containerRef.current
+      if (!container) return
       const handler = (e: MouseEvent) => {
-        console.log('[MindMapCanvas] raw DOM click on SVG, target:', (e.target as Element).tagName, (e.target as Element).className)
+        console.log('[MindMapCanvas] raw DOM click on CONTAINER, target:', (e.target as Element).tagName, (e.target as Element).className, 'clientX/Y:', e.clientX, e.clientY)
       }
-      svg.addEventListener('click', handler)
-      return () => svg.removeEventListener('click', handler)
+      container.addEventListener('click', handler)
+      return () => container.removeEventListener('click', handler)
     }, [])
 
     useEffect(() => {
