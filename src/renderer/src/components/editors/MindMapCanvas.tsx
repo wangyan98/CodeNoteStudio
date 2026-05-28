@@ -174,6 +174,10 @@ export const MindMapCanvas = forwardRef<MindMapCanvasHandle, MindMapCanvasProps>
       // Drag (visual only in v1) — note: do NOT call render() in end handler,
       // it would remove DOM elements before the click event fires
       const dragHandler = d3.drag<SVGGElement, d3.HierarchyNode<MindMapNode>>()
+        .subject(function () {
+          const d = (d3.select(this).datum() as d3.HierarchyNode<MindMapNode>)
+          return { x: d.y!, y: d.x! }
+        })
         .on('start', function () {
           d3.select(this).raise()
           d3.select(this).select('rect').attr('stroke', '#ff0').attr('stroke-width', 2)
