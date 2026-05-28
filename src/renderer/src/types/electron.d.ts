@@ -26,6 +26,7 @@ declare global {
         isDirectory: boolean
       }>>
       readCodeFile: (absolutePath: string) => Promise<string>
+      readBinaryFile: (absolutePath: string) => Promise<string>
       getGitCommit: (repoPath: string) => Promise<{ sha: string; message: string; author: string; date: string }>
       parseSymbols: (filePaths: string[]) => Promise<Array<{
         name: string

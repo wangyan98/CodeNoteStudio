@@ -33,6 +33,7 @@ const api = {
   // Code
   listRepoFiles: (repoPath: string) => ipcRenderer.invoke('code:list-repo-files', repoPath),
   readCodeFile: (absolutePath: string) => ipcRenderer.invoke('code:read-file', absolutePath),
+  readBinaryFile: (absolutePath: string) => ipcRenderer.invoke('code:read-binary-file', absolutePath),
   getGitCommit: (repoPath: string) => ipcRenderer.invoke('code:get-git-commit', repoPath),
   parseSymbols: (filePaths: string[]) => ipcRenderer.invoke('code:parse-symbols', filePaths),
   indexSymbols: (repoPath: string) => ipcRenderer.invoke('code:index-symbols', repoPath),
