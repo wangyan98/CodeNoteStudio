@@ -21,6 +21,7 @@ export const MindMapCanvas = forwardRef<MindMapCanvasHandle, MindMapCanvasProps>
   function MindMapCanvas({ doc, selectedNodeId, collapsedIds, dispatch, onContextMenu, onHoverNode }, ref) {
     const svgRef = useRef<SVGSVGElement>(null)
     const containerRef = useRef<HTMLDivElement>(null)
+    const gElRef = useRef<SVGGElement | null>(null)
     const zoomRef = useRef<d3.ZoomBehavior<SVGSVGElement, unknown> | null>(null)
     const focusNodeIdRef = useRef<string | null>(null)
 
@@ -56,6 +57,7 @@ export const MindMapCanvas = forwardRef<MindMapCanvasHandle, MindMapCanvasProps>
       svg.selectAll('g').remove()
 
       const g = svg.append('g')
+      gElRef.current = g.node()
 
       // Filter out collapsed subtrees
       function getVisibleRoot(node: MindMapNode): MindMapNode {
@@ -187,14 +189,17 @@ export const MindMapCanvas = forwardRef<MindMapCanvasHandle, MindMapCanvasProps>
         dispatch({ type: 'SELECT_NODE', nodeId: '' })
       })
 
-      // Zoom
-      const zoom = d3.zoom<SVGSVGElement, unknown>()
-        .scaleExtent([0.3, 2.5])
-        .on('zoom', (event) => {
-          g.attr('transform', `translate(${event.transform.x},${event.transform.y}) scale(${event.transform.k})`)
-        })
-      ;(svg as any).call(zoom)
-      zoomRef.current = zoom
+      // Zoom — create once, reuse across renders to avoid listener stacking
+      if (!zoomRef.current) {
+        zoomRef.current = d3.zoom<SVGSVGElement, unknown>()
+          .scaleExtent([0.3, 2.5])
+          .on('zoom', (event) => {
+            if (gElRef.current) {
+              d3.select(gElRef.current).attr('transform', `translate(${event.transform.x},${event.transform.y}) scale(${event.transform.k})`)
+            }
+          })
+        ;(svg as any).call(zoomRef.current)
+      }
 
     }, [doc, selectedNodeId, collapsedIds, dispatch, onContextMenu, onHoverNode])
 

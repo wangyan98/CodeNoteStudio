@@ -1,5 +1,6 @@
 import { useReducer, useCallback, useEffect, useRef, useState } from 'react'
 import type { MindMapDocument, MindMapNode } from '../../../../main/schemas/note-types'
+import './MindMapRenderer.css'
 import { mindMapReducer, findNode } from './mindMapReducer'
 import type { MindMapAction } from './mindMapReducer'
 import { MindMapCanvas } from './MindMapCanvas'
