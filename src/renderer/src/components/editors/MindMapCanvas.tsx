@@ -173,19 +173,23 @@ export const MindMapCanvas = forwardRef<MindMapCanvasHandle, MindMapCanvasProps>
 
       // Drag (visual only in v1) — note: do NOT call render() in end handler,
       // it would remove DOM elements before the click event fires
+      // Use manual offset tracking to avoid D3 subject coordinate mismatch
+      let dragOffset: { x: number; y: number } | null = null
+
       const dragHandler = d3.drag<SVGGElement, d3.HierarchyNode<MindMapNode>>()
-        .subject(function () {
-          const d = (d3.select(this).datum() as d3.HierarchyNode<MindMapNode>)
-          return { x: d.y!, y: d.x! }
-        })
-        .on('start', function () {
+        .on('start', function (event: d3.D3DragEvent<SVGGElement, unknown, unknown>, d: d3.HierarchyNode<MindMapNode>) {
           d3.select(this).raise()
           d3.select(this).select('rect').attr('stroke', '#ff0').attr('stroke-width', 2)
+          const pt = d3.pointer(event, svgRef.current!)
+          dragOffset = { x: pt[0] - d.y!, y: pt[1] - d.x! }
         })
         .on('drag', function (event: d3.D3DragEvent<SVGGElement, unknown, unknown>, d: d3.HierarchyNode<MindMapNode>) {
-          d3.select(this).attr('transform', `translate(${d.y! + event.x},${d.x! + event.y})`)
+          if (!dragOffset) return
+          const pt = d3.pointer(event, svgRef.current!)
+          d3.select(this).attr('transform', `translate(${pt[0] - dragOffset.x},${pt[1] - dragOffset.y})`)
         })
         .on('end', function (_event: d3.D3DragEvent<SVGGElement, unknown, unknown>, d: d3.HierarchyNode<MindMapNode>) {
+          dragOffset = null
           // Snap back to original position, restore stroke
           d3.select(this).attr('transform', `translate(${d.y!},${d.x!})`)
           const isSelected = d.data.id === selectedNodeId
