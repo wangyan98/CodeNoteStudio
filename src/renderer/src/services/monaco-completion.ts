@@ -8,7 +8,7 @@ export function registerRefCompletionProvider(): monaco.IDisposable {
       const lineContent = model.getLineContent(position.lineNumber)
       const textBeforeCursor = lineContent.substring(0, position.column - 1)
 
-      const refMatch = textBeforeCursor.match(/@ref\(([a-zA-Z0-9._-]*)$/)
+      const refMatch = textBeforeCursor.match(/@ref\(([a-zA-Z0-9._/\-:]*)$/)
       if (!refMatch) return { suggestions: [] }
 
       const partialName = refMatch[1] || ''
@@ -20,21 +20,56 @@ export function registerRefCompletionProvider(): monaco.IDisposable {
           undefined
         )
 
-        const suggestions: monaco.languages.CompletionItem[] = symbols.map((sym) => ({
-          label: sym.name,
-          kind: mapKind(sym.kind),
-          detail: `${sym.kind} · ${sym.filePath.split('/').pop()}:${sym.startLine}`,
-          insertText: sym.name,
-          range: {
-            startLineNumber: position.lineNumber,
-            endLineNumber: position.lineNumber,
-            startColumn: position.column - partialName.length,
-            endColumn: position.column
-          },
-          sortText: partialName
-            ? (sym.name.startsWith(partialName) ? '0' : '1') + sym.name
-            : sym.name
-        }))
+        // Detect names that appear in multiple files
+        const nameFileCount = new Map<string, number>()
+        for (const sym of symbols) {
+          nameFileCount.set(sym.name, (nameFileCount.get(sym.name) || 0) + 1)
+        }
+        const duplicateNames = new Set(
+          [...nameFileCount.entries()]
+            .filter(([, count]) => count > 1)
+            .map(([name]) => name)
+        )
+
+        const suggestions: monaco.languages.CompletionItem[] = []
+
+        for (const sym of symbols) {
+          const fileName = sym.filePath.split('/').pop() || sym.filePath
+
+          if (duplicateNames.has(sym.name)) {
+            suggestions.push({
+              label: `${sym.filePath}:${sym.name}`,
+              kind: mapKind(sym.kind),
+              detail: `${sym.kind} · ${fileName}:${sym.startLine}`,
+              insertText: `${sym.filePath}:${sym.name}`,
+              range: {
+                startLineNumber: position.lineNumber,
+                endLineNumber: position.lineNumber,
+                startColumn: position.column - partialName.length,
+                endColumn: position.column
+              },
+              sortText: partialName
+                ? (sym.name.startsWith(partialName) ? '0' : '1') + sym.name
+                : sym.name
+            })
+          }
+
+          suggestions.push({
+            label: sym.name,
+            kind: mapKind(sym.kind),
+            detail: `${sym.kind} · ${fileName}:${sym.startLine}`,
+            insertText: sym.name,
+            range: {
+              startLineNumber: position.lineNumber,
+              endLineNumber: position.lineNumber,
+              startColumn: position.column - partialName.length,
+              endColumn: position.column
+            },
+            sortText: partialName
+              ? (sym.name.startsWith(partialName) ? '0' : '1') + sym.name
+              : sym.name
+          })
+        }
 
         return { suggestions }
       } catch {
