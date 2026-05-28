@@ -235,6 +235,12 @@ export const MindMapCanvas = forwardRef<MindMapCanvasHandle, MindMapCanvasProps>
     // Inline title editing overlay
     useEffect(() => {
       if (!focusNodeIdRef.current) return
+      // Don't create inline editor if user is already typing in an input field
+      const activeTag = (document.activeElement as HTMLElement)?.tagName
+      if (activeTag === 'INPUT' || activeTag === 'TEXTAREA') {
+        focusNodeIdRef.current = null
+        return
+      }
       const nodeId = focusNodeIdRef.current
       focusNodeIdRef.current = null
 
@@ -298,14 +304,21 @@ export const MindMapCanvas = forwardRef<MindMapCanvasHandle, MindMapCanvasProps>
         tabIndex={0}
         onKeyDown={(e) => {
           if (!selectedNodeId || selectedNodeId === '') return
-          e.preventDefault()
+          // Skip if focus is in an input/textarea or during IME composition
+          const tag = (e.target as HTMLElement).tagName
+          if (tag === 'INPUT' || tag === 'TEXTAREA') return
+          if (e.isComposing) return
           if (e.key === 'Tab') {
+            e.preventDefault()
             dispatch({ type: 'ADD_CHILD', parentId: selectedNodeId })
           } else if (e.key === 'Enter') {
+            e.preventDefault()
             dispatch({ type: 'ADD_SIBLING', nodeId: selectedNodeId })
           } else if (e.key === ' ') {
+            e.preventDefault()
             dispatch({ type: 'TOGGLE_COLLAPSE', nodeId: selectedNodeId })
           } else if (e.key === 'F2') {
+            e.preventDefault()
             focusNodeIdRef.current = selectedNodeId
             render()
           }
