@@ -202,6 +202,8 @@ export function WorkspaceToolbar() {
               title={`Re-index ${repo.path.split('/').pop()}`}
               onClick={(e) => {
                 e.stopPropagation()
+                const repoName = repo.path.split('/').pop() || repo.path
+                if (!confirm(`Re-index "${repoName}"?\nThis will re-parse all source files in this repo.`)) return
                 window.electronAPI.indexSymbols(repo.path).then((result) => {
                   console.log(`Indexed ${result.indexed} symbols in ${repo.path}`)
                 }).catch((err) => {
