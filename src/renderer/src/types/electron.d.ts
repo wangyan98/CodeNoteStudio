@@ -39,7 +39,7 @@ declare global {
         parentName?: string
       }>>
       indexSymbols: (repoPath: string) => Promise<{ indexed: number; totalFiles: number }>
-      resolveRefs: (notePath: string, content: string) => Promise<Array<{
+      resolveRefs: (notePath: string, content: string, activeRepoPath?: string) => Promise<Array<{
         raw: string
         functionName: string
         filePath: string

@@ -37,7 +37,8 @@ const api = {
   getGitCommit: (repoPath: string) => ipcRenderer.invoke('code:get-git-commit', repoPath),
   parseSymbols: (filePaths: string[]) => ipcRenderer.invoke('code:parse-symbols', filePaths),
   indexSymbols: (repoPath: string) => ipcRenderer.invoke('code:index-symbols', repoPath),
-  resolveRefs: (notePath: string, content: string) => ipcRenderer.invoke('code:resolve-refs', notePath, content),
+  resolveRefs: (notePath: string, content: string, activeRepoPath?: string) =>
+    ipcRenderer.invoke('code:resolve-refs', notePath, content, activeRepoPath),
   querySymbols: (name?: string, filePath?: string, kind?: string) =>
     ipcRenderer.invoke('code:query-symbols', name, filePath, kind),
   copyFileToAssets: (sourcePath: string) =>

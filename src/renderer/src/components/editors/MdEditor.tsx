@@ -9,6 +9,7 @@ interface MdEditorProps {
   content: string
   notePath: string
   workspacePath: string | null
+  codeRepoPath: string | null
   onSave: (content: string) => Promise<void>
   onRefClick?: (refName: string) => void
   codeMappings?: CodeMapping[]
@@ -22,7 +23,7 @@ export interface MdEditorHandle {
 type SaveStatus = 'saved' | 'saving' | 'unsaved' | 'error'
 
 export const MdEditor = forwardRef<MdEditorHandle, MdEditorProps>(
-  function MdEditor({ content, notePath, workspacePath, onSave, onRefClick, codeMappings }, ref) {
+  function MdEditor({ content, notePath, workspacePath, codeRepoPath, onSave, onRefClick, codeMappings }, ref) {
   const [value, setValue] = useState(content)
   const [showPreview, setShowPreview] = useState(false)
   const [saveStatus, setSaveStatus] = useState<SaveStatus>('saved')
@@ -65,7 +66,7 @@ export const MdEditor = forwardRef<MdEditorHandle, MdEditorProps>(
   useEffect(() => {
     if (!showPreview) return
     let cancelled = false
-    window.electronAPI.resolveRefs(notePath, value)
+    window.electronAPI.resolveRefs(notePath, value, codeRepoPath ?? undefined)
       .then((mappings: CodeMapping[]) => {
         if (!cancelled) setPreviewMappings(mappings)
       })

@@ -11,6 +11,7 @@ export interface CodeSymbol {
   startColumn: number
   endColumn: number
   parentName?: string
+  repoPath?: string
 }
 
 let parser: Parser | null = null

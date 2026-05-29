@@ -229,11 +229,12 @@ function createApp(projectPath: string): Express {
     const name = req.query.name as string | undefined
     const filePath = req.query.file as string | undefined
     const kind = req.query.kind as string | undefined
+    const repoPath = req.query.repo as string | undefined
 
     let db: Database.Database | null = null
     try {
       db = getDb(projectPath)
-      const results = querySymbols(db, name, filePath, kind)
+      const results = querySymbols(db, name, filePath, kind, repoPath)
       res.json(results)
     } catch (e) {
       res.status(500).json({ error: String(e) })
@@ -247,6 +248,7 @@ function createApp(projectPath: string): Express {
       const { saveRefCache } = await import('./ref-cache')
       const content = req.query.content as string
       const notePath = req.query.notePath as string | undefined
+      const activeRepo = req.query.repo as string | undefined
 
       if (!content) {
         res.json([])
@@ -261,7 +263,7 @@ function createApp(projectPath: string): Express {
 
       const db = getDb(projectPath)
       const allSymbols = querySymbols(db)
-      const mappings = resolveRefs(refs, allSymbols)
+      const mappings = await resolveRefs(refs, allSymbols, activeRepo)
       if (notePath) {
         saveRefCache(projectPath, notePath, mappings)
       }

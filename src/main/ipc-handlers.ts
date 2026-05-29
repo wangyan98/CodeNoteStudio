@@ -140,7 +140,7 @@ export function registerIpcHandlers(projectPath: string): void {
 
   ipcMain.handle('code:index-symbols', async (_event, repoPath: string) => {
     try {
-      const { initSymbolDatabase, indexSymbols, clearSymbols } = await import('./services/symbol-index')
+      const { initSymbolDatabase, indexSymbols, clearRepo } = await import('./services/symbol-index')
       const { extractSymbols, initParser } = await import('./services/code-parser')
       const { listRepoFiles } = await import('./services/file-system')
 
@@ -151,9 +151,9 @@ export function registerIpcHandlers(projectPath: string): void {
       console.log(`[code:index-symbols] Found ${codeFiles.length} code files`)
 
       const db = initSymbolDatabase(currentProjectPath!)
-      clearSymbols(db)
+      clearRepo(db, repoPath)
       const symbols = await extractSymbols(codeFiles)
-      indexSymbols(db, symbols)
+      indexSymbols(db, symbols, repoPath)
       console.log(`[code:index-symbols] Indexed ${symbols.length} symbols`)
 
       return { indexed: symbols.length, totalFiles: codeFiles.length }
@@ -163,13 +163,13 @@ export function registerIpcHandlers(projectPath: string): void {
     }
   })
 
-  ipcMain.handle('code:query-symbols', async (_event, name?: string, filePath?: string, kind?: string) => {
+  ipcMain.handle('code:query-symbols', async (_event, name?: string, filePath?: string, kind?: string, repoPath?: string) => {
     const { initSymbolDatabase, querySymbols } = await import('./services/symbol-index')
     const db = initSymbolDatabase(currentProjectPath!)
-    return querySymbols(db, name, filePath, kind, name ? undefined : 50)
+    return querySymbols(db, name, filePath, kind, repoPath, name ? undefined : 50)
   })
 
-  ipcMain.handle('code:resolve-refs', async (_event, notePath: string, content: string) => {
+  ipcMain.handle('code:resolve-refs', async (_event, notePath: string, content: string, activeRepoPath?: string) => {
     const { parseRefs, resolveRefs } = await import('./services/ref-resolver')
     const { initSymbolDatabase, querySymbols } = await import('./services/symbol-index')
     const { saveRefCache } = await import('./services/ref-cache')
@@ -179,7 +179,7 @@ export function registerIpcHandlers(projectPath: string): void {
 
     const db = initSymbolDatabase(currentProjectPath!)
     const allSymbols = querySymbols(db)
-    const mappings = await resolveRefs(refs, allSymbols)
+    const mappings = await resolveRefs(refs, allSymbols, activeRepoPath)
     saveRefCache(currentProjectPath!, notePath, mappings)
     return mappings
   })

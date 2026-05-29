@@ -4,7 +4,7 @@ import { join } from 'node:path'
 import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import Database from 'better-sqlite3'
-import { initSymbolDatabase, indexSymbols, querySymbols, clearSymbols } from '../../src/main/services/symbol-index'
+import { initSymbolDatabase, indexSymbols, querySymbols, clearRepo } from '../../src/main/services/symbol-index'
 import type { CodeSymbol } from '../../src/main/services/code-parser'
 
 describe('symbol-index', () => {
@@ -55,7 +55,7 @@ describe('symbol-index', () => {
   ]
 
   it('indexes and queries symbols by name', () => {
-    indexSymbols(db, sampleSymbols)
+    indexSymbols(db, sampleSymbols, '/repo')
 
     const results = querySymbols(db, 'fetchData')
     expect(results).toHaveLength(1)
@@ -70,14 +70,14 @@ describe('symbol-index', () => {
   })
 
   it('clears all symbols', () => {
-    indexSymbols(db, sampleSymbols)
-    clearSymbols(db)
+    indexSymbols(db, sampleSymbols, '/repo')
+    clearRepo(db, '/repo')
     const results = querySymbols(db, 'fetchData')
     expect(results).toEqual([])
   })
 
   it('queries by file path', () => {
-    indexSymbols(db, sampleSymbols)
+    indexSymbols(db, sampleSymbols, '/repo')
     const results = querySymbols(db, '', '/repo/src/api.ts')
     expect(results.length).toBeGreaterThanOrEqual(3)
   })

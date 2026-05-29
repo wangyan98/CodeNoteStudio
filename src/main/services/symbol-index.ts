@@ -22,16 +22,31 @@ export function initSymbolDatabase(projectPath: string): Database.Database {
     )
   `)
 
+  // Migration: add repo_path if the column doesn't exist yet
+  try {
+    db.exec(`ALTER TABLE symbols ADD COLUMN repo_path TEXT NOT NULL DEFAULT ''`)
+  } catch {
+    // Column already exists — ignore
+  }
+
+  console.log('[symbol-index] Cleaning up legacy symbols with empty repo_path — re-index required')
+  db.exec(`DELETE FROM symbols WHERE repo_path = ''`)
+
   db.exec(`CREATE INDEX IF NOT EXISTS idx_symbols_name ON symbols(name)`)
   db.exec(`CREATE INDEX IF NOT EXISTS idx_symbols_file ON symbols(file_path)`)
+  db.exec(`CREATE INDEX IF NOT EXISTS idx_symbols_repo ON symbols(repo_path)`)
 
   return db
 }
 
-export function indexSymbols(db: Database.Database, symbols: CodeSymbol[]): void {
+export function clearRepo(db: Database.Database, repoPath: string): void {
+  db.prepare('DELETE FROM symbols WHERE repo_path = ?').run(repoPath)
+}
+
+export function indexSymbols(db: Database.Database, symbols: CodeSymbol[], repoPath: string): void {
   const insert = db.prepare(`
-    INSERT OR REPLACE INTO symbols (name, kind, file_path, start_line, end_line, start_column, end_column, parent_name)
-    VALUES (@name, @kind, @file_path, @start_line, @end_line, @start_column, @end_column, @parent_name)
+    INSERT OR REPLACE INTO symbols (name, kind, file_path, start_line, end_line, start_column, end_column, parent_name, repo_path)
+    VALUES (@name, @kind, @file_path, @start_line, @end_line, @start_column, @end_column, @parent_name, @repo_path)
   `)
 
   const transaction = db.transaction((syms: CodeSymbol[]) => {
@@ -44,7 +59,8 @@ export function indexSymbols(db: Database.Database, symbols: CodeSymbol[]): void
         end_line: sym.endLine,
         start_column: sym.startColumn,
         end_column: sym.endColumn,
-        parent_name: sym.parentName || null
+        parent_name: sym.parentName || null,
+        repo_path: repoPath
       })
     }
   })
@@ -57,9 +73,10 @@ export function querySymbols(
   name?: string,
   filePath?: string,
   kind?: string,
+  repoPath?: string,
   limit?: number
-): CodeSymbol[] {
-  let sql = 'SELECT name, kind, file_path, start_line, end_line, start_column, end_column, parent_name FROM symbols WHERE 1=1'
+): (CodeSymbol & { repoPath: string })[] {
+  let sql = 'SELECT name, kind, file_path, start_line, end_line, start_column, end_column, parent_name, repo_path FROM symbols WHERE 1=1'
   const params: Record<string, string> = {}
 
   if (name) {
@@ -74,6 +91,10 @@ export function querySymbols(
     sql += ' AND kind = @kind'
     params.kind = kind
   }
+  if (repoPath) {
+    sql += ' AND repo_path = @repo_path'
+    params.repo_path = repoPath
+  }
 
   sql += ' ORDER BY start_line ASC'
 
@@ -83,14 +104,9 @@ export function querySymbols(
   }
 
   const rows = db.prepare(sql).all(params) as Array<{
-    name: string
-    kind: string
-    file_path: string
-    start_line: number
-    end_line: number
-    start_column: number
-    end_column: number
-    parent_name: string | null
+    name: string; kind: string; file_path: string
+    start_line: number; end_line: number; start_column: number; end_column: number
+    parent_name: string | null; repo_path: string
   }>
 
   return rows.map((row) => ({
@@ -101,10 +117,7 @@ export function querySymbols(
     endLine: row.end_line,
     startColumn: row.start_column,
     endColumn: row.end_column,
-    parentName: row.parent_name || undefined
+    parentName: row.parent_name || undefined,
+    repoPath: row.repo_path
   }))
-}
-
-export function clearSymbols(db: Database.Database): void {
-  db.exec('DELETE FROM symbols')
 }

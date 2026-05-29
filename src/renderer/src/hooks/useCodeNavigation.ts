@@ -5,7 +5,7 @@ import type { CodeFile } from '../types'
 export function useCodeNavigation() {
   const { dispatch } = useAppContext()
 
-  const navigateToCode = useCallback((filePath: string, startLine: number) => {
+  const navigateToCode = useCallback((filePath: string, startLine: number, repoPath?: string) => {
     const fileName = filePath.split('/').pop() || filePath
     const ext = filePath.split('.').pop()?.toLowerCase() || ''
     const langMap: Record<string, string> = {
@@ -19,7 +19,8 @@ export function useCodeNavigation() {
     const codeFile: CodeFile = {
       path: filePath,
       name: fileName,
-      language: langMap[ext] || 'plaintext'
+      language: langMap[ext] || 'plaintext',
+      repoPath: repoPath
     }
 
     dispatch({ type: 'OPEN_CODE_FILE', file: codeFile })
