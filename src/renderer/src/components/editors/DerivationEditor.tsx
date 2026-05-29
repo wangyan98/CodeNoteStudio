@@ -1,4 +1,4 @@
-import { useReducer, useCallback, useEffect, useRef, useState } from 'react'
+import { useReducer, useEffect, useMemo, useRef, useState } from 'react'
 import katex from 'katex'
 import type { DerivationDocument, DerivationNode } from '../../../../main/schemas/note-types'
 import './DerivationEditor.css'
@@ -67,8 +67,6 @@ export function DerivationEditor({ document: initialDoc, onSave, codeRepoPath }:
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null)
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const oldDocRef = useRef(doc)
-  const katexTimersRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map())
-
   // Reset when opening a different document
   useEffect(() => {
     dispatch({ type: 'SET_DOCUMENT', document: initialDoc })
@@ -113,30 +111,31 @@ export function DerivationEditor({ document: initialDoc, onSave, codeRepoPath }:
   useEffect(() => {
     return () => {
       if (saveTimerRef.current) clearTimeout(saveTimerRef.current)
-      for (const timer of katexTimersRef.current.values()) {
-        clearTimeout(timer)
-      }
     }
   }, [])
 
-  const miniDag = buildMiniDag(doc.nodes)
+  const miniDag = useMemo(() => buildMiniDag(doc.nodes), [doc.nodes])
 
-  // Build cycle-safe dropdown options for a node
-  const getDerivesFromOptions = (nodeId: string) => {
-    const descendants = new Set<string>()
-    const stack = [nodeId]
-    while (stack.length > 0) {
-      const current = stack.pop()!
-      const children = doc.nodes.filter((n) => n.derivesFrom === current)
-      for (const child of children) {
-        if (!descendants.has(child.id)) {
-          descendants.add(child.id)
-          stack.push(child.id)
+  // Build cycle-safe dropdown options for each node (precomputed)
+  const derivesFromOptions = useMemo(() => {
+    const map = new Map<string, Array<{ id: string; stepNumber: number; title: string }>>()
+    for (const node of doc.nodes) {
+      const descendants = new Set<string>()
+      const stack = [node.id]
+      while (stack.length > 0) {
+        const current = stack.pop()!
+        const children = doc.nodes.filter((n) => n.derivesFrom === current)
+        for (const child of children) {
+          if (!descendants.has(child.id)) {
+            descendants.add(child.id)
+            stack.push(child.id)
+          }
         }
       }
+      map.set(node.id, doc.nodes.filter((n) => n.id !== node.id && !descendants.has(n.id)))
     }
-    return doc.nodes.filter((n) => n.id !== nodeId && !descendants.has(n.id))
-  }
+    return map
+  }, [doc.nodes])
 
   const handleDragStart = (index: number) => {
     setDragIndex(index)
@@ -255,7 +254,7 @@ export function DerivationEditor({ document: initialDoc, onSave, codeRepoPath }:
       <div className="derivation-editor-list">
         {doc.nodes.map((node, index) => (
           <div key={node.id}>
-            {index === dragOverIndex && dragIndex !== null && dragIndex > index && (
+            {(index === dragOverIndex && dragIndex !== null && dragIndex !== index) && (
               <div style={{ height: 4, background: 'var(--accent-color)', borderRadius: 2, margin: '0 0 4px 0', opacity: 0.6 }} />
             )}
             <div
@@ -282,7 +281,7 @@ export function DerivationEditor({ document: initialDoc, onSave, codeRepoPath }:
                   }
                 >
                   <option value="">Derives from: (none)</option>
-                  {getDerivesFromOptions(node.id).map((opt) => (
+                  {(derivesFromOptions.get(node.id) ?? []).map((opt) => (
                     <option key={opt.id} value={opt.id}>
                       {opt.stepNumber}. {opt.title || 'Untitled'}
                     </option>
