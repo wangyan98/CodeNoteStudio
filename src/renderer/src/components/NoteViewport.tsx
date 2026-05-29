@@ -6,6 +6,7 @@ import { MdEditor } from './editors/MdEditor'
 import type { MdEditorHandle } from './editors/MdEditor'
 import { MindMapEditor } from './editors/MindMapEditor'
 import { DerivationRenderer } from './editors/DerivationRenderer'
+import { DerivationEditor } from './editors/DerivationEditor'
 import { CodeMappingsPanel } from './CodeMappingsPanel'
 import type { MindMapDocument, DerivationDocument } from '../../../main/schemas/note-types'
 import type { CodeMapping } from '../types'
@@ -147,8 +148,12 @@ export function NoteViewport() {
 
       case 'derive':
         return (
-          <DerivationRenderer
+          <DerivationEditor
             document={activeNoteContent as DerivationDocument}
+            onSave={async (doc: DerivationDocument) => {
+              await saveNote(selectedNoteId, doc)
+            }}
+            codeRepoPath={state.codeRepoPath}
           />
         )
 
