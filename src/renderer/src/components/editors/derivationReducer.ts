@@ -76,10 +76,9 @@ export function derivationReducer(doc: DerivationDocument, action: DerivationAct
       }
 
       const cloned = cloneDoc(doc)
-      const node = cloned.nodes.find((n) => n.id === action.nodeId!)
-      if (node) {
-        node.derivesFrom = action.parentId ?? null
-      }
+      cloned.nodes = cloned.nodes.map((n) =>
+        n.id === action.nodeId! ? { ...n, derivesFrom: action.parentId ?? null } : n
+      )
       return { ...cloned, nodes: syncDerivesTo(cloned.nodes) }
     }
 

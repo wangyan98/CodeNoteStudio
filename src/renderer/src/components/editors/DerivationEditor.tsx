@@ -69,9 +69,15 @@ export function DerivationEditor({ document: initialDoc, onSave, codeRepoPath }:
   const oldDocRef = useRef(doc)
   // Reset when opening a different document
   useEffect(() => {
+    // Clear any pending save from the previous document
+    if (saveTimerRef.current) {
+      clearTimeout(saveTimerRef.current)
+      saveTimerRef.current = null
+    }
     dispatch({ type: 'SET_DOCUMENT', document: initialDoc })
     oldDocRef.current = initialDoc
     setCollapsedPreviews(new Set())
+    setSaveStatus('saved')
   }, [initialDoc])
 
   // Auto-save with 300ms debounce
