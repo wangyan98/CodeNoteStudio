@@ -341,45 +341,40 @@ export function DerivationEditor({ document: initialDoc, onSave, codeRepoPath }:
 
 // Separate component for KaTeX to keep DerivationEditor focused
 function KatexPreview({ latex }: { latex: string }) {
-  const containerRef = useRef<HTMLDivElement>(null)
-  const [error, setError] = useState<string | null>(null)
+  const [html, setHtml] = useState('')
 
   useEffect(() => {
-    if (!containerRef.current) return
-    containerRef.current.innerHTML = ''
     try {
-      katex.render(latex, containerRef.current, { throwOnError: false, displayMode: false })
-      setError(null)
-    } catch (err) {
-      setError(String(err))
+      setHtml(katex.renderToString(latex, { throwOnError: false, displayMode: false }))
+    } catch {
+      setHtml('')
     }
   }, [latex])
 
-  if (error) {
-    return <span className="katex-error">{error}</span>
-  }
-
-  return <div ref={containerRef} />
+  if (!html) return null
+  return <div dangerouslySetInnerHTML={{ __html: html }} />
 }
 
 // Mini KaTeX pill for the DAG preview — shows step number + rendered formula
 function KatexMiniPill({ latex, stepNumber }: { latex: string; stepNumber: number }) {
-  const containerRef = useRef<HTMLDivElement>(null)
+  const [html, setHtml] = useState('')
 
   useEffect(() => {
-    if (!containerRef.current) return
-    containerRef.current.innerHTML = ''
     try {
-      katex.render(latex, containerRef.current, { throwOnError: false, displayMode: false })
+      setHtml(katex.renderToString(latex, { throwOnError: false, displayMode: false }))
     } catch {
-      containerRef.current.textContent = latex || '(empty)'
+      setHtml('')
     }
   }, [latex])
 
   return (
     <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
       <span style={{ fontWeight: 600, fontSize: 10, color: 'var(--accent-color)' }}>{stepNumber}.</span>
-      <span ref={containerRef} style={{ fontSize: 11 }} />
+      {html ? (
+        <span dangerouslySetInnerHTML={{ __html: html }} style={{ fontSize: 11 }} />
+      ) : (
+        <span style={{ fontSize: 11, color: 'var(--placeholder-color)' }}>(empty)</span>
+      )}
     </span>
   )
 }
