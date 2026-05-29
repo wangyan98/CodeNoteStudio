@@ -5,6 +5,7 @@ const CONTEXT_LINES = 10
 
 export interface RefSpec {
   raw: string          // original text inside @ref(...)
+  repo?: string        // repo name prefix (first segment if not digits and not a path)
   filePath?: string    // classified file segment (contains '/')
   line?: number        // classified line segment (pure digits)
   name?: string        // classified name segment (may include '.' for Class.method)
@@ -54,11 +55,20 @@ export function parseRefs(content: string): RefSpec[] {
 function classifyRef(raw: string): RefSpec {
   const parts = raw.split(':')
 
+  let repo: string | undefined
   let filePath: string | undefined
   let line: number | undefined
   let name: string | undefined
 
-  for (const part of parts) {
+  // First segment is a repo if it's not all-digits and doesn't contain '/'
+  let startIndex = 0
+  if (parts.length > 1 && parts[0].length > 0 && !parts[0].includes('/') && !/^\d+$/.test(parts[0])) {
+    repo = parts[0]
+    startIndex = 1
+  }
+
+  for (let i = startIndex; i < parts.length; i++) {
+    const part = parts[i]
     if (part.includes('/')) {
       filePath = part
     } else if (/^\d+$/.test(part)) {
@@ -68,7 +78,7 @@ function classifyRef(raw: string): RefSpec {
     }
   }
 
-  return { raw, filePath, line, name }
+  return { raw, repo, filePath, line, name }
 }
 
 async function extractCodeSnippet(
