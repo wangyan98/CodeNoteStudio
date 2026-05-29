@@ -6,6 +6,15 @@ import type { CodeSymbol } from './SymbolPicker'
 import type * as monaco from 'monaco-editor'
 import './CodeViewport.css'
 
+const REPO_COLORS = ['#e06c75', '#61afef', '#98c379', '#d19a66', '#c678dd', '#56b6c2', '#e5c07b', '#abb2bf']
+
+function getRepoColorByPath(repoPath: string | undefined, codeRepos: Array<{ path: string }>): string | undefined {
+  if (!repoPath) return undefined
+  const index = codeRepos.findIndex((r) => r.path === repoPath)
+  if (index < 0) return undefined
+  return REPO_COLORS[index % REPO_COLORS.length]
+}
+
 const IMAGE_EXTS = new Set(['png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp'])
 
 const MIME_MAP: Record<string, string> = {
@@ -113,19 +122,24 @@ export function CodeViewport() {
 
   const handleSymbolSelect = useCallback((sym: CodeSymbol) => {
     let relPath = sym.filePath
-    if (codeRepoPath) {
-      const prefix = codeRepoPath.endsWith('/') ? codeRepoPath : codeRepoPath + '/'
+    let repoName: string | undefined
+    for (const repo of state.codeRepos) {
+      const prefix = repo.path.endsWith('/') ? repo.path : repo.path + '/'
       if (sym.filePath.startsWith(prefix)) {
         relPath = sym.filePath.slice(prefix.length)
+        repoName = repo.path.split('/').pop() || repo.path
+        break
       }
     }
 
     const displayName = sym.parentName ? `${sym.parentName}.${sym.name}` : sym.name
-    const refText = `@ref(${relPath}:${sym.startLine}:${displayName})`
+    const refText = repoName
+      ? `@ref(${repoName}:${relPath}:${sym.startLine}:${displayName})`
+      : `@ref(${relPath}:${sym.startLine}:${displayName})`
 
     window.dispatchEvent(new CustomEvent('symbol-insert', { detail: refText }))
     setSymbolPickerOpen(false)
-  }, [codeRepoPath])
+  }, [state.codeRepos])
 
   useEffect(() => {
     if (codeRepoPath) {
@@ -256,21 +270,34 @@ export function CodeViewport() {
       <div className="code-viewport">
         {/* Tab bar */}
         <div className="code-tab-bar">
-          {openCodeFiles.map((file, index) => (
-            <div
-              key={file.path}
-              className={`code-tab ${index === activeCodeFileIndex ? 'active' : ''}`}
-              onClick={() => handleSelectTab(index)}
-            >
-              <span>{file.name}</span>
-              <button
-                className="code-tab-close"
-                onClick={(e) => handleCloseTab(index, e)}
+          {openCodeFiles.map((file, index) => {
+            const repoColor = getRepoColorByPath(file.repoPath, state.codeRepos)
+            return (
+              <div
+                key={file.path}
+                className={`code-tab ${index === activeCodeFileIndex ? 'active' : ''}`}
+                style={repoColor && index === activeCodeFileIndex
+                  ? { borderBottomColor: repoColor }
+                  : undefined
+                }
+                onClick={() => handleSelectTab(index)}
               >
-                ×
-              </button>
-            </div>
-          ))}
+                {repoColor && (
+                  <span
+                    className="code-tab-repo-dot"
+                    style={{ backgroundColor: repoColor }}
+                  />
+                )}
+                <span>{file.name}</span>
+                <button
+                  className="code-tab-close"
+                  onClick={(e) => handleCloseTab(index, e)}
+                >
+                  ×
+                </button>
+              </div>
+            )
+          })}
         </div>
 
         {/* Git info */}
@@ -296,14 +323,19 @@ export function CodeViewport() {
               return
             }
             let relPath = sym.filePath
-            if (codeRepoPath) {
-              const prefix = codeRepoPath.endsWith('/') ? codeRepoPath : codeRepoPath + '/'
+            let repoName: string | undefined
+            for (const repo of state.codeRepos) {
+              const prefix = repo.path.endsWith('/') ? repo.path : repo.path + '/'
               if (sym.filePath.startsWith(prefix)) {
                 relPath = sym.filePath.slice(prefix.length)
+                repoName = repo.path.split('/').pop() || repo.path
+                break
               }
             }
             const displayName = sym.parentName ? `${sym.parentName}.${sym.name}` : sym.name
-            const refText = `@ref(${relPath}:${sym.startLine}:${displayName})`
+            const refText = repoName
+              ? `@ref(${repoName}:${relPath}:${sym.startLine}:${displayName})`
+              : `@ref(${relPath}:${sym.startLine}:${displayName})`
             e.dataTransfer.effectAllowed = 'copy'
             e.dataTransfer.setData('text/plain', refText)
           }}

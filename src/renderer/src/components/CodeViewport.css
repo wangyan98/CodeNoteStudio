@@ -153,3 +153,11 @@
   border-radius: 2px;
   cursor: grab;
 }
+
+.code-tab-repo-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  display: inline-block;
+  flex-shrink: 0;
+}
