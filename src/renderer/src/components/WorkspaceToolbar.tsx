@@ -2,6 +2,12 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { useAppContext } from '../contexts/AppContext'
 import './WorkspaceToolbar.css'
 
+const REPO_COLORS = ['#e06c75', '#61afef', '#98c379', '#d19a66', '#c678dd', '#56b6c2', '#e5c07b', '#abb2bf']
+
+function getRepoColor(index: number): string {
+  return REPO_COLORS[index % REPO_COLORS.length]
+}
+
 export function WorkspaceToolbar() {
   const { state, dispatch } = useAppContext()
   const { workspacePath, workspaceName } = state
@@ -50,6 +56,7 @@ export function WorkspaceToolbar() {
         window.electronAPI.loadConfig().then((config) => {
           dispatch({ type: 'SET_WORKSPACE', path: savedPath, name: config.name || savedPath })
           setCodeRepos(config.codeRepos || [])
+          dispatch({ type: 'SET_CODE_REPOS', repos: config.codeRepos || [] })
           restoreUiState()
         })
       }
@@ -104,6 +111,7 @@ export function WorkspaceToolbar() {
     if (!repoPath) return
     const newRepos = [...codeRepos, { path: repoPath, commit: '' }]
     setCodeRepos(newRepos)
+    dispatch({ type: 'SET_CODE_REPOS', repos: newRepos })
     const config = await window.electronAPI.loadConfig()
     await window.electronAPI.saveConfig({ ...config, codeRepos: newRepos })
     dispatch({ type: 'SET_CODE_REPO', path: repoPath })
@@ -117,6 +125,7 @@ export function WorkspaceToolbar() {
     if (!confirm(`Remove code repository "${repoName}"?`)) return
     const newRepos = codeRepos.filter((r) => r.path !== repoPath)
     setCodeRepos(newRepos)
+    dispatch({ type: 'SET_CODE_REPOS', repos: newRepos })
     if (state.codeRepoPath === repoPath) {
       dispatch({ type: 'SET_CODE_REPO', path: '' })
     }
@@ -170,10 +179,10 @@ export function WorkspaceToolbar() {
       <div className="workspace-toolbar-spacer" />
       <span className="workspace-toolbar-label">Repos:</span>
       <div className="workspace-toolbar-repos">
-        {codeRepos.map((repo) => (
+        {codeRepos.map((repo, index) => (
           <span
             key={repo.path}
-            className="workspace-toolbar-repo-chip"
+            className={`workspace-toolbar-repo-chip${state.codeRepoPath === repo.path ? ' active' : ''}`}
             title={repo.path}
             onClick={() => {
               dispatch({ type: 'SET_CODE_REPO', path: repo.path })
@@ -183,7 +192,25 @@ export function WorkspaceToolbar() {
               handleRemoveRepo(repo.path)
             }}
           >
+            <span
+              className="repo-chip-dot"
+              style={{ backgroundColor: getRepoColor(index) }}
+            />
             {repo.path.split('/').pop() || repo.path}
+            <button
+              className="repo-chip-reindex"
+              title={`Re-index ${repo.path.split('/').pop()}`}
+              onClick={(e) => {
+                e.stopPropagation()
+                window.electronAPI.indexSymbols(repo.path).then((result) => {
+                  console.log(`Indexed ${result.indexed} symbols in ${repo.path}`)
+                }).catch((err) => {
+                  console.error('Failed to re-index symbols:', err)
+                })
+              }}
+            >
+              &#x21bb;
+            </button>
           </span>
         ))}
         <button
@@ -192,23 +219,6 @@ export function WorkspaceToolbar() {
         >
           + Add Repo
         </button>
-        {codeRepos.length > 0 && (
-          <button
-            className="workspace-toolbar-btn workspace-toolbar-action"
-            onClick={() => {
-              for (const repo of codeRepos) {
-                window.electronAPI.indexSymbols(repo.path).then((result) => {
-                  console.log(`Indexed ${result.indexed} symbols in ${repo.path}`)
-                }).catch((err) => {
-                  console.error('Failed to re-index symbols:', err)
-                })
-              }
-            }}
-            title="Re-index all code repos"
-          >
-            Re-index
-          </button>
-        )}
       </div>
     </div>
   )

@@ -137,3 +137,32 @@
   gap: 12px;
   margin-top: 8px;
 }
+
+.workspace-toolbar-repo-chip.active {
+  border-color: var(--accent-color);
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.repo-chip-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  display: inline-block;
+  flex-shrink: 0;
+}
+
+.repo-chip-reindex {
+  margin-left: 2px;
+  padding: 0 2px;
+  font-size: 12px;
+  background: none;
+  border: none;
+  color: inherit;
+  cursor: pointer;
+  opacity: 0.5;
+  line-height: 1;
+}
+
+.repo-chip-reindex:hover {
+  opacity: 1;
+}
