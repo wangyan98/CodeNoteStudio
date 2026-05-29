@@ -42,7 +42,7 @@ export function NoteViewport() {
     const contentStr = typeof activeNoteContent === 'string'
       ? activeNoteContent
       : JSON.stringify(activeNoteContent)
-    window.electronAPI.resolveRefs(selectedNoteId, contentStr)
+    window.electronAPI.resolveRefs(selectedNoteId, contentStr, state.codeRepoPath ?? undefined)
       .then((mappings: CodeMapping[]) => {
         setCodeMappings(mappings)
       })
@@ -118,12 +118,13 @@ export function NoteViewport() {
             content={activeNoteContent as string}
             notePath={selectedNoteId}
             workspacePath={state.workspacePath}
+            codeRepoPath={state.codeRepoPath}
             codeMappings={codeMappings}
             onSave={async (content: string) => {
               await saveNote(selectedNoteId, content)
             }}
             onRefClick={async (refName: string) => {
-              const mappings = await window.electronAPI.resolveRefs(selectedNoteId, `@ref(${refName})`)
+              const mappings = await window.electronAPI.resolveRefs(selectedNoteId, `@ref(${refName})`, state.codeRepoPath ?? undefined)
               if (mappings.length > 0) {
                 navigateToCode(mappings[0].filePath, mappings[0].startLine)
               }
