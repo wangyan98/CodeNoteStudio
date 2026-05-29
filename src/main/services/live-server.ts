@@ -261,7 +261,7 @@ function createApp(projectPath: string): Express {
 
       const db = getDb(projectPath)
       const allSymbols = querySymbols(db)
-      const mappings = resolveRefs(refs, allSymbols)
+      const mappings = await resolveRefs(refs, allSymbols)
       if (notePath) {
         saveRefCache(projectPath, notePath, mappings)
       }

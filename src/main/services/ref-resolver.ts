@@ -99,7 +99,8 @@ async function extractCodeSnippet(
  */
 export async function resolveRefs(
   refs: RefSpec[],
-  symbols: CodeSymbol[]
+  symbols: CodeSymbol[],
+  activeRepoPath?: string // TODO: use for repo-filtered resolution (Task 3)
 ): Promise<CodeMapping[]> {
   const mappings: CodeMapping[] = []
 
