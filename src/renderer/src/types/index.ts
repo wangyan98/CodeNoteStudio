@@ -12,6 +12,7 @@ export interface CodeFile {
   path: string
   name: string
   language: string
+  repoPath?: string
 }
 
 export interface CodeRepo {

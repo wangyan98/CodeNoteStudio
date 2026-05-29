@@ -126,6 +126,7 @@ function buildTree(files: RepoFileNode[]): RepoFileNode[] {
 
 export function CodeDirectory() {
   const { state, dispatch } = useAppContext()
+  const { codeRepoPath, codeRepos } = state
   const [repoFiles, setRepoFiles] = useState<RepoFileNode[]>([])
   const [filter, setFilter] = useState<string>('all')
   const [loading, setLoading] = useState(false)
@@ -134,13 +135,13 @@ export function CodeDirectory() {
 
   useEffect(() => {
     async function loadRepo() {
-      if (!state.codeRepoPath) {
+      if (!codeRepoPath) {
         setRepoFiles([])
         return
       }
       setLoading(true)
       try {
-        const files = await window.electronAPI.listRepoFiles(state.codeRepoPath)
+        const files = await window.electronAPI.listRepoFiles(codeRepoPath)
         setRepoFiles(files)
       } catch {
         setRepoFiles([])
@@ -149,10 +150,20 @@ export function CodeDirectory() {
       }
     }
     loadRepo()
-  }, [state.codeRepoPath])
+  }, [codeRepoPath])
 
-  const handleFileSelect = useCallback(async (file: RepoFileNode) => {
+  const handleFileSelect = useCallback((file: RepoFileNode) => {
     if (file.isDirectory) return
+
+    // Find which repo this file belongs to
+    let fileRepoPath: string | undefined
+    for (const repo of codeRepos) {
+      const repoPrefix = repo.path.endsWith('/') ? repo.path : repo.path + '/'
+      if (file.absolutePath.startsWith(repoPrefix)) {
+        fileRepoPath = repo.path
+        break
+      }
+    }
 
     const ext = file.name.split('.').pop()?.toLowerCase() || ''
     const langMap: Record<string, string> = {
@@ -166,11 +177,12 @@ export function CodeDirectory() {
     const codeFile: CodeFile = {
       path: file.absolutePath,
       name: file.name,
-      language: langMap[ext] || 'plaintext'
+      language: langMap[ext] || 'plaintext',
+      repoPath: fileRepoPath
     }
 
     dispatch({ type: 'OPEN_CODE_FILE', file: codeFile })
-  }, [dispatch])
+  }, [dispatch, codeRepos])
 
   const filteredFiles = filter === 'all'
     ? repoFiles
@@ -182,10 +194,10 @@ export function CodeDirectory() {
     <div className="panel panel-code-directory">
       <div className="panel-header">Code</div>
       <div className="code-directory">
-        {state.codeRepoPath ? (
+        {codeRepoPath ? (
           <>
             <div className="code-directory-toolbar">
-              <span className="code-repo-path" title={state.codeRepoPath}>{state.codeRepoPath}</span>
+              <span className="code-repo-path" title={codeRepoPath}>{codeRepoPath}</span>
               {fileTypes.map((ft) => (
                 <button
                   key={ft}
