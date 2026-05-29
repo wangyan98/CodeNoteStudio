@@ -197,7 +197,7 @@ export function DerivationEditor({ document: initialDoc, onSave, codeRepoPath }:
           </span>
         </div>
         <div className="derivation-editor-empty">
-          <p>Add your first derivation step</p>
+          <p>Add your first step</p>
           <button className="derive-add-btn" onClick={() => dispatch({ type: 'ADD_NODE', afterStepNumber: 0 })}>
             + Add Step
           </button>
@@ -261,14 +261,11 @@ export function DerivationEditor({ document: initialDoc, onSave, codeRepoPath }:
             <div
               id={`derive-node-${node.id}`}
               className={`derive-node-card${dragIndex === index ? ' dragging' : ''}`}
-              draggable
-              onDragStart={() => handleDragStart(index)}
               onDragOver={(e) => handleDragOver(e, index)}
               onDrop={() => handleDrop(index)}
-              onDragEnd={handleDragEnd}
             >
               <div className="derive-node-card-row">
-                <div className="derive-step-badge" title="Drag to reorder">
+                <div className="derive-step-badge" draggable onDragStart={() => handleDragStart(index)} onDragEnd={handleDragEnd} title="Drag to reorder">
                   {node.stepNumber}
                 </div>
                 <input
