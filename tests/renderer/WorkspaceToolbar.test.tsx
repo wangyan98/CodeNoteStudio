@@ -13,6 +13,8 @@ beforeEach(() => {
     saveConfig: vi.fn(),
     listNotes: vi.fn().mockResolvedValue([]),
     listRepoFiles: vi.fn().mockResolvedValue([]),
+    loadUiState: vi.fn().mockResolvedValue(null),
+    saveUiState: vi.fn(),
     platform: 'darwin',
     getAppVersion: vi.fn().mockResolvedValue('0.1.0'),
     getProjectPath: vi.fn().mockResolvedValue('/test/path'),
@@ -41,7 +43,8 @@ describe('WorkspaceToolbar', () => {
         activeNoteContent: null, activeNoteType: null, openCodeFiles: [],
         activeCodeFileIndex: -1, codeRepoPath: null, codeFiles: [],
         panelWidths: { panel1: 18, panel2: 32, panel3: 32, panel4: 18 },
-        workspacePath: null, workspaceName: ''
+        workspacePath: null, workspaceName: '',
+        codeMappings: [], pendingScroll: null, codeRepos: []
       }}>
         <WorkspaceToolbar />
       </AppProvider>
@@ -57,7 +60,8 @@ describe('WorkspaceToolbar', () => {
         activeNoteContent: null, activeNoteType: null, openCodeFiles: [],
         activeCodeFileIndex: -1, codeRepoPath: null, codeFiles: [],
         panelWidths: { panel1: 18, panel2: 32, panel3: 32, panel4: 18 },
-        workspacePath: '/test/path', workspaceName: 'My Notes'
+        workspacePath: '/test/path', workspaceName: 'My Notes',
+        codeMappings: [], pendingScroll: null, codeRepos: []
       }}>
         <WorkspaceToolbar />
       </AppProvider>
