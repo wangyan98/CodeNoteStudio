@@ -1,5 +1,6 @@
 import { useReducer, useEffect, useMemo, useRef, useState } from 'react'
 import katex from 'katex'
+import 'katex/dist/katex.min.css'
 import type { DerivationDocument, DerivationNode } from '../../../../main/schemas/note-types'
 import './DerivationEditor.css'
 import { derivationReducer } from './derivationReducer'
