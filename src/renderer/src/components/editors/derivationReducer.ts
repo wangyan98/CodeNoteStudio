@@ -3,7 +3,6 @@ import { createDerivationNode } from '../../../../main/schemas/note-types'
 
 export interface DerivationAction {
   type: string
-  id?: string
   field?: 'title' | 'content'
   value?: string
   nodeId?: string
@@ -22,12 +21,17 @@ function cloneDoc(doc: DerivationDocument): DerivationDocument {
 }
 
 function getDescendantIds(nodes: DerivationNode[], nodeId: string): Set<string> {
+  const childrenOf = new Map<string, DerivationNode[]>()
+  for (const n of nodes) {
+    const key = n.derivesFrom ?? '__root__'
+    if (!childrenOf.has(key)) childrenOf.set(key, [])
+    childrenOf.get(key)!.push(n)
+  }
   const desc = new Set<string>()
   const stack = [nodeId]
   while (stack.length > 0) {
-    const current = stack.pop()!
-    const children = nodes.filter((n) => n.derivesFrom === current)
-    for (const child of children) {
+    const cur = stack.pop()!
+    for (const child of childrenOf.get(cur) ?? []) {
       if (!desc.has(child.id)) {
         desc.add(child.id)
         stack.push(child.id)
@@ -56,10 +60,9 @@ export function derivationReducer(doc: DerivationDocument, action: DerivationAct
 
     case 'UPDATE_NODE': {
       const cloned = cloneDoc(doc)
-      const node = cloned.nodes.find((n) => n.id === action.id!)
-      if (node && action.field) {
-        ;(node as unknown as Record<string, unknown>)[action.field] = action.value!
-      }
+      cloned.nodes = cloned.nodes.map((n) =>
+        n.id === action.nodeId! ? { ...n, [action.field!]: action.value! } : n
+      )
       return cloned
     }
 
@@ -90,13 +93,13 @@ export function derivationReducer(doc: DerivationDocument, action: DerivationAct
 
     case 'DELETE_NODE': {
       const cloned = cloneDoc(doc)
-      const nodeToDelete = cloned.nodes.find((n) => n.id === action.id!)
+      const nodeToDelete = cloned.nodes.find((n) => n.id === action.nodeId!)
       if (!nodeToDelete) return doc
 
-      cloned.nodes = cloned.nodes.filter((n) => n.id !== action.id!)
+      cloned.nodes = cloned.nodes.filter((n) => n.id !== action.nodeId!)
       // Clear derivesFrom for children
       cloned.nodes = cloned.nodes.map((n) =>
-        n.derivesFrom === action.id! ? { ...n, derivesFrom: null } : n
+        n.derivesFrom === action.nodeId! ? { ...n, derivesFrom: null } : n
       )
       return { ...cloned, nodes: syncDerivesTo(recalcStepNumbers(cloned.nodes)) }
     }
