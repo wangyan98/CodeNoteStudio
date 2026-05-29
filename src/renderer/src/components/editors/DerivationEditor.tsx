@@ -240,7 +240,7 @@ export function DerivationEditor({ document: initialDoc, onSave, codeRepoPath }:
                       el?.scrollIntoView({ behavior: 'smooth', block: 'center' })
                     }}
                   >
-                    {node.stepNumber}. {node.title || 'Untitled'}
+                    <KatexMiniPill latex={node.content} stepNumber={node.stepNumber} />
                   </span>
                 ))}
               </div>
@@ -359,4 +359,25 @@ function KatexPreview({ latex }: { latex: string }) {
   }
 
   return <div ref={containerRef} />
+}
+
+// Mini KaTeX pill for the DAG preview — shows step number + rendered formula
+function KatexMiniPill({ latex, stepNumber }: { latex: string; stepNumber: number }) {
+  const containerRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!containerRef.current) return
+    try {
+      katex.render(latex, containerRef.current, { throwOnError: false, displayMode: false })
+    } catch {
+      containerRef.current.textContent = latex || '(empty)'
+    }
+  }, [latex])
+
+  return (
+    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+      <span style={{ fontWeight: 600, fontSize: 10, color: 'var(--accent-color)' }}>{stepNumber}.</span>
+      <span ref={containerRef} style={{ fontSize: 11 }} />
+    </span>
+  )
 }
