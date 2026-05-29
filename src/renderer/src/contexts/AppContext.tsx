@@ -16,7 +16,8 @@ export const initialState: AppState = {
   workspacePath: null,
   workspaceName: '',
   codeMappings: [],
-  pendingScroll: null
+  pendingScroll: null,
+  codeRepos: []
 }
 
 export function appReducer(state: AppState, action: AppAction): AppState {
@@ -62,6 +63,9 @@ export function appReducer(state: AppState, action: AppAction): AppState {
 
     case 'SET_CODE_REPO':
       return { ...state, codeRepoPath: action.path }
+
+    case 'SET_CODE_REPOS':
+      return { ...state, codeRepos: action.repos }
 
     case 'SET_CODE_FILES':
       return { ...state, codeFiles: action.files }

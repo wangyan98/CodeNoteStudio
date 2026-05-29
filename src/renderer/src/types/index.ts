@@ -63,6 +63,7 @@ export type AppAction =
   | { type: 'CLEAR_WORKSPACE' }
   | { type: 'SET_CODE_MAPPINGS'; mappings: CodeMapping[] }
   | { type: 'SET_PENDING_SCROLL'; filePath: string; line: number }
+  | { type: 'SET_CODE_REPOS'; repos: CodeRepo[] }
   | { type: 'CLEAR_PENDING_SCROLL' }
 
 export interface AppState {
@@ -81,4 +82,5 @@ export interface AppState {
   workspaceName: string
   codeMappings: CodeMapping[]
   pendingScroll: { filePath: string; line: number } | null
+  codeRepos: CodeRepo[]
 }
