@@ -58,7 +58,7 @@ export function derivationReducer(doc: DerivationDocument, action: DerivationAct
       const cloned = cloneDoc(doc)
       const node = cloned.nodes.find((n) => n.id === action.id!)
       if (node && action.field) {
-        ;(node as Record<string, unknown>)[action.field] = action.value!
+        ;(node as unknown as Record<string, unknown>)[action.field] = action.value!
       }
       return cloned
     }
@@ -77,7 +77,7 @@ export function derivationReducer(doc: DerivationDocument, action: DerivationAct
       if (node) {
         node.derivesFrom = action.parentId ?? null
       }
-      return syncDerivesTo(cloned)
+      return { ...cloned, nodes: syncDerivesTo(cloned.nodes) }
     }
 
     case 'ADD_NODE': {
@@ -85,7 +85,7 @@ export function derivationReducer(doc: DerivationDocument, action: DerivationAct
       const newNode = createDerivationNode('New Step')
       const cloned = cloneDoc(doc)
       cloned.nodes.splice(afterStep, 0, newNode)
-      return syncDerivesTo(recalcStepNumbers(cloned.nodes))
+      return { ...cloned, nodes: syncDerivesTo(recalcStepNumbers(cloned.nodes)) }
     }
 
     case 'DELETE_NODE': {
@@ -98,7 +98,7 @@ export function derivationReducer(doc: DerivationDocument, action: DerivationAct
       cloned.nodes = cloned.nodes.map((n) =>
         n.derivesFrom === action.id! ? { ...n, derivesFrom: null } : n
       )
-      return syncDerivesTo(recalcStepNumbers(cloned.nodes))
+      return { ...cloned, nodes: syncDerivesTo(recalcStepNumbers(cloned.nodes)) }
     }
 
     case 'REORDER_NODES': {
@@ -110,7 +110,7 @@ export function derivationReducer(doc: DerivationDocument, action: DerivationAct
       const cloned = cloneDoc(doc)
       const [moved] = cloned.nodes.splice(action.fromIndex, 1)
       cloned.nodes.splice(action.toIndex, 0, moved)
-      return syncDerivesTo(recalcStepNumbers(cloned.nodes))
+      return { ...cloned, nodes: syncDerivesTo(recalcStepNumbers(cloned.nodes)) }
     }
 
     default:
