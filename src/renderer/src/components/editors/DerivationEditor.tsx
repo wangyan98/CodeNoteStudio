@@ -346,6 +346,7 @@ function KatexPreview({ latex }: { latex: string }) {
 
   useEffect(() => {
     if (!containerRef.current) return
+    containerRef.current.innerHTML = ''
     try {
       katex.render(latex, containerRef.current, { throwOnError: false, displayMode: false })
       setError(null)
@@ -367,6 +368,7 @@ function KatexMiniPill({ latex, stepNumber }: { latex: string; stepNumber: numbe
 
   useEffect(() => {
     if (!containerRef.current) return
+    containerRef.current.innerHTML = ''
     try {
       katex.render(latex, containerRef.current, { throwOnError: false, displayMode: false })
     } catch {
