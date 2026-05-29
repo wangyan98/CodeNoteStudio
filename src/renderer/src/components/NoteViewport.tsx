@@ -117,6 +117,7 @@ export function NoteViewport() {
             ref={mdEditorRef}
             content={activeNoteContent as string}
             notePath={selectedNoteId}
+            workspacePath={state.workspacePath}
             codeMappings={codeMappings}
             onSave={async (content: string) => {
               await saveNote(selectedNoteId, content)

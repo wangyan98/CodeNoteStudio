@@ -8,6 +8,7 @@ import './MdEditor.css'
 interface MdEditorProps {
   content: string
   notePath: string
+  workspacePath: string | null
   onSave: (content: string) => Promise<void>
   onRefClick?: (refName: string) => void
   codeMappings?: CodeMapping[]
@@ -21,7 +22,7 @@ export interface MdEditorHandle {
 type SaveStatus = 'saved' | 'saving' | 'unsaved' | 'error'
 
 export const MdEditor = forwardRef<MdEditorHandle, MdEditorProps>(
-  function MdEditor({ content, notePath, onSave, onRefClick, codeMappings }, ref) {
+  function MdEditor({ content, notePath, workspacePath, onSave, onRefClick, codeMappings }, ref) {
   const [value, setValue] = useState(content)
   const [showPreview, setShowPreview] = useState(false)
   const [saveStatus, setSaveStatus] = useState<SaveStatus>('saved')
@@ -132,6 +133,11 @@ export const MdEditor = forwardRef<MdEditorHandle, MdEditorProps>(
     error: 'Error'
   }
 
+  // Compute absolute directory of the note for resolving relative image paths
+  const noteAbsoluteDir = workspacePath && notePath
+    ? workspacePath.replace(/\/?$/, '/') + notePath.replace(/\/?[^/]*$/, '')
+    : undefined
+
   return (
     <div className="md-editor">
       <div className="md-editor-toolbar">
@@ -160,7 +166,7 @@ export const MdEditor = forwardRef<MdEditorHandle, MdEditorProps>(
             <div
               className="md-preview-content"
               dangerouslySetInnerHTML={{
-                __html: renderMarkdown(value, previewMappings.length > 0 ? previewMappings : (codeMappings ?? []))
+                __html: renderMarkdown(value, previewMappings.length > 0 ? previewMappings : (codeMappings ?? []), noteAbsoluteDir)
               }}
               onClick={(e) => {
                 const target = (e.target as HTMLElement).closest('.ref-link') as HTMLElement | null
@@ -226,7 +232,40 @@ function renderCodeSnippet(snippet: CodeSnippet): string {
   return `<pre class="ref-code-block"><code>${lines}</code></pre>`
 }
 
-function renderMarkdown(md: string, codeMappings: CodeMapping[]): string {
+function resolveImageUrl(url: string, noteAbsoluteDir?: string): string {
+  // Already using wsfile:// protocol - leave unchanged
+  if (url.startsWith('wsfile://')) return url
+  // Web URLs and data URIs - leave unchanged
+  if (/^(https?:\/\/|data:)/.test(url)) return url
+  // file:// URLs - convert to wsfile://
+  if (url.startsWith('file://')) return 'wsfile://' + url.slice('file://'.length)
+  // Absolute paths - prepend wsfile://
+  if (url.startsWith('/')) return 'wsfile://' + url
+  // Relative paths - resolve against note directory
+  if (noteAbsoluteDir) {
+    return 'wsfile://' + resolvePath(noteAbsoluteDir, url)
+  }
+  // Cannot resolve - leave unchanged
+  return url
+}
+
+function resolvePath(baseDir: string, relativePath: string): string {
+  const base = baseDir.endsWith('/') ? baseDir.slice(0, -1) : baseDir
+  const combined = base + '/' + relativePath
+  const segments = combined.split('/')
+  const resolved: string[] = []
+  for (const seg of segments) {
+    if (seg === '' || seg === '.') continue
+    if (seg === '..') {
+      resolved.pop()
+    } else {
+      resolved.push(seg)
+    }
+  }
+  return '/' + resolved.join('/')
+}
+
+function renderMarkdown(md: string, codeMappings: CodeMapping[], noteAbsoluteDir?: string): string {
   const snippetByRaw = new Map<string, CodeSnippet>()
   const matchedRaws = new Set<string>()
   for (const m of codeMappings) {
@@ -253,7 +292,9 @@ function renderMarkdown(md: string, codeMappings: CodeMapping[]): string {
   html = html.replace(/\*\*\*(.+?)\*\*\*/g, '<strong><em>$1</em></strong>')
   html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
   html = html.replace(/\*(.+?)\*/g, '<em>$1</em>')
-  html = html.replace(/!\[([^\]]+)\]\(([^)]+)\)/g, '<img src="$2" alt="$1">')
+  html = html.replace(/!\[([^\]]+)\]\(([^)]+)\)/g, (_match, alt, url) => {
+    return `<img src="${resolveImageUrl(url, noteAbsoluteDir)}" alt="${alt}">`
+  })
   html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2">$1</a>')
 
   // Convert @ref(...) after markdown formatting so code snippet HTML

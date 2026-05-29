@@ -42,7 +42,8 @@ app.whenReady().then(async () => {
   // Register custom protocol to serve workspace files for preview images.
   try {
     protocol.handle('wsfile', (request) => {
-      const filePath = request.url.slice('wsfile://'.length)
+      // Decode URL-encoded characters (spaces, CJK chars, etc.) in the path
+      const filePath = decodeURIComponent(request.url.slice('wsfile://'.length))
       return net.fetch('file://' + filePath)
     })
   } catch (err) {
