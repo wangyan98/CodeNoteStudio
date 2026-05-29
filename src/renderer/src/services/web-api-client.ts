@@ -67,9 +67,10 @@ export function createWebApiClient() {
       get(`/api/code/git-commit?repo=${encodeURIComponent(repoPath)}`),
     parseSymbols: () => Promise.resolve([]),
     indexSymbols: () => Promise.resolve({ indexed: 0, totalFiles: 0 }),
-    resolveRefs: (notePath: string, content: string) => {
+    resolveRefs: (notePath: string, content: string, activeRepoPath?: string) => {
       const params = new URLSearchParams({ content })
       if (notePath) params.set('notePath', notePath)
+      if (activeRepoPath) params.set('repo', activeRepoPath)
       return get(`/api/code/resolve-refs?${params.toString()}`)
     },
     querySymbols: (name?: string, filePath?: string, kind?: string) => {
