@@ -109,44 +109,49 @@ async function extractCodeSnippet(
  */
 export async function resolveRefs(
   refs: RefSpec[],
-  symbols: CodeSymbol[],
-  activeRepoPath?: string // TODO: use for repo-filtered resolution (Task 3)
+  symbols: (CodeSymbol & { repoPath?: string })[],
+  activeRepo?: string
 ): Promise<CodeMapping[]> {
   const mappings: CodeMapping[] = []
 
-  // Build lookup: filePath -> symbols
-  const symbolsByFile = new Map<string, CodeSymbol[]>()
-  for (const s of symbols) {
-    const list = symbolsByFile.get(s.filePath)
-    if (list) {
-      list.push(s)
-    } else {
-      symbolsByFile.set(s.filePath, [s])
-    }
-  }
-
-  // Match absolute or project-relative paths against absolute paths in DB
-  const getFileSymbols = (refPath: string): CodeSymbol[] | undefined => {
-    const direct = symbolsByFile.get(refPath)
-    if (direct) return direct
-    for (const [absPath, syms] of symbolsByFile) {
-      if (absPath.endsWith('/' + refPath) || absPath === refPath) {
-        return syms
-      }
-    }
-    return undefined
-  }
-
   for (const ref of refs) {
+    const targetRepo = ref.repo ?? activeRepo ?? undefined
+
+    let candidateSymbols = symbols
+    if (targetRepo) {
+      candidateSymbols = symbols.filter(
+        (s) => s.repoPath && (
+          s.repoPath.endsWith('/' + targetRepo) ||
+          s.repoPath === targetRepo
+        )
+      )
+    }
+
+    // Build file lookup from filtered candidates
+    const symbolsByFile = new Map<string, CodeSymbol[]>()
+    for (const s of candidateSymbols) {
+      const list = symbolsByFile.get(s.filePath)
+      if (list) { list.push(s) }
+      else { symbolsByFile.set(s.filePath, [s]) }
+    }
+
+    const getFileSymbols = (refPath: string): CodeSymbol[] | undefined => {
+      const direct = symbolsByFile.get(refPath)
+      if (direct) return direct
+      for (const [absPath, syms] of symbolsByFile) {
+        if (absPath.endsWith('/' + refPath) || absPath === refPath) {
+          return syms
+        }
+      }
+      return undefined
+    }
+
     // T1: file + line + name
     if (ref.filePath && ref.line !== undefined && ref.name) {
       const fileSymbols = getFileSymbols(ref.filePath)
       if (fileSymbols) {
         const match = fileSymbols.find(
-          (s) =>
-            s.startLine <= ref.line! &&
-            s.endLine >= ref.line! &&
-            symbolMatchesName(s, ref.name!)
+          (s) => s.startLine <= ref.line! && s.endLine >= ref.line! && symbolMatchesName(s, ref.name!)
         )
         if (match) {
           const mapping = toMapping(ref, match)
@@ -163,9 +168,7 @@ export async function resolveRefs(
     if (ref.filePath && ref.line !== undefined) {
       const fileSymbols = getFileSymbols(ref.filePath)
       if (fileSymbols) {
-        const match = fileSymbols.find(
-          (s) => s.startLine <= ref.line! && s.endLine >= ref.line!
-        )
+        const match = fileSymbols.find((s) => s.startLine <= ref.line! && s.endLine >= ref.line!)
         if (match) {
           const mapping = toMapping(ref, match)
           if (mapping.filePath && mapping.startLine) {
@@ -193,9 +196,9 @@ export async function resolveRefs(
       }
     }
 
-    // T4: Class.method (name with dot, across all files)
+    // T4: Class.method (across candidate files)
     if (ref.name && ref.name.includes('.')) {
-      const match = findSymbolByName(symbols, ref.name)
+      const match = findSymbolByName(candidateSymbols, ref.name)
       if (match) {
         const mapping = toMapping(ref, match)
         if (mapping.filePath && mapping.startLine) {
@@ -206,9 +209,9 @@ export async function resolveRefs(
       }
     }
 
-    // T5: name only (first match across all files)
+    // T5: name only (across candidate files)
     if (ref.name) {
-      const match = symbols.find((s) => s.name === ref.name)
+      const match = candidateSymbols.find((s) => s.name === ref.name)
       if (match) {
         const mapping = toMapping(ref, match)
         if (mapping.filePath && mapping.startLine) {
@@ -219,7 +222,7 @@ export async function resolveRefs(
       }
     }
 
-    // T6: no match — silently drop
+    // No match — silently drop
   }
 
   return mappings
