@@ -141,10 +141,11 @@ export function registerIpcHandlers(projectPath: string): void {
   ipcMain.handle('code:index-symbols', async (_event, repoPath: string) => {
     try {
       const { initSymbolDatabase, indexSymbols, clearRepo } = await import('./services/symbol-index')
-      const { extractSymbols, initParser } = await import('./services/code-parser')
+      const { extractSymbols, initParser, clearParserPoison } = await import('./services/code-parser')
       const { listRepoFiles } = await import('./services/file-system')
 
       console.log('[code:index-symbols] Starting index for:', repoPath)
+      clearParserPoison()
       await initParser()
       const files = await listRepoFiles(repoPath)
       const codeFiles = files.filter((f) => !f.isDirectory).map((f) => f.absolutePath)

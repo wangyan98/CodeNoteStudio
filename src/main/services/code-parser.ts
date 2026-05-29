@@ -16,6 +16,7 @@ export interface CodeSymbol {
 
 let parser: Parser | null = null
 let wasmReady = false
+let parserPoisoned = false
 const languageCache = new Map<string, Language>()
 
 const EXT_TO_LANG: Record<string, string> = {
@@ -72,8 +73,9 @@ function getGrammarDir(): string {
   return path.join(process.cwd(), 'assets', 'tree-sitter')
 }
 
-export async function initParser(): Promise<Parser> {
+export async function initParser(): Promise<Parser | null> {
   if (parser) return parser
+  if (parserPoisoned) return null
 
   // WASM runtime can only be initialized once — subsequent calls just
   // create a fresh Parser instance to reset accumulated memory.
@@ -242,9 +244,20 @@ function traverseTree(
 // Maximum file size to parse (1MB) — larger files can crash the WASM parser
 const MAX_FILE_SIZE = 1024 * 1024
 
-// Reset the parser singleton so the next call to initParser() creates a fresh one
-function resetParser(): void {
+// Reset the parser singleton so the next call to initParser() creates a fresh one.
+// If the crash was severe enough to corrupt the WASM runtime, mark it as poisoned
+// so we don't attempt further parsing — the next new Parser() would Abort().
+function resetParser(poisoned = false): void {
   parser = null
+  if (poisoned) {
+    parserPoisoned = true
+  }
+}
+
+// Clear the poisoned flag for a fresh indexing attempt.
+// If the WASM runtime is truly corrupted, it will crash again and re-poison.
+export function clearParserPoison(): void {
+  parserPoisoned = false
 }
 
 export async function parseCodeFile(filePath: string): Promise<CodeSymbol[]> {
@@ -265,6 +278,8 @@ export async function parseCodeFile(filePath: string): Promise<CodeSymbol[]> {
 
   try {
     const p = await initParser()
+    if (!p) return [] // WASM runtime is poisoned from a previous crash
+
     p.setLanguage(lang)
     const tree = p.parse(source)
     if (!tree) return []
@@ -274,8 +289,8 @@ export async function parseCodeFile(filePath: string): Promise<CodeSymbol[]> {
     traverseTree(rootNode, filePath, symbols)
     return symbols
   } catch {
-    // WASM parser crashed (OOM, stack overflow, etc.) — reset and skip this file
-    resetParser()
+    // WASM parser crashed (OOM, stack overflow, etc.) — poison and skip this file
+    resetParser(true)
     return []
   }
 }
@@ -290,7 +305,7 @@ export async function extractSymbols(filePaths: string[]): Promise<CodeSymbol[]>
   for (let i = 0; i < filePaths.length; i++) {
     // Periodically reset parser to free accumulated WASM memory
     if (i > 0 && i % PARSER_RESET_INTERVAL === 0) {
-      resetParser()
+      resetParser(false)
     }
 
     const symbols = await parseCodeFile(filePaths[i])
@@ -298,6 +313,11 @@ export async function extractSymbols(filePaths: string[]): Promise<CodeSymbol[]>
       skipped++
     }
     allSymbols.push(...symbols)
+
+    if (parserPoisoned) {
+      console.warn(`[code-parser] WASM runtime poisoned after ${i + 1}/${filePaths.length} files — stopping`)
+      break
+    }
   }
 
   if (skipped > 0) {
