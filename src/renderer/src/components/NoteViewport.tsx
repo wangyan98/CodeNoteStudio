@@ -6,6 +6,7 @@ import { MdEditor } from './editors/MdEditor'
 import type { MdEditorHandle } from './editors/MdEditor'
 import { MindMapEditor } from './editors/MindMapEditor'
 import { DerivationEditor } from './editors/DerivationEditor'
+import { SequenceEditor } from './editors/SequenceEditor'
 import { CodeMappingsPanel } from './CodeMappingsPanel'
 import type { MindMapDocument, DerivationDocument } from '../../../main/schemas/note-types'
 import type { CodeMapping } from '../types'
@@ -159,6 +160,17 @@ export function NoteViewport() {
           />
         )
 
+      case 'seq':
+        return (
+          <SequenceEditor
+            content={activeNoteContent as string}
+            notePath={selectedNoteId}
+            onSave={async (content: string) => {
+              await saveNote(selectedNoteId, content)
+            }}
+          />
+        )
+
       default:
         return <p>Unknown note type: {activeNoteType}</p>
     }
@@ -167,7 +179,8 @@ export function NoteViewport() {
   const typeLabels: Record<string, string> = {
     md: 'MD',
     mind: 'Mind',
-    derive: 'Derive'
+    derive: 'Derive',
+    seq: 'Seq'
   }
 
   return (
