@@ -7,6 +7,7 @@ import './MdEditor.css'
 import { createRoot } from 'react-dom/client'
 import { DerivationDagViewer } from './DerivationDagViewer'
 import { MindMapRenderer } from './MindMapRenderer'
+import { SequenceDiagramViewer } from './SequenceDiagramViewer'
 import type { MindMapDocument } from '../../../../main/schemas/note-types'
 
 interface MdEditorProps {
@@ -16,7 +17,7 @@ interface MdEditorProps {
   codeRepoPath: string | null
   onSave: (content: string) => Promise<void>
   onRefClick?: (refName: string) => void
-  onEmbedClick?: (notePath: string, noteType: 'derive' | 'mind') => void
+  onEmbedClick?: (notePath: string, noteType: 'derive' | 'mind' | 'seq') => void
   codeMappings?: CodeMapping[]
 }
 
@@ -130,6 +131,21 @@ export const MdEditor = forwardRef<MdEditorHandle, MdEditorProps>(
               </div>
               <div className="note-embed-body mind-embed">
                 <MindMapRenderer document={content as MindMapDocument} onSave={async () => {}} />
+              </div>
+            </div>
+          )
+        } else if (noteType === 'seq') {
+          root.render(
+            <div className="note-embed-container">
+              <div
+                className="note-embed-header"
+                onClick={() => onEmbedClick?.(notePath, noteType)}
+              >
+                <span className="note-embed-badge">seq</span>
+                <span className="note-embed-path">{notePath}</span>
+              </div>
+              <div className="note-embed-body seq-embed">
+                <SequenceDiagramViewer content={content as string} />
               </div>
             </div>
           )
@@ -337,9 +353,10 @@ function resolvePath(baseDir: string, relativePath: string): string {
   return '/' + resolved.join('/')
 }
 
-function inferEmbedType(path: string): 'derive' | 'mind' | null {
+function inferEmbedType(path: string): 'derive' | 'mind' | 'seq' | null {
   if (path.endsWith('.derive.json')) return 'derive'
   if (path.endsWith('.mind.json')) return 'mind'
+  if (path.endsWith('.seq.mermaid')) return 'seq'
   return null
 }
 
