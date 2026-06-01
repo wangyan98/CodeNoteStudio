@@ -71,9 +71,16 @@ export function NoteViewport() {
     setDragOver(false)
 
     const isImage = e.dataTransfer.getData('application/x-image-drag') === 'true'
+    const noteEmbedPath = e.dataTransfer.getData('application/x-note-embed')
     const plainText = e.dataTransfer.getData('text/plain')
 
     if (!plainText) return
+
+    if (noteEmbedPath && state.activeNoteType === 'md' && mdEditorRef.current) {
+      mdEditorRef.current.switchToEdit()
+      mdEditorRef.current.insertAtCursor(`![[${noteEmbedPath}]]`)
+      return
+    }
 
     if (isImage) {
       const sourcePath = e.dataTransfer.getData('application/x-source-path')
@@ -97,7 +104,7 @@ export function NoteViewport() {
         mdEditorRef.current.insertAtPosition(plainText, e.clientX, e.clientY)
       }
     }
-  }, [])
+  }, [state.activeNoteType])
 
   if (!selectedNoteId || activeNoteContent === null) {
     return (

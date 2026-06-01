@@ -67,11 +67,21 @@ function TreeItem({
     folder: expanded ? '▾' : '▸'
   }
 
+  const isEmbeddable = node.type === 'derive' || node.type === 'mind' || node.type === 'seq'
+
   return (
     <>
       <div
         className={`tree-item ${isSelected ? 'selected' : ''} ${isFolder ? 'tree-item-folder' : ''}`}
         style={{ '--depth': depth } as React.CSSProperties}
+        draggable={isEmbeddable}
+        onDragStart={(e) => {
+          if (!isEmbeddable) return
+          const embedText = `![[${node.path}]]`
+          e.dataTransfer.setData('text/plain', embedText)
+          e.dataTransfer.setData('application/x-note-embed', node.path)
+          e.dataTransfer.effectAllowed = 'copy'
+        }}
         onClick={() => {
           if (isFolder) {
             setExpanded(!expanded)

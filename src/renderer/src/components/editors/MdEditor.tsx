@@ -24,6 +24,7 @@ interface MdEditorProps {
 export interface MdEditorHandle {
   insertAtCursor: (text: string) => void
   insertAtPosition: (text: string, clientX: number, clientY: number) => void
+  switchToEdit: () => void
 }
 
 type SaveStatus = 'saved' | 'saving' | 'unsaved' | 'error'
@@ -60,6 +61,9 @@ export const MdEditor = forwardRef<MdEditorHandle, MdEditorProps>(
         // Fallback to cursor position
         editor.trigger('keyboard', 'type', { text })
       }
+    },
+    switchToEdit() {
+      setShowPreview(false)
     }
   }))
 
