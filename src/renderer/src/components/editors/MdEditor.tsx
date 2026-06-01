@@ -31,7 +31,7 @@ type SaveStatus = 'saved' | 'saving' | 'unsaved' | 'error'
 export const MdEditor = forwardRef<MdEditorHandle, MdEditorProps>(
   function MdEditor({ content, notePath, workspacePath, codeRepoPath, onSave, onRefClick, onEmbedClick, codeMappings }, ref) {
   const [value, setValue] = useState(content)
-  const [showPreview, setShowPreview] = useState(false)
+  const [showPreview, setShowPreview] = useState(true)
   const [saveStatus, setSaveStatus] = useState<SaveStatus>('saved')
   const [previewMappings, setPreviewMappings] = useState<CodeMapping[]>([])
   const editorMonacoRef = useRef<monaco.editor.IStandaloneCodeEditor | null>(null)
