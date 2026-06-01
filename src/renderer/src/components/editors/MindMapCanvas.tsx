@@ -272,6 +272,7 @@ export const MindMapCanvas = forwardRef<MindMapCanvasHandle, MindMapCanvasProps>
 
       // Drag — move node, descendants, and link lines in sync
       let dragOffset: { x: number; y: number } | null = null
+      let dragged = false
 
       // Collect descendant IDs for a node
       function getDescendantIds(nodeId: string): Set<string> {
@@ -299,6 +300,7 @@ export const MindMapCanvas = forwardRef<MindMapCanvasHandle, MindMapCanvasProps>
         })
         .on('drag', function (event: d3.D3DragEvent<SVGGElement, unknown, unknown>, d: d3.HierarchyNode<MindMapNode>) {
           if (!dragOffset) return
+          dragged = true
           const pt = d3.pointer(event, svgRef.current!)
           const dx = pt[0] - dragOffset.x - d.y!
           const dy = pt[1] - dragOffset.y - d.x!
@@ -393,8 +395,18 @@ export const MindMapCanvas = forwardRef<MindMapCanvasHandle, MindMapCanvasProps>
         })
         .on('end', function (_event: d3.D3DragEvent<SVGGElement, unknown, unknown>, _d: d3.HierarchyNode<MindMapNode>) {
           dragOffset = null
-          // Full re-render to snap all nodes and lines back to original positions
-          render()
+          if (dragged) {
+            dragged = false
+            // Full re-render to snap all nodes and lines back to original positions
+            render()
+          } else {
+            // Pure click (no drag movement) — restore the highlight stroke that
+            // 'start' set, so the selection useEffect can apply the correct style
+            const isSelected = _d.data.id === selectedNodeIdRef.current
+            d3.select(this).select('rect')
+              .attr('stroke', isSelected ? '#ff0' : (_d.depth === 0 ? '#007acc' : '#555'))
+              .attr('stroke-width', isSelected ? 2 : 1)
+          }
         })
 
       nodeGroup.call(dragHandler as any)
