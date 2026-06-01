@@ -63,6 +63,7 @@ function TreeItem({
     mind: '🧠',
     md: '📝',
     derive: '∑',
+    seq: '⚡',
     folder: expanded ? '▾' : '▸'
   }
 
@@ -131,7 +132,8 @@ export function NoteDirectory() {
     { label: 'All', value: 'all' },
     { label: 'MD', value: 'md' },
     { label: 'Mind', value: 'mind' },
-    { label: 'Derive', value: 'derive' }
+    { label: 'Derive', value: 'derive' },
+    { label: 'Seq', value: 'seq' }
   ]
 
   useEffect(() => {
@@ -171,7 +173,8 @@ export function NoteDirectory() {
   const typeOptions: { label: string; value: NoteType; suffix: string }[] = [
     { label: '.md', value: 'md', suffix: '.md' },
     { label: '.mind.json', value: 'mind', suffix: '.mind.json' },
-    { label: '.derive.json', value: 'derive', suffix: '.derive.json' }
+    { label: '.derive.json', value: 'derive', suffix: '.derive.json' },
+    { label: '.seq.mermaid', value: 'seq', suffix: '.seq.mermaid' }
   ]
 
   const handleNewNote = useCallback(() => {
