@@ -94,7 +94,7 @@ export const MdEditor = forwardRef<MdEditorHandle, MdEditorProps>(
 
     placeholders.forEach((placeholder) => {
       const notePath = placeholder.getAttribute('data-note-path')
-      const noteType = placeholder.getAttribute('data-note-type') as 'derive' | 'mind' | null
+      const noteType = placeholder.getAttribute('data-note-type') as 'derive' | 'mind' | 'seq' | null
       if (!notePath || !noteType) return
 
       // Loading state
