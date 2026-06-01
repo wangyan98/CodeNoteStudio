@@ -143,3 +143,74 @@
 .token-type {
   color: #4ec9b0;
 }
+
+/* ---- Note Embeds ---- */
+
+.note-embed-placeholder {
+  margin: 12px 0;
+}
+
+.note-embed-loading {
+  padding: 16px;
+  text-align: center;
+  color: var(--placeholder-color);
+  font-size: 12px;
+  border: 1px dashed var(--border-color);
+  border-radius: 6px;
+}
+
+.note-embed-error {
+  padding: 12px 16px;
+  color: #e44;
+  font-size: 12px;
+  border: 1px solid #5a1d1d;
+  border-radius: 6px;
+  background: rgba(255, 0, 0, 0.05);
+}
+
+.note-embed-container {
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  overflow: hidden;
+  margin: 12px 0;
+}
+
+.note-embed-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  background: var(--header-bg);
+  border-bottom: 1px solid var(--border-color);
+  cursor: pointer;
+  user-select: none;
+}
+
+.note-embed-header:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.note-embed-badge {
+  font-size: 10px;
+  padding: 1px 6px;
+  background: var(--accent-color);
+  color: #fff;
+  border-radius: 2px;
+  text-transform: uppercase;
+  flex-shrink: 0;
+}
+
+.note-embed-path {
+  font-size: 11px;
+  color: var(--header-color);
+  font-family: monospace;
+}
+
+.note-embed-body {
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.note-embed-body.mind-embed {
+  height: 300px;
+}
