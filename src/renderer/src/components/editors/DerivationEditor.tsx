@@ -14,50 +14,94 @@ interface DerivationEditorProps {
 
 type SaveStatus = 'saved' | 'saving' | 'unsaved' | 'error'
 
-function buildMiniDag(nodes: DerivationNode[]): { rows: DerivationNode[][]; connectors: string[][] } {
-  if (nodes.length === 0) return { rows: [], connectors: [] }
-
-  const depthMap = new Map<string, number>()
-
-  function getDepth(nodeId: string): number {
-    if (depthMap.has(nodeId)) return depthMap.get(nodeId)!
-    const node = nodes.find((n) => n.id === nodeId)
-    if (!node || !node.derivesFrom) {
-      depthMap.set(nodeId, 0)
-      return 0
-    }
-    const depth = getDepth(node.derivesFrom) + 1
-    depthMap.set(nodeId, depth)
-    return depth
+function buildChildrenMap(nodes: DerivationNode[]): Map<string, DerivationNode[]> {
+  const map = new Map<string, DerivationNode[]>()
+  for (const n of nodes) {
+    const parentId = n.derivesFrom ?? '__root__'
+    if (!map.has(parentId)) map.set(parentId, [])
+    map.get(parentId)!.push(n)
   }
+  return map
+}
 
-  for (const node of nodes) {
-    getDepth(node.id)
-  }
+function findRoots(nodes: DerivationNode[]): DerivationNode[] {
+  const nodeIds = new Set(nodes.map((n) => n.id))
+  return nodes.filter((n) => !n.derivesFrom || !nodeIds.has(n.derivesFrom))
+}
 
-  const maxDepth = Math.max(...Array.from(depthMap.values()), 0)
-  const rows: DerivationNode[][] = Array.from({ length: maxDepth + 1 }, () => [])
+interface MiniDagTreeProps {
+  nodes: DerivationNode[]
+  onScrollToNode: (nodeId: string) => void
+}
 
-  for (const node of nodes) {
-    const depth = depthMap.get(node.id) ?? 0
-    rows[depth].push(node)
-  }
+function MiniDagTree({ nodes, onScrollToNode }: MiniDagTreeProps) {
+  const { roots, childrenMap } = useMemo(() => {
+    const cm = buildChildrenMap(nodes)
+    const roots = findRoots(nodes)
+    return { roots, childrenMap: cm }
+  }, [nodes])
 
-  const connectors: string[][] = []
-  for (let d = 0; d < rows.length - 1; d++) {
-    const connRow: string[] = []
-    for (const parent of rows[d]) {
-      const children = nodes.filter((n) => n.derivesFrom === parent.id)
-      if (children.length === 1) {
-        connRow.push('→')
-      } else if (children.length > 1) {
-        connRow.push('↘...↙')
-      }
-    }
-    connectors.push(connRow)
-  }
+  return (
+    <div className="mini-dag-tree">
+      {roots.map((root) => (
+        <MiniDagTreeNode
+          key={root.id}
+          node={root}
+          childrenMap={childrenMap}
+          onScrollToNode={onScrollToNode}
+        />
+      ))}
+    </div>
+  )
+}
 
-  return { rows, connectors }
+interface MiniDagTreeNodeProps {
+  node: DerivationNode
+  childrenMap: Map<string, DerivationNode[]>
+  onScrollToNode: (nodeId: string) => void
+  ancestorIds?: Set<string>
+}
+
+function MiniDagTreeNode({ node, childrenMap, onScrollToNode, ancestorIds }: MiniDagTreeNodeProps) {
+  const rawChildren = childrenMap.get(node.id) ?? []
+  const currentAncestors = ancestorIds ?? new Set<string>()
+  const children = rawChildren.length > 0
+    ? rawChildren.filter((c) => !currentAncestors.has(c.id))
+    : []
+
+  const nextAncestors = useMemo(() => {
+    const next = new Set(currentAncestors)
+    next.add(node.id)
+    return next
+  }, [currentAncestors, node.id])
+
+  return (
+    <div className="mini-dag-tree-node">
+      <span
+        className="mini-dag-tree-pill"
+        onClick={() => onScrollToNode(node.id)}
+      >
+        <KatexMiniPill latex={node.content} stepNumber={node.stepNumber} />
+      </span>
+      {children.length > 0 && (
+        <>
+          <div className="mini-dag-tree-connector" />
+          <div className={`mini-dag-tree-children${children.length > 1 ? ' multi-child' : ''}`}>
+            {children.map((child) => (
+              <div className="mini-dag-tree-child" key={child.id}>
+                <MiniDagTreeNode
+                  node={child}
+                  childrenMap={childrenMap}
+                  onScrollToNode={onScrollToNode}
+                  ancestorIds={nextAncestors}
+                />
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+    </div>
+  )
 }
 
 export function DerivationEditor({ document: initialDoc, onSave, codeRepoPath }: DerivationEditorProps) {
@@ -120,8 +164,6 @@ export function DerivationEditor({ document: initialDoc, onSave, codeRepoPath }:
       if (saveTimerRef.current) clearTimeout(saveTimerRef.current)
     }
   }, [])
-
-  const miniDag = useMemo(() => buildMiniDag(doc.nodes), [doc.nodes])
 
   // Build cycle-safe dropdown options for each node (precomputed)
   const derivesFromOptions = useMemo(() => {
@@ -226,34 +268,16 @@ export function DerivationEditor({ document: initialDoc, onSave, codeRepoPath }:
 
       {/* Mini DAG */}
       <div className="derivation-editor-mini-dag">
-        {miniDag.rows.length === 0 ? (
+        {doc.nodes.length === 0 ? (
           <div className="derivation-editor-mini-dag-empty">No derivation steps</div>
         ) : (
-          miniDag.rows.map((row, depth) => (
-            <div key={depth}>
-              <div className="mini-dag-row">
-                {row.map((node) => (
-                  <span
-                    key={node.id}
-                    className="mini-dag-pill"
-                    onClick={() => {
-                      const el = document.getElementById(`derive-node-${node.id}`)
-                      el?.scrollIntoView({ behavior: 'smooth', block: 'center' })
-                    }}
-                  >
-                    <KatexMiniPill latex={node.content} stepNumber={node.stepNumber} />
-                  </span>
-                ))}
-              </div>
-              {depth < miniDag.rows.length - 1 && (
-                <div className="mini-dag-row">
-                  {miniDag.connectors[depth]?.map((conn, i) => (
-                    <span key={i} className="mini-dag-connector">{conn}</span>
-                  ))}
-                </div>
-              )}
-            </div>
-          ))
+          <MiniDagTree
+            nodes={doc.nodes}
+            onScrollToNode={(nodeId) => {
+              const el = document.getElementById(`derive-node-${nodeId}`)
+              el?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+            }}
+          />
         )}
       </div>
 

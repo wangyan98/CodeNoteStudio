@@ -9,7 +9,9 @@
   border-bottom: 1px solid var(--border-color);
   background: var(--header-bg);
   overflow-x: auto;
+  overflow-y: auto;
   white-space: nowrap;
+  max-height: 160px;
 }
 
 .derivation-editor-mini-dag-empty {
@@ -19,15 +21,24 @@
   padding: 8px 0;
 }
 
-.mini-dag-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  justify-content: center;
-  padding: 2px 0;
+/* ---- Mini DAG Tree Layout ---- */
+
+.mini-dag-tree {
+  display: inline-flex;
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 24px;
+  padding: 4px;
+  min-width: max-content;
 }
 
-.mini-dag-pill {
+.mini-dag-tree-node {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.mini-dag-tree-pill {
   background: rgba(255, 255, 255, 0.06);
   border: 1px solid var(--border-color);
   border-radius: 4px;
@@ -39,21 +50,51 @@
   transition: background 0.15s;
 }
 
-.mini-dag-pill:hover {
+.mini-dag-tree-pill:hover {
   background: rgba(255, 255, 255, 0.12);
 }
 
-.mini-dag-connector {
-  color: var(--placeholder-color);
-  font-size: 11px;
-  user-select: none;
+.mini-dag-tree-connector {
+  width: 1px;
+  height: 8px;
+  background: var(--border-color);
+  flex-shrink: 0;
 }
 
-.mini-dag-branch-connector {
-  color: var(--placeholder-color);
-  font-size: 11px;
-  user-select: none;
-  text-align: center;
+.mini-dag-tree-children {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  position: relative;
+  padding-top: 8px;
+  gap: 10px;
+}
+
+.mini-dag-tree-children.multi-child::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: var(--border-color);
+}
+
+.mini-dag-tree-child {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  position: relative;
+}
+
+.mini-dag-tree-child::before {
+  content: '';
+  position: absolute;
+  top: -8px;
+  left: 50%;
+  width: 1px;
+  height: 8px;
+  background: var(--border-color);
 }
 
 .derivation-editor-list {
