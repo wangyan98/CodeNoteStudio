@@ -125,10 +125,22 @@
   color: #f44747;
 }
 
+.new-note-input-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
 .new-note-input-row {
   display: flex;
   gap: 4px;
   align-items: center;
+}
+
+.new-note-actions {
+  display: flex;
+  gap: 4px;
+  justify-content: flex-end;
 }
 
 .new-note-name-input {

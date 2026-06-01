@@ -225,34 +225,38 @@ export function NoteDirectory() {
             onChange={(e) => setSearchQuery(e.target.value)}
           />
           {showNewNoteInput ? (
-            <div className="new-note-input-row">
-              <input
-                className="new-note-name-input"
-                type="text"
-                placeholder="filename"
-                value={newNoteName}
-                onChange={(e) => setNewNoteName(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') handleSubmitNewNote()
-                  if (e.key === 'Escape') setShowNewNoteInput(false)
-                }}
-                autoFocus
-              />
-              <select
-                className="new-note-type-select"
-                value={newNoteType}
-                onChange={(e) => setNewNoteType(e.target.value as NoteType)}
-              >
-                {typeOptions.map((opt) => (
-                  <option key={opt.value} value={opt.value}>{opt.label}</option>
-                ))}
-              </select>
-              <button className="new-note-submit-btn" onClick={handleSubmitNewNote}>
-                OK
-              </button>
-              <button className="new-note-cancel-btn" onClick={() => setShowNewNoteInput(false)}>
-                ✕
-              </button>
+            <div className="new-note-input-group">
+              <div className="new-note-input-row">
+                <input
+                  className="new-note-name-input"
+                  type="text"
+                  placeholder="filename"
+                  value={newNoteName}
+                  onChange={(e) => setNewNoteName(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') handleSubmitNewNote()
+                    if (e.key === 'Escape') setShowNewNoteInput(false)
+                  }}
+                  autoFocus
+                />
+                <select
+                  className="new-note-type-select"
+                  value={newNoteType}
+                  onChange={(e) => setNewNoteType(e.target.value as NoteType)}
+                >
+                  {typeOptions.map((opt) => (
+                    <option key={opt.value} value={opt.value}>{opt.label}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="new-note-actions">
+                <button className="new-note-submit-btn" onClick={handleSubmitNewNote}>
+                  OK
+                </button>
+                <button className="new-note-cancel-btn" onClick={() => setShowNewNoteInput(false)}>
+                  Cancel
+                </button>
+              </div>
             </div>
           ) : (
             <button className="new-note-btn" onClick={handleNewNote}>
