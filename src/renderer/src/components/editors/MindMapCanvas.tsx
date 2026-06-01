@@ -138,6 +138,10 @@ export const MindMapCanvas = forwardRef<MindMapCanvasHandle, MindMapCanvasProps>
           .attr('stroke-width', 1.5)
           .attr('class', 'mind-link')
           .attr('data-owner-id', parentId)
+          .attr('data-orig-x1', parentRightX)
+          .attr('data-orig-y1', parent.x!)
+          .attr('data-orig-x2', elbowX)
+          .attr('data-orig-y2', parent.x!)
 
         // Vertical line at elbow spanning from first to last child (only if >1 child)
         if (children.length > 1) {
@@ -150,6 +154,11 @@ export const MindMapCanvas = forwardRef<MindMapCanvasHandle, MindMapCanvasProps>
             .attr('stroke-width', 1.5)
             .attr('class', 'mind-link')
             .attr('data-owner-id', parentId)
+            .attr('data-line-type', 'vertical')
+            .attr('data-orig-x1', elbowX)
+            .attr('data-orig-y1', firstChild.x!)
+            .attr('data-orig-x2', elbowX)
+            .attr('data-orig-y2', lastChild.x!)
         }
 
         // Individual lines from elbow to each child
@@ -164,6 +173,10 @@ export const MindMapCanvas = forwardRef<MindMapCanvasHandle, MindMapCanvasProps>
             .attr('class', 'mind-link')
             .attr('data-owner-id', parentId)
             .attr('data-child-id', child.data.id)
+            .attr('data-orig-x1', elbowX)
+            .attr('data-orig-y1', child.x!)
+            .attr('data-orig-x2', childLeftX)
+            .attr('data-orig-y2', child.x!)
         })
       })
 
@@ -175,6 +188,7 @@ export const MindMapCanvas = forwardRef<MindMapCanvasHandle, MindMapCanvasProps>
         .attr('transform', (d) => `translate(${d.y!},${d.x!})`)
         .attr('data-node-id', (d) => d.data.id)
         .attr('data-depth', (d) => String(d.depth))
+        .attr('data-parent-id', (d) => d.parent?.data.id || '')
         .style('cursor', 'pointer')
 
       // Read selection from ref (not prop) to avoid including selectedNodeId in render deps
@@ -306,14 +320,15 @@ export const MindMapCanvas = forwardRef<MindMapCanvasHandle, MindMapCanvasProps>
           })
 
           // Move all link lines owned by the dragged node
+          // Use data-orig-* as the fixed base to avoid cumulative offset drift
           const ownedLines = svgEl.querySelectorAll<SVGLineElement>(
             `[data-owner-id="${d.data.id}"]`
           )
           ownedLines.forEach(line => {
-            line.setAttribute('x1', String(parseFloat(line.getAttribute('x1') || '0') + dx))
-            line.setAttribute('y1', String(parseFloat(line.getAttribute('y1') || '0') + dy))
-            line.setAttribute('x2', String(parseFloat(line.getAttribute('x2') || '0') + dx))
-            line.setAttribute('y2', String(parseFloat(line.getAttribute('y2') || '0') + dy))
+            line.setAttribute('x1', String(parseFloat(line.getAttribute('data-orig-x1') || '0') + dx))
+            line.setAttribute('y1', String(parseFloat(line.getAttribute('data-orig-y1') || '0') + dy))
+            line.setAttribute('x2', String(parseFloat(line.getAttribute('data-orig-x2') || '0') + dx))
+            line.setAttribute('y2', String(parseFloat(line.getAttribute('data-orig-y2') || '0') + dy))
           })
 
           // Move link lines owned by descendants
@@ -322,29 +337,52 @@ export const MindMapCanvas = forwardRef<MindMapCanvasHandle, MindMapCanvasProps>
               `[data-owner-id="${descId}"]`
             )
             descLines.forEach(line => {
-              line.setAttribute('x1', String(parseFloat(line.getAttribute('x1') || '0') + dx))
-              line.setAttribute('y1', String(parseFloat(line.getAttribute('y1') || '0') + dy))
-              line.setAttribute('x2', String(parseFloat(line.getAttribute('x2') || '0') + dx))
-              line.setAttribute('y2', String(parseFloat(line.getAttribute('y2') || '0') + dy))
+              line.setAttribute('x1', String(parseFloat(line.getAttribute('data-orig-x1') || '0') + dx))
+              line.setAttribute('y1', String(parseFloat(line.getAttribute('data-orig-y1') || '0') + dy))
+              line.setAttribute('x2', String(parseFloat(line.getAttribute('data-orig-x2') || '0') + dx))
+              line.setAttribute('y2', String(parseFloat(line.getAttribute('data-orig-y2') || '0') + dy))
             })
           })
 
-          // Update the parent's connector line that points TO this node (child-side endpoints only)
+          // Update the parent's connector line that points TO this node.
+          // This is a horizontal line from elbow to child's left edge — keep it
+          // horizontal by moving both y1 and y2 with the child.
           const incomingLines = svgEl.querySelectorAll<SVGLineElement>(
             `[data-child-id="${d.data.id}"]`
           )
           incomingLines.forEach(line => {
-            line.setAttribute('x2', String(parseFloat(line.getAttribute('x2') || '0') + dx))
-            line.setAttribute('y2', String(parseFloat(line.getAttribute('y2') || '0') + dy))
+            // x1 stays at elbowX — elbow doesn't move horizontally
+            // y1 and y2 both move by dy to keep the line horizontal
+            line.setAttribute('y1', String(parseFloat(line.getAttribute('data-orig-y1') || '0') + dy))
+            line.setAttribute('x2', String(parseFloat(line.getAttribute('data-orig-x2') || '0') + dx))
+            line.setAttribute('y2', String(parseFloat(line.getAttribute('data-orig-y2') || '0') + dy))
           })
+
+          // Update parent's vertical line if this child is first or last
+          const parentId = d.parent?.data.id
+          if (parentId) {
+            const vertLine = svgEl.querySelector<SVGLineElement>(
+              `[data-owner-id="${parentId}"][data-line-type="vertical"]`
+            )
+            if (vertLine) {
+              const origY = originalPositions.get(d.data.id)?.x
+              if (origY !== undefined) {
+                const origY1 = parseFloat(vertLine.getAttribute('data-orig-y1') || '0')
+                const origY2 = parseFloat(vertLine.getAttribute('data-orig-y2') || '0')
+                if (Math.abs(origY - origY1) < 0.1) {
+                  vertLine.setAttribute('y1', String(origY1 + dy))
+                }
+                if (Math.abs(origY - origY2) < 0.1) {
+                  vertLine.setAttribute('y2', String(origY2 + dy))
+                }
+              }
+            }
+          }
         })
-        .on('end', function (_event: d3.D3DragEvent<SVGGElement, unknown, unknown>, d: d3.HierarchyNode<MindMapNode>) {
+        .on('end', function (_event: d3.D3DragEvent<SVGGElement, unknown, unknown>, _d: d3.HierarchyNode<MindMapNode>) {
           dragOffset = null
-          d3.select(this).attr('transform', `translate(${d.y!},${d.x!})`)
-          const isSelected = d.data.id === selectedNodeIdRef.current
-          d3.select(this).select('rect')
-            .attr('stroke', isSelected ? '#ff0' : (d.depth === 0 ? '#007acc' : '#555'))
-            .attr('stroke-width', isSelected ? 2 : 1)
+          // Full re-render to snap all nodes and lines back to original positions
+          render()
         })
 
       nodeGroup.call(dragHandler as any)
