@@ -362,14 +362,14 @@ export function CodeViewport() {
               options={{
                 readOnly: true,
                 dragAndDrop: false,
-                minimap: { enabled: true },
+                minimap: { enabled: false },
                 fontSize: 12,
                 lineNumbers: 'on',
                 scrollBeyondLastLine: false,
                 automaticLayout: true,
                 folding: true,
                 renderLineHighlight: 'line',
-                glyphMargin: true
+                glyphMargin: false
               }}
               onMount={handleEditorMount}
             />
