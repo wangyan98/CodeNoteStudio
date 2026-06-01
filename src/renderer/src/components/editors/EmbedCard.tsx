@@ -8,7 +8,8 @@ interface EmbedCardProps {
 const typeLabels: Record<NoteType, string> = {
   mind: 'Mind Map',
   md: 'Markdown',
-  derive: 'Derivation'
+  derive: 'Derivation',
+  seq: 'Sequence Diagram'
 }
 
 export function EmbedCard({ notePath, noteType }: EmbedCardProps) {

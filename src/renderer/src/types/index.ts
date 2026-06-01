@@ -1,4 +1,4 @@
-export type NoteType = 'mind' | 'md' | 'derive'
+export type NoteType = 'mind' | 'md' | 'derive' | 'seq'
 
 export type NoteFilter = 'all' | NoteType
 
