@@ -81,7 +81,7 @@ function MiniDagTreeNode({ node, childrenMap, onScrollToNode, ancestorIds }: Min
         className="mini-dag-tree-pill"
         onClick={() => onScrollToNode(node.id)}
       >
-        <KatexMiniPill latex={node.content} stepNumber={node.stepNumber} />
+        <KatexMiniPill latex={node.content} title={node.title} stepNumber={node.stepNumber} />
       </span>
       {children.length > 0 && (
         <>
@@ -380,8 +380,8 @@ function KatexPreview({ latex }: { latex: string }) {
   return <div dangerouslySetInnerHTML={{ __html: html }} />
 }
 
-// Mini KaTeX pill for the DAG preview — shows step number + rendered formula
-function KatexMiniPill({ latex, stepNumber }: { latex: string; stepNumber: number }) {
+// Mini KaTeX pill for the DAG preview — shows step number + title + rendered formula
+function KatexMiniPill({ latex, title, stepNumber }: { latex: string; title: string; stepNumber: number }) {
   const [html, setHtml] = useState('')
 
   useEffect(() => {
@@ -393,12 +393,17 @@ function KatexMiniPill({ latex, stepNumber }: { latex: string; stepNumber: numbe
   }, [latex])
 
   return (
-    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-      <span style={{ fontWeight: 600, fontSize: 10, color: 'var(--accent-color)' }}>{stepNumber}.</span>
-      {html ? (
-        <span dangerouslySetInnerHTML={{ __html: html }} style={{ fontSize: 11 }} />
-      ) : (
-        <span style={{ fontSize: 11, color: 'var(--placeholder-color)' }}>(empty)</span>
+    <span style={{ display: 'inline-flex', flexDirection: 'column', gap: 2 }}>
+      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+        <span style={{ fontWeight: 600, fontSize: 10, color: 'var(--accent-color)' }}>{stepNumber}.</span>
+        {title ? (
+          <span style={{ fontSize: 11, color: 'var(--text-color)' }}>{title}</span>
+        ) : !html ? (
+          <span style={{ fontSize: 11, color: 'var(--placeholder-color)' }}>(empty)</span>
+        ) : null}
+      </span>
+      {html && (
+        <span dangerouslySetInnerHTML={{ __html: html }} style={{ fontSize: 11, paddingLeft: 14 }} />
       )}
     </span>
   )
