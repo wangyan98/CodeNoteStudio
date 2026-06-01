@@ -4,6 +4,10 @@ import type * as monaco from 'monaco-editor'
 import { registerRefCompletionProvider } from '../../services/monaco-completion'
 import type { CodeMapping, CodeSnippet } from '../../types'
 import './MdEditor.css'
+import { createRoot } from 'react-dom/client'
+import { DerivationRenderer } from './DerivationRenderer'
+import { MindMapRenderer } from './MindMapRenderer'
+import type { DerivationDocument, MindMapDocument } from '../../../../main/schemas/note-types'
 
 interface MdEditorProps {
   content: string
@@ -30,6 +34,7 @@ export const MdEditor = forwardRef<MdEditorHandle, MdEditorProps>(
   const [saveStatus, setSaveStatus] = useState<SaveStatus>('saved')
   const [previewMappings, setPreviewMappings] = useState<CodeMapping[]>([])
   const editorMonacoRef = useRef<monaco.editor.IStandaloneCodeEditor | null>(null)
+  const previewRef = useRef<HTMLDivElement>(null)
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const oldContentRef = useRef(content)
 
@@ -76,6 +81,68 @@ export const MdEditor = forwardRef<MdEditorHandle, MdEditorProps>(
       })
     return () => { cancelled = true }
   }, [showPreview, value, notePath])
+
+  // Hydrate note embed placeholders when preview is shown or content changes
+  useEffect(() => {
+    if (!showPreview) return
+    const container = previewRef.current
+    if (!container) return
+
+    const placeholders = container.querySelectorAll<HTMLElement>('.note-embed-placeholder')
+    const roots: Array<() => void> = []
+
+    placeholders.forEach((placeholder) => {
+      const notePath = placeholder.getAttribute('data-note-path')
+      const noteType = placeholder.getAttribute('data-note-type') as 'derive' | 'mind' | null
+      if (!notePath || !noteType) return
+
+      // Loading state
+      placeholder.innerHTML = '<div class="note-embed-loading">Loading...</div>'
+
+      window.electronAPI.readNote(notePath).then((content) => {
+        const root = createRoot(placeholder)
+        roots.push(() => root.unmount())
+
+        if (noteType === 'derive') {
+          root.render(
+            <div className="note-embed-container">
+              <div
+                className="note-embed-header"
+                onClick={() => onEmbedClick?.(notePath, noteType)}
+              >
+                <span className="note-embed-badge">derive</span>
+                <span className="note-embed-path">{notePath}</span>
+              </div>
+              <div className="note-embed-body">
+                <DerivationRenderer document={content as DerivationDocument} />
+              </div>
+            </div>
+          )
+        } else if (noteType === 'mind') {
+          root.render(
+            <div className="note-embed-container">
+              <div
+                className="note-embed-header"
+                onClick={() => onEmbedClick?.(notePath, noteType)}
+              >
+                <span className="note-embed-badge">mind</span>
+                <span className="note-embed-path">{notePath}</span>
+              </div>
+              <div className="note-embed-body mind-embed">
+                <MindMapRenderer document={content as MindMapDocument} onSave={async () => {}} />
+              </div>
+            </div>
+          )
+        }
+      }).catch(() => {
+        placeholder.innerHTML = `<div class="note-embed-error">Failed to load: ${notePath}</div>`
+      })
+    })
+
+    return () => {
+      roots.forEach((unmount) => unmount())
+    }
+  }, [showPreview, value, onEmbedClick])
 
   // Reset when opening a different note
   useEffect(() => {
@@ -164,7 +231,10 @@ export const MdEditor = forwardRef<MdEditorHandle, MdEditorProps>(
       </div>
       <div className="md-editor-content">
         {showPreview ? (
-          <div className="md-editor-preview">
+          <div
+            ref={previewRef}
+            className="md-editor-preview"
+          >
             <div
               className="md-preview-content"
               dangerouslySetInnerHTML={{
