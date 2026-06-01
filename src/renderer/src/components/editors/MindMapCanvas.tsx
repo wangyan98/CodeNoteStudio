@@ -110,8 +110,15 @@ export const MindMapCanvas = forwardRef<MindMapCanvasHandle, MindMapCanvasProps>
       // Branch connectors (org-chart style): one fork per parent with visible children
       const nodesWithChildren = root.descendants().filter(d => d.children && d.children.length > 0)
 
+      // Build a map of original positions for drag offset calculations
+      const originalPositions = new Map<string, { x: number; y: number }>()
+      root.descendants().forEach(d => {
+        originalPositions.set(d.data.id, { x: d.x!, y: d.y! })
+      })
+
       nodesWithChildren.forEach(parent => {
         const children = parent.children!
+        const parentId = parent.data.id
         const firstChild = children[0]
         const lastChild = children[children.length - 1]
 
@@ -130,6 +137,7 @@ export const MindMapCanvas = forwardRef<MindMapCanvasHandle, MindMapCanvasProps>
           .attr('stroke', '#555')
           .attr('stroke-width', 1.5)
           .attr('class', 'mind-link')
+          .attr('data-owner-id', parentId)
 
         // Vertical line at elbow spanning from first to last child (only if >1 child)
         if (children.length > 1) {
@@ -141,6 +149,7 @@ export const MindMapCanvas = forwardRef<MindMapCanvasHandle, MindMapCanvasProps>
             .attr('stroke', '#555')
             .attr('stroke-width', 1.5)
             .attr('class', 'mind-link')
+            .attr('data-owner-id', parentId)
         }
 
         // Individual lines from elbow to each child
@@ -153,6 +162,8 @@ export const MindMapCanvas = forwardRef<MindMapCanvasHandle, MindMapCanvasProps>
             .attr('stroke', '#555')
             .attr('stroke-width', 1.5)
             .attr('class', 'mind-link')
+            .attr('data-owner-id', parentId)
+            .attr('data-child-id', child.data.id)
         })
       })
 
@@ -245,8 +256,25 @@ export const MindMapCanvas = forwardRef<MindMapCanvasHandle, MindMapCanvasProps>
         onHoverNode?.(null)
       })
 
-      // Drag (visual only in v1)
+      // Drag — move node, descendants, and link lines in sync
       let dragOffset: { x: number; y: number } | null = null
+
+      // Collect descendant IDs for a node
+      function getDescendantIds(nodeId: string): Set<string> {
+        const ids = new Set<string>()
+        const nodeData = findNode(doc, nodeId)
+        if (nodeData) {
+          const stack = [nodeData]
+          while (stack.length > 0) {
+            const n = stack.pop()!
+            for (const child of n.children) {
+              ids.add(child.id)
+              stack.push(child)
+            }
+          }
+        }
+        return ids
+      }
 
       const dragHandler = d3.drag<SVGGElement, d3.HierarchyNode<MindMapNode>>()
         .on('start', function (event: d3.D3DragEvent<SVGGElement, unknown, unknown>, d: d3.HierarchyNode<MindMapNode>) {
@@ -258,7 +286,57 @@ export const MindMapCanvas = forwardRef<MindMapCanvasHandle, MindMapCanvasProps>
         .on('drag', function (event: d3.D3DragEvent<SVGGElement, unknown, unknown>, d: d3.HierarchyNode<MindMapNode>) {
           if (!dragOffset) return
           const pt = d3.pointer(event, svgRef.current!)
+          const dx = pt[0] - dragOffset.x - d.y!
+          const dy = pt[1] - dragOffset.y - d.x!
+
+          const svgEl = svgRef.current
+          if (!svgEl) return
+
+          // Move the dragged node
           d3.select(this).attr('transform', `translate(${pt[0] - dragOffset.x},${pt[1] - dragOffset.y})`)
+
+          // Move all descendant node groups
+          const descendantIds = getDescendantIds(d.data.id)
+          descendantIds.forEach(id => {
+            const el = svgEl.querySelector<SVGGElement>(`[data-node-id="${id}"]`)
+            const orig = originalPositions.get(id)
+            if (el && orig) {
+              el.setAttribute('transform', `translate(${orig.y + dx},${orig.x + dy})`)
+            }
+          })
+
+          // Move all link lines owned by the dragged node
+          const ownedLines = svgEl.querySelectorAll<SVGLineElement>(
+            `[data-owner-id="${d.data.id}"]`
+          )
+          ownedLines.forEach(line => {
+            line.setAttribute('x1', String(parseFloat(line.getAttribute('x1') || '0') + dx))
+            line.setAttribute('y1', String(parseFloat(line.getAttribute('y1') || '0') + dy))
+            line.setAttribute('x2', String(parseFloat(line.getAttribute('x2') || '0') + dx))
+            line.setAttribute('y2', String(parseFloat(line.getAttribute('y2') || '0') + dy))
+          })
+
+          // Move link lines owned by descendants
+          descendantIds.forEach(descId => {
+            const descLines = svgEl.querySelectorAll<SVGLineElement>(
+              `[data-owner-id="${descId}"]`
+            )
+            descLines.forEach(line => {
+              line.setAttribute('x1', String(parseFloat(line.getAttribute('x1') || '0') + dx))
+              line.setAttribute('y1', String(parseFloat(line.getAttribute('y1') || '0') + dy))
+              line.setAttribute('x2', String(parseFloat(line.getAttribute('x2') || '0') + dx))
+              line.setAttribute('y2', String(parseFloat(line.getAttribute('y2') || '0') + dy))
+            })
+          })
+
+          // Update the parent's connector line that points TO this node (child-side endpoints only)
+          const incomingLines = svgEl.querySelectorAll<SVGLineElement>(
+            `[data-child-id="${d.data.id}"]`
+          )
+          incomingLines.forEach(line => {
+            line.setAttribute('x2', String(parseFloat(line.getAttribute('x2') || '0') + dx))
+            line.setAttribute('y2', String(parseFloat(line.getAttribute('y2') || '0') + dy))
+          })
         })
         .on('end', function (_event: d3.D3DragEvent<SVGGElement, unknown, unknown>, d: d3.HierarchyNode<MindMapNode>) {
           dragOffset = null
