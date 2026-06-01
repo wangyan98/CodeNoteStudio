@@ -166,30 +166,36 @@ export function NoteDirectory() {
 
   const [showNewNoteInput, setShowNewNoteInput] = useState(false)
   const [newNoteName, setNewNoteName] = useState('')
+  const [newNoteType, setNewNoteType] = useState<NoteType>('md')
+
+  const typeOptions: { label: string; value: NoteType; suffix: string }[] = [
+    { label: '.md', value: 'md', suffix: '.md' },
+    { label: '.mind.json', value: 'mind', suffix: '.mind.json' },
+    { label: '.derive.json', value: 'derive', suffix: '.derive.json' }
+  ]
 
   const handleNewNote = useCallback(() => {
     setShowNewNoteInput(true)
     setNewNoteName('')
+    setNewNoteType('md')
   }, [])
 
   const handleSubmitNewNote = useCallback(async () => {
-    const name = newNoteName.trim()
-    if (!name) {
+    const baseName = newNoteName.trim()
+    if (!baseName) {
       setShowNewNoteInput(false)
       return
     }
     try {
-      let type: NoteType = 'md'
-      if (name.endsWith('.mind.json')) type = 'mind'
-      else if (name.endsWith('.derive.json')) type = 'derive'
-
-      await createNote(name, type)
+      const suffix = typeOptions.find((o) => o.value === newNoteType)?.suffix ?? '.md'
+      const fullName = baseName + suffix
+      await createNote(fullName, newNoteType)
       setShowNewNoteInput(false)
       setNewNoteName('')
     } catch (err) {
       console.error('Failed to create note:', err)
     }
-  }, [newNoteName, createNote])
+  }, [newNoteName, newNoteType, createNote])
 
   const filteredTree = searchQuery
     ? tree.filter((node) =>
@@ -218,6 +224,41 @@ export function NoteDirectory() {
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           />
+          {showNewNoteInput ? (
+            <div className="new-note-input-row">
+              <input
+                className="new-note-name-input"
+                type="text"
+                placeholder="filename"
+                value={newNoteName}
+                onChange={(e) => setNewNoteName(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') handleSubmitNewNote()
+                  if (e.key === 'Escape') setShowNewNoteInput(false)
+                }}
+                autoFocus
+              />
+              <select
+                className="new-note-type-select"
+                value={newNoteType}
+                onChange={(e) => setNewNoteType(e.target.value as NoteType)}
+              >
+                {typeOptions.map((opt) => (
+                  <option key={opt.value} value={opt.value}>{opt.label}</option>
+                ))}
+              </select>
+              <button className="new-note-submit-btn" onClick={handleSubmitNewNote}>
+                OK
+              </button>
+              <button className="new-note-cancel-btn" onClick={() => setShowNewNoteInput(false)}>
+                ✕
+              </button>
+            </div>
+          ) : (
+            <button className="new-note-btn" onClick={handleNewNote}>
+              + New Note
+            </button>
+          )}
         </div>
         <div className="note-tree">
           {filteredTree.map((node) => (
@@ -231,34 +272,6 @@ export function NoteDirectory() {
               onRename={handleRename}
             />
           ))}
-          <div style={{ padding: '4px 8px' }}>
-            {showNewNoteInput ? (
-              <div className="new-note-input-row">
-                <input
-                  className="new-note-input"
-                  type="text"
-                  placeholder="name.md / name.mind.json / name.derive.json"
-                  value={newNoteName}
-                  onChange={(e) => setNewNoteName(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') handleSubmitNewNote()
-                    if (e.key === 'Escape') setShowNewNoteInput(false)
-                  }}
-                  autoFocus
-                />
-                <button className="new-note-submit-btn" onClick={handleSubmitNewNote}>
-                  OK
-                </button>
-                <button className="new-note-cancel-btn" onClick={() => setShowNewNoteInput(false)}>
-                  ✕
-                </button>
-              </div>
-            ) : (
-              <button className="new-note-btn" onClick={handleNewNote}>
-                + New Note
-              </button>
-            )}
-          </div>
         </div>
       </div>
     </div>

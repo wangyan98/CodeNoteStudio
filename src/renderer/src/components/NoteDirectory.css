@@ -131,7 +131,7 @@
   align-items: center;
 }
 
-.new-note-input {
+.new-note-name-input {
   flex: 1;
   padding: 3px 6px;
   font-size: 11px;
@@ -140,6 +140,17 @@
   border-radius: 3px;
   color: var(--text-color);
   outline: none;
+}
+
+.new-note-type-select {
+  padding: 3px 4px;
+  font-size: 11px;
+  background: var(--input-bg, #3c3c3c);
+  border: 1px solid var(--accent-color);
+  border-radius: 3px;
+  color: var(--text-color);
+  outline: none;
+  cursor: pointer;
 }
 
 .new-note-submit-btn {
