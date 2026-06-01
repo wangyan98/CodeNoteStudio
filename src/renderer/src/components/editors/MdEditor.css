@@ -211,6 +211,11 @@
   overflow-y: auto;
 }
 
+.note-embed-body.dag-embed {
+  overflow-x: auto;
+  overflow-y: auto;
+}
+
 .note-embed-body.mind-embed {
   height: 300px;
 }

@@ -1,0 +1,102 @@
+.dag-viewer {
+  display: inline-flex;
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 24px;
+  padding: 8px;
+  min-width: max-content;
+}
+
+.dag-viewer-empty {
+  font-size: 11px;
+  color: var(--placeholder-color);
+  text-align: center;
+  padding: 16px;
+}
+
+.dag-tree-node {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.dag-tree-connector {
+  width: 1px;
+  height: 8px;
+  background: var(--border-color);
+  flex-shrink: 0;
+}
+
+.dag-tree-children {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  position: relative;
+  padding-top: 8px;
+  gap: 10px;
+}
+
+.dag-tree-children.multi-child::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: var(--border-color);
+}
+
+.dag-tree-child {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  position: relative;
+}
+
+.dag-tree-child::before {
+  content: '';
+  position: absolute;
+  top: -8px;
+  left: 50%;
+  width: 1px;
+  height: 8px;
+  background: var(--border-color);
+}
+
+.dag-pill {
+  display: inline-flex;
+  flex-direction: column;
+  gap: 2px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  padding: 4px 10px;
+  white-space: nowrap;
+}
+
+.dag-pill-header {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.dag-pill-step {
+  font-weight: 600;
+  font-size: 10px;
+  color: var(--accent-color);
+}
+
+.dag-pill-title {
+  font-size: 11px;
+  color: var(--text-color);
+}
+
+.dag-pill-empty {
+  font-size: 11px;
+  color: var(--placeholder-color);
+}
+
+.dag-pill-formula {
+  font-size: 11px;
+  padding-left: 14px;
+}

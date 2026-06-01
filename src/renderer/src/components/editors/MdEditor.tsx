@@ -5,9 +5,9 @@ import { registerRefCompletionProvider } from '../../services/monaco-completion'
 import type { CodeMapping, CodeSnippet } from '../../types'
 import './MdEditor.css'
 import { createRoot } from 'react-dom/client'
-import { DerivationRenderer } from './DerivationRenderer'
+import { DerivationDagViewer } from './DerivationDagViewer'
 import { MindMapRenderer } from './MindMapRenderer'
-import type { DerivationDocument, MindMapDocument } from '../../../../main/schemas/note-types'
+import type { MindMapDocument } from '../../../../main/schemas/note-types'
 
 interface MdEditorProps {
   content: string
@@ -113,8 +113,8 @@ export const MdEditor = forwardRef<MdEditorHandle, MdEditorProps>(
                 <span className="note-embed-badge">derive</span>
                 <span className="note-embed-path">{notePath}</span>
               </div>
-              <div className="note-embed-body">
-                <DerivationRenderer document={content as DerivationDocument} />
+              <div className="note-embed-body dag-embed">
+                <DerivationDagViewer document={content as DerivationDocument} />
               </div>
             </div>
           )
