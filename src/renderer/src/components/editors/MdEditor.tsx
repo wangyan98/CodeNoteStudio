@@ -266,6 +266,12 @@ function resolvePath(baseDir: string, relativePath: string): string {
   return '/' + resolved.join('/')
 }
 
+function inferEmbedType(path: string): 'derive' | 'mind' | null {
+  if (path.endsWith('.derive.json')) return 'derive'
+  if (path.endsWith('.mind.json')) return 'mind'
+  return null
+}
+
 function renderMarkdown(md: string, codeMappings: CodeMapping[], noteAbsoluteDir?: string): string {
   const snippetByRaw = new Map<string, CodeSnippet>()
   const matchedRaws = new Set<string>()
@@ -297,6 +303,17 @@ function renderMarkdown(md: string, codeMappings: CodeMapping[], noteAbsoluteDir
     return `<img src="${resolveImageUrl(url, noteAbsoluteDir)}" alt="${alt}">`
   })
   html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2">$1</a>')
+
+  // Parse ![[path/to/note.xxx.json]] wiki-link embeds (block-level only)
+  html = html.replace(/^!\[\[([^\]]+)\]\]$/gm, (_fullMatch: string, path: string) => {
+    const trimmedPath = path.trim()
+    const embedType = inferEmbedType(trimmedPath)
+    if (!embedType) {
+      // Unrecognized type — leave as plain text
+      return `![[${trimmedPath}]]`
+    }
+    return `<div class="note-embed-placeholder" data-note-path="${trimmedPath}" data-note-type="${embedType}"></div>`
+  })
 
   // Convert @ref(...) after markdown formatting so code snippet HTML
   // (which may contain * for pointers) is not corrupted.
