@@ -358,23 +358,35 @@ export const MindMapCanvas = forwardRef<MindMapCanvasHandle, MindMapCanvasProps>
             line.setAttribute('y2', String(parseFloat(line.getAttribute('data-orig-y2') || '0') + dy))
           })
 
-          // Update parent's vertical line if this child is first or last
+          // Recalculate parent's vertical line span from all siblings'
+          // current positions — not just the dragged child's endpoint.
+          // When the first child moves below the second child, the vertical
+          // line must still span from the (new) topmost to bottommost sibling.
           const parentId = d.parent?.data.id
           if (parentId) {
             const vertLine = svgEl.querySelector<SVGLineElement>(
               `[data-owner-id="${parentId}"][data-line-type="vertical"]`
             )
             if (vertLine) {
-              const origY = originalPositions.get(d.data.id)?.x
-              if (origY !== undefined) {
-                const origY1 = parseFloat(vertLine.getAttribute('data-orig-y1') || '0')
-                const origY2 = parseFloat(vertLine.getAttribute('data-orig-y2') || '0')
-                if (Math.abs(origY - origY1) < 0.1) {
-                  vertLine.setAttribute('y1', String(origY1 + dy))
-                }
-                if (Math.abs(origY - origY2) < 0.1) {
-                  vertLine.setAttribute('y2', String(origY2 + dy))
-                }
+              const siblingEls = svgEl.querySelectorAll<SVGGElement>(
+                `[data-parent-id="${parentId}"]`
+              )
+              let minY = Infinity
+              let maxY = -Infinity
+              siblingEls.forEach(el => {
+                const sibId = el.getAttribute('data-node-id')
+                if (!sibId) return
+                const orig = originalPositions.get(sibId)
+                if (!orig) return
+                // Dragged node or descendant moves by dy; other siblings stay at original
+                const isMoved = sibId === d.data.id || descendantIds.has(sibId)
+                const curY = orig.x + (isMoved ? dy : 0)
+                if (curY < minY) minY = curY
+                if (curY > maxY) maxY = curY
+              })
+              if (minY < Infinity) {
+                vertLine.setAttribute('y1', String(minY))
+                vertLine.setAttribute('y2', String(maxY))
               }
             }
           }

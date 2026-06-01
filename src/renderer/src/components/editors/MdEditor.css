@@ -225,4 +225,5 @@
 
 .note-embed-body.mind-embed {
   height: 300px;
+  overflow: hidden;
 }
