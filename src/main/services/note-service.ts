@@ -23,6 +23,7 @@ import { loadConfig } from './notebook-config'
 function getNoteType(fileName: string): NoteFileType | null {
   if (fileName.endsWith('.mind.json')) return 'mind'
   if (fileName.endsWith('.derive.json')) return 'derive'
+  if (fileName.endsWith('.seq.mermaid')) return 'seq'
   if (fileName.endsWith('.md')) return 'md'
   return null
 }
@@ -64,6 +65,11 @@ export async function createNote(
       await writeTextFile(fullPath, content)
       break
     }
+    case 'seq': {
+      const content = 'sequenceDiagram\n    Alice->>Bob: Hello Bob!\n    Bob->>Alice: Hello Alice!\n'
+      await writeTextFile(fullPath, content)
+      break
+    }
   }
 }
 
@@ -87,6 +93,10 @@ export async function readNote(
       throw new Error(`Invalid derivation document: ${relativePath}`)
     }
     return doc
+  }
+
+  if (relativePath.endsWith('.seq.mermaid')) {
+    return readTextFile(fullPath)
   }
 
   return readTextFile(fullPath)
