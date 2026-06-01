@@ -13,7 +13,7 @@ import './NoteViewport.css'
 
 export function NoteViewport() {
   const { state } = useAppContext()
-  const { saveNote } = useNotes()
+  const { saveNote, selectNote } = useNotes()
   const { navigateToCode } = useCodeNavigation()
 
   const { activeNoteContent, activeNoteType, selectedNoteId } = state
@@ -128,6 +128,9 @@ export function NoteViewport() {
               if (mappings.length > 0) {
                 navigateToCode(mappings[0].filePath, mappings[0].startLine)
               }
+            }}
+            onEmbedClick={(notePath, noteType) => {
+              selectNote(notePath, noteType)
             }}
           />
         )
