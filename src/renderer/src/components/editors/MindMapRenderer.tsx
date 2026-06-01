@@ -25,23 +25,58 @@ export function MindMapRenderer({ document, onSave }: MindMapRendererProps) {
     svg.attr('width', width).attr('height', height)
 
     const root = d3.hierarchy<MindMapNode>(document.root, (d) => d.children)
-    const treeLayout = d3.tree<MindMapNode>().nodeSize([60, 120])
+    const treeLayout = d3.tree<MindMapNode>().nodeSize([60, 200])
     treeLayout(root)
 
     const rootY = height / 2
-    const g = svg.append('g').attr('transform', `translate(60, ${rootY})`)
+    const g = svg.append('g').attr('transform', `translate(80, ${rootY})`)
 
-    // Links
-    g.selectAll('path.link')
-      .data(root.links())
-      .join('path')
-      .attr('class', 'mind-link')
-      .attr('d', (d) => {
-        return `M${d.source.y!},${d.source.x!} C${d.source.y! + 60},${d.source.x!} ${d.target.y! - 60},${d.target.x!} ${d.target.y!},${d.target.x!}`
+    // Branch connectors (org-chart style)
+    const nodesWithChildren = root.descendants().filter(d => d.children && d.children.length > 0)
+
+    nodesWithChildren.forEach(parent => {
+      const children = parent.children!
+      const firstChild = children[0]
+      const lastChild = children[children.length - 1]
+
+      const parentRightX = parent.y! + 60
+      const childLeftX = firstChild.y! - 60
+      const elbowX = parentRightX + (childLeftX - parentRightX) * 0.75
+
+      // Horizontal from parent right edge to elbow
+      g.append('line')
+        .attr('x1', parentRightX)
+        .attr('y1', parent.x!)
+        .attr('x2', elbowX)
+        .attr('y2', parent.x!)
+        .attr('stroke', '#555')
+        .attr('stroke-width', 1.5)
+        .attr('class', 'mind-link')
+
+      // Vertical line at elbow (only if >1 child)
+      if (children.length > 1) {
+        g.append('line')
+          .attr('x1', elbowX)
+          .attr('y1', firstChild.x!)
+          .attr('x2', elbowX)
+          .attr('y2', lastChild.x!)
+          .attr('stroke', '#555')
+          .attr('stroke-width', 1.5)
+          .attr('class', 'mind-link')
+      }
+
+      // Individual lines from elbow to each child
+      children.forEach(child => {
+        g.append('line')
+          .attr('x1', elbowX)
+          .attr('y1', child.x!)
+          .attr('x2', childLeftX)
+          .attr('y2', child.x!)
+          .attr('stroke', '#555')
+          .attr('stroke-width', 1.5)
+          .attr('class', 'mind-link')
       })
-      .attr('fill', 'none')
-      .attr('stroke', '#555')
-      .attr('stroke-width', 1.5)
+    })
 
     // Nodes
     const nodeGroup = g.selectAll('g.node')
