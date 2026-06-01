@@ -1,4 +1,5 @@
 import { useReducer, useCallback, useEffect, useRef, useState } from 'react'
+import { v4 as uuidv4 } from 'uuid'
 import type { MindMapDocument, MindMapNode } from '../../../../main/schemas/note-types'
 import './MindMapRenderer.css'
 import { mindMapReducer, findNode } from './mindMapReducer'
@@ -26,6 +27,10 @@ export function MindMapEditor({ document: initialDoc, onSave, onNavigateToCode }
   const canvasRef = useRef<MindMapCanvasHandle>(null)
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const oldDocRef = useRef(doc)
+  const selectedNodeIdRef = useRef<string | null>(null)
+
+  // Keep ref in sync so wrappedDispatch can stay stable
+  selectedNodeIdRef.current = selectedNodeId
 
   // Reset when opening a different document
   useEffect(() => {
@@ -34,9 +39,9 @@ export function MindMapEditor({ document: initialDoc, onSave, onNavigateToCode }
     setCollapsedIds(new Set())
     setContextMenu(null)
     oldDocRef.current = initialDoc
-  }, [initialDoc])
+  }, [initialDoc.root.id])
 
-  // Intercept SELECT_NODE and TOGGLE_COLLAPSE to manage external state
+  // Stable dispatch wrapper — uses ref for selectedNodeId to avoid dependency churn
   const wrappedDispatch = useCallback((action: MindMapAction) => {
     if (action.type === 'SELECT_NODE') {
       setSelectedNodeId(action.nodeId || null)
@@ -51,6 +56,15 @@ export function MindMapEditor({ document: initialDoc, onSave, onNavigateToCode }
         }
         return next
       })
+    }
+    if (action.type === 'ADD_CHILD' || action.type === 'ADD_SIBLING') {
+      const childId = uuidv4()
+      dispatch({ ...action, childId })
+      setSelectedNodeId(childId)
+      return
+    }
+    if (action.type === 'DELETE_NODE' && action.nodeId === selectedNodeIdRef.current) {
+      setSelectedNodeId(null)
     }
     dispatch(action)
   }, [])

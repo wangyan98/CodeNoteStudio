@@ -26,7 +26,11 @@ export function NodeEditPanel({ node, dispatch, onNavigateToCode, saveStatus }: 
   const completionDisposableRef = useRef<monaco.IDisposable | null>(null)
   const titleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const contentTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const titleInputRef = useRef<HTMLInputElement>(null)
+  const nodeRef = useRef<MindMapNode | null>(null)
+  nodeRef.current = node
 
+  // Sync title and editor content when node changes, and auto-focus title input
   useEffect(() => {
     if (!node) {
       setTitle('')
@@ -39,6 +43,11 @@ export function NodeEditPanel({ node, dispatch, onNavigateToCode, saveStatus }: 
         editorRef.current.setValue(node.content)
       }
     }
+    // Auto-focus title input so user can type immediately after clicking a node
+    requestAnimationFrame(() => {
+      titleInputRef.current?.focus()
+      titleInputRef.current?.select()
+    })
   }, [node?.id]) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
@@ -56,8 +65,8 @@ export function NodeEditPanel({ node, dispatch, onNavigateToCode, saveStatus }: 
 
   const handleEditorMount: OnMount = useCallback((editor) => {
     editorRef.current = editor
-    if (node) {
-      editor.setValue(node.content)
+    if (nodeRef.current) {
+      editor.setValue(nodeRef.current.content)
     }
     completionDisposableRef.current = registerRefCompletionProvider()
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
@@ -133,6 +142,7 @@ export function NodeEditPanel({ node, dispatch, onNavigateToCode, saveStatus }: 
         <div className="node-edit-panel-field">
           <label className="node-edit-panel-label">Title</label>
           <input
+            ref={titleInputRef}
             className="node-edit-panel-title-input"
             value={title}
             onChange={handleTitleChange}

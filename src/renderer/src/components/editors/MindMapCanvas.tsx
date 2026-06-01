@@ -24,6 +24,10 @@ export const MindMapCanvas = forwardRef<MindMapCanvasHandle, MindMapCanvasProps>
     const gElRef = useRef<SVGGElement | null>(null)
     const zoomRef = useRef<d3.ZoomBehavior<SVGSVGElement, unknown> | null>(null)
     const focusNodeIdRef = useRef<string | null>(null)
+    const selectedNodeIdRef = useRef<string | null>(null)
+
+    // Keep ref in sync so render() can read it without depending on the prop
+    selectedNodeIdRef.current = selectedNodeId
 
     useImperativeHandle(ref, () => ({
       zoomToFit() {
@@ -46,6 +50,29 @@ export const MindMapCanvas = forwardRef<MindMapCanvasHandle, MindMapCanvasProps>
         }
       }
     }))
+
+    // Separate effect: update selection highlight via direct DOM manipulation
+    // This avoids triggering a full D3 re-render when only selection changes
+    useEffect(() => {
+      if (!svgRef.current) return
+      const currentSelected = selectedNodeIdRef.current
+      // Remove highlight from previously selected node
+      svgRef.current.querySelectorAll('[data-node-id] rect').forEach((rect) => {
+        const g = rect.parentElement
+        const nodeId = g?.getAttribute('data-node-id')
+        if (nodeId === currentSelected) {
+          rect.setAttribute('fill', '#094771')
+          rect.setAttribute('stroke', '#ff0')
+          rect.setAttribute('stroke-width', '2')
+        } else {
+          const depth = g?.getAttribute('data-depth')
+          const isRoot = depth === '0'
+          rect.setAttribute('fill', isRoot ? '#007acc' : '#3c3c3c')
+          rect.setAttribute('stroke', isRoot ? '#007acc' : '#555')
+          rect.setAttribute('stroke-width', '1')
+        }
+      })
+    }, [selectedNodeId])
 
     const render = useCallback(() => {
       const svg = d3.select(svgRef.current)
@@ -99,7 +126,11 @@ export const MindMapCanvas = forwardRef<MindMapCanvasHandle, MindMapCanvasProps>
         .attr('class', 'mind-node')
         .attr('transform', (d) => `translate(${d.y!},${d.x!})`)
         .attr('data-node-id', (d) => d.data.id)
+        .attr('data-depth', (d) => String(d.depth))
         .style('cursor', 'pointer')
+
+      // Read selection from ref (not prop) to avoid including selectedNodeId in render deps
+      const selId = selectedNodeIdRef.current
 
       // Node rects
       nodeGroup.append('rect')
@@ -108,9 +139,9 @@ export const MindMapCanvas = forwardRef<MindMapCanvasHandle, MindMapCanvasProps>
         .attr('width', 140)
         .attr('height', 28)
         .attr('rx', 4)
-        .attr('fill', (d) => d.data.id === selectedNodeId ? '#094771' : (d.depth === 0 ? '#007acc' : '#3c3c3c'))
-        .attr('stroke', (d) => d.data.id === selectedNodeId ? '#ff0' : (d.depth === 0 ? '#007acc' : '#555'))
-        .attr('stroke-width', (d) => d.data.id === selectedNodeId ? 2 : 1)
+        .attr('fill', (d) => d.data.id === selId ? '#094771' : (d.depth === 0 ? '#007acc' : '#3c3c3c'))
+        .attr('stroke', (d) => d.data.id === selId ? '#ff0' : (d.depth === 0 ? '#007acc' : '#555'))
+        .attr('stroke-width', (d) => d.data.id === selId ? 2 : 1)
 
       // Collapse indicator
       const hasOrHadChildren = (d: d3.HierarchyNode<MindMapNode>) =>
@@ -124,6 +155,11 @@ export const MindMapCanvas = forwardRef<MindMapCanvasHandle, MindMapCanvasProps>
         .attr('fill', '#3c3c3c')
         .attr('stroke', '#666')
         .attr('stroke-width', 1)
+        .style('cursor', 'pointer')
+        .on('click', function (event: MouseEvent, d: d3.HierarchyNode<MindMapNode>) {
+          event.stopPropagation()
+          dispatch({ type: 'TOGGLE_COLLAPSE', nodeId: d.data.id })
+        })
 
       nodeGroup.filter(hasOrHadChildren)
         .append('text')
@@ -132,6 +168,7 @@ export const MindMapCanvas = forwardRef<MindMapCanvasHandle, MindMapCanvasProps>
         .attr('text-anchor', 'middle')
         .attr('fill', '#aaa')
         .attr('font-size', '9px')
+        .style('pointer-events', 'none')
         .text((d) => collapsedIds.has(d.data.id) ? '▶' : '▼')
 
       // Title text
@@ -171,9 +208,7 @@ export const MindMapCanvas = forwardRef<MindMapCanvasHandle, MindMapCanvasProps>
         onHoverNode?.(null)
       })
 
-      // Drag (visual only in v1) — note: do NOT call render() in end handler,
-      // it would remove DOM elements before the click event fires
-      // Use manual offset tracking to avoid D3 subject coordinate mismatch
+      // Drag (visual only in v1)
       let dragOffset: { x: number; y: number } | null = null
 
       const dragHandler = d3.drag<SVGGElement, d3.HierarchyNode<MindMapNode>>()
@@ -190,9 +225,8 @@ export const MindMapCanvas = forwardRef<MindMapCanvasHandle, MindMapCanvasProps>
         })
         .on('end', function (_event: d3.D3DragEvent<SVGGElement, unknown, unknown>, d: d3.HierarchyNode<MindMapNode>) {
           dragOffset = null
-          // Snap back to original position, restore stroke
           d3.select(this).attr('transform', `translate(${d.y!},${d.x!})`)
-          const isSelected = d.data.id === selectedNodeId
+          const isSelected = d.data.id === selectedNodeIdRef.current
           d3.select(this).select('rect')
             .attr('stroke', isSelected ? '#ff0' : (d.depth === 0 ? '#007acc' : '#555'))
             .attr('stroke-width', isSelected ? 2 : 1)
@@ -215,21 +249,19 @@ export const MindMapCanvas = forwardRef<MindMapCanvasHandle, MindMapCanvasProps>
             }
           })
         ;(svg as any).call(zoomRef.current)
-        // Center the root node initially (80px from left, vertically centered)
         ;(svg as any).call(zoomRef.current.transform, d3.zoomIdentity.translate(80, height / 2))
       }
 
       // Re-apply current zoom transform to the new g after tree rebuild
       const svgNode = svg.node()
-      if (svgNode && zoomRef.current) {
+      if (svgNode) {
         const transform = d3.zoomTransform(svgNode)
         if (transform.x !== 0 || transform.y !== 0 || transform.k !== 1) {
           g.attr('transform', `translate(${transform.x},${transform.y}) scale(${transform.k})`)
         }
       }
 
-      // Inline title editing — handled synchronously at end of render so it
-      // fires reliably regardless of React effect scheduling
+      // Inline title editing overlay
       if (focusNodeIdRef.current) {
         const activeTag = (document.activeElement as HTMLElement)?.tagName
         if (activeTag !== 'INPUT' && activeTag !== 'TEXTAREA') {
@@ -240,7 +272,6 @@ export const MindMapCanvas = forwardRef<MindMapCanvasHandle, MindMapCanvasProps>
           if (editNodeElement) {
             const editNode = findNode(doc, editNodeId)
             if (editNode) {
-              // Defer DOM insertion so the D3 rebuild finishes first
               requestAnimationFrame(() => {
                 const nodeRect = (editNodeElement as SVGGElement).getBoundingClientRect()
                 const input = document.createElement('input')
@@ -292,7 +323,9 @@ export const MindMapCanvas = forwardRef<MindMapCanvasHandle, MindMapCanvasProps>
         }
       }
 
-    }, [doc, selectedNodeId, collapsedIds, dispatch, onContextMenu, onHoverNode])
+    }, [doc, collapsedIds, dispatch, onContextMenu, onHoverNode])
+    // NOTE: selectedNodeId intentionally NOT in deps — selection highlight is
+    // applied via the separate useEffect below, avoiding full D3 rebuild on click
 
     useEffect(() => { render() }, [render])
 
@@ -304,6 +337,13 @@ export const MindMapCanvas = forwardRef<MindMapCanvasHandle, MindMapCanvasProps>
       return () => observer.disconnect()
     }, [render])
 
+    // Cleanup zoomRef when the component is fully unmounted
+    useEffect(() => {
+      return () => {
+        zoomRef.current = null
+      }
+    }, [])
+
     return (
       <div
         className="mindmap-container"
@@ -311,10 +351,9 @@ export const MindMapCanvas = forwardRef<MindMapCanvasHandle, MindMapCanvasProps>
         tabIndex={0}
         onKeyDown={(e) => {
           if (!selectedNodeId || selectedNodeId === '') return
-          // Skip if focus is in an input/textarea or during IME composition
           const tag = (e.target as HTMLElement).tagName
           if (tag === 'INPUT' || tag === 'TEXTAREA') return
-          if (e.isComposing) return
+          if ((e.nativeEvent as KeyboardEvent).isComposing) return
           if (e.key === 'Tab') {
             e.preventDefault()
             dispatch({ type: 'ADD_CHILD', parentId: selectedNodeId })

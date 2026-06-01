@@ -13,6 +13,7 @@ export interface MindMapAction {
   mapping?: CodeMapping
   ref?: string
   document?: MindMapDocument
+  childId?: string
 }
 
 // --- Tree navigation helpers ---
@@ -143,7 +144,9 @@ export function mindMapReducer(doc: MindMapDocument, action: MindMapAction): Min
     }
 
     case 'ADD_CHILD': {
-      const child = createMindMapNode('New Node')
+      const child = action.childId
+        ? { ...createMindMapNode('New Node'), id: action.childId }
+        : createMindMapNode('New Node')
       const cloned = cloneDoc(doc)
       cloned.root = updateNodeInClone(cloned.root, action.parentId!, (n) => ({
         ...n,
@@ -155,7 +158,9 @@ export function mindMapReducer(doc: MindMapDocument, action: MindMapAction): Min
     case 'ADD_SIBLING': {
       const parentInfo = findParentAndIndex(doc, action.nodeId!)
       if (!parentInfo) return doc
-      const sibling = createMindMapNode('New Node')
+      const sibling = action.childId
+        ? { ...createMindMapNode('New Node'), id: action.childId }
+        : createMindMapNode('New Node')
       const cloned = cloneDoc(doc)
       cloned.root = updateNodeInClone(cloned.root, parentInfo.parent.id, (n) => {
         const updated = [...n.children]
