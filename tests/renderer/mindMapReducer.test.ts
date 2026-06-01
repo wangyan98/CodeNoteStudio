@@ -16,9 +16,7 @@ function makeDoc(): MindMapDocument {
           id: 'child-1',
           title: 'Child 1',
           content: 'content one',
-          children: [],
-          embedRefs: [],
-          codeMappings: []
+          children: []
         },
         {
           id: 'child-2',
@@ -29,17 +27,11 @@ function makeDoc(): MindMapDocument {
               id: 'grand-1',
               title: 'Grandchild',
               content: '',
-              children: [],
-              embedRefs: [],
-              codeMappings: []
+              children: []
             }
-          ],
-          embedRefs: [],
-          codeMappings: []
+          ]
         }
-      ],
-      embedRefs: [],
-      codeMappings: []
+      ]
     }
   }
 }
@@ -145,47 +137,10 @@ describe('mindMapReducer', () => {
     })
   })
 
-  describe('ADD_CODE_MAPPING', () => {
-    it('adds a code mapping to a node', () => {
-      const doc = makeDoc()
-      const mapping = { raw: '@ref(sort)', functionName: 'sort', filePath: 'src/lib.ts', startLine: 10, endLine: 15 }
-      const result = dispatch(doc, { type: 'ADD_CODE_MAPPING', nodeId: 'child-1', mapping })
-      expect(result.root.children[0].codeMappings.length).toBe(1)
-      expect(result.root.children[0].codeMappings[0].functionName).toBe('sort')
-    })
-  })
-
-  describe('REMOVE_CODE_MAPPING', () => {
-    it('removes a code mapping by index', () => {
-      const doc = makeDoc()
-      const mapping = { raw: '@ref(sort)', functionName: 'sort', filePath: 'src/lib.ts', startLine: 10, endLine: 15 }
-      let result = dispatch(doc, { type: 'ADD_CODE_MAPPING', nodeId: 'child-1', mapping })
-      result = dispatch(result, { type: 'REMOVE_CODE_MAPPING', nodeId: 'child-1', index: 0 })
-      expect(result.root.children[0].codeMappings.length).toBe(0)
-    })
-  })
-
-  describe('ADD_EMBED_REF', () => {
-    it('adds an embed ref to a node', () => {
-      const doc = makeDoc()
-      const result = dispatch(doc, { type: 'ADD_EMBED_REF', nodeId: 'child-1', ref: 'algo/sort.md' })
-      expect(result.root.children[0].embedRefs).toContain('algo/sort.md')
-    })
-  })
-
-  describe('REMOVE_EMBED_REF', () => {
-    it('removes an embed ref by index', () => {
-      const doc = makeDoc()
-      let result = dispatch(doc, { type: 'ADD_EMBED_REF', nodeId: 'child-1', ref: 'algo/sort.md' })
-      result = dispatch(result, { type: 'REMOVE_EMBED_REF', nodeId: 'child-1', index: 0 })
-      expect(result.root.children[0].embedRefs.length).toBe(0)
-    })
-  })
-
   describe('SET_DOCUMENT', () => {
     it('replaces the entire document', () => {
       const old = makeDoc()
-      const fresh = { type: 'mind' as const, version: 1 as const, root: { id: 'new-root', title: 'Fresh', content: '', children: [], embedRefs: [], codeMappings: [] } }
+      const fresh = { type: 'mind' as const, version: 1 as const, root: { id: 'new-root', title: 'Fresh', content: '', children: [] } }
       const result = dispatch(old, { type: 'SET_DOCUMENT', document: fresh })
       expect(result.root.id).toBe('new-root')
     })

@@ -2,7 +2,7 @@ import { useCallback, useState, useEffect, useRef } from 'react'
 import Editor, { type OnMount } from '@monaco-editor/react'
 import type * as monaco from 'monaco-editor'
 import { registerRefCompletionProvider } from '../../services/monaco-completion'
-import type { MindMapNode, CodeMapping } from '../../../../main/schemas/note-types'
+import type { MindMapNode } from '../../../../main/schemas/note-types'
 import type { MindMapAction } from './mindMapReducer'
 import './NodeEditPanel.css'
 
@@ -88,46 +88,6 @@ export function NodeEditPanel({ node, dispatch, onNavigateToCode, saveStatus }: 
     }, 300)
   }, [node, dispatch])
 
-  const handleRemoveMapping = useCallback((index: number) => {
-    if (node) dispatch({ type: 'REMOVE_CODE_MAPPING', nodeId: node.id, index })
-  }, [node, dispatch])
-
-  const handleRemoveEmbedRef = useCallback((index: number) => {
-    if (node) dispatch({ type: 'REMOVE_EMBED_REF', nodeId: node.id, index })
-  }, [node, dispatch])
-
-  const handleAddMapping = useCallback(async () => {
-    if (!node) return
-    try {
-      const symbols = await window.electronAPI.querySymbols(undefined, undefined, undefined)
-      if (symbols.length > 0) {
-        const sym = symbols[0]
-        const mapping: CodeMapping = {
-          raw: `@ref(${sym.name})`,
-          functionName: sym.name,
-          filePath: sym.filePath,
-          startLine: sym.startLine,
-          endLine: sym.endLine
-        }
-        dispatch({ type: 'ADD_CODE_MAPPING', nodeId: node.id, mapping })
-      }
-    } catch (e) {
-      console.error('Failed to add mapping:', e)
-    }
-  }, [node, dispatch])
-
-  const handleAddEmbedRef = useCallback(async () => {
-    if (!node) return
-    try {
-      const notes = await window.electronAPI.listNotes()
-      if (notes.length > 0) {
-        dispatch({ type: 'ADD_EMBED_REF', nodeId: node.id, ref: notes[0].relativePath })
-      }
-    } catch (e) {
-      console.error('Failed to add embed ref:', e)
-    }
-  }, [node, dispatch])
-
   if (!node) {
     return (
       <div className="node-edit-panel node-edit-panel-empty">
@@ -170,57 +130,6 @@ export function NodeEditPanel({ node, dispatch, onNavigateToCode, saveStatus }: 
               }}
             />
           </div>
-        </div>
-
-        <div className="node-edit-panel-field">
-          <div className="node-edit-panel-section-header">
-            <label className="node-edit-panel-label">Code Mappings</label>
-            <button className="node-edit-panel-add-btn" onClick={handleAddMapping}>+ Add</button>
-          </div>
-          {node.codeMappings.length === 0 ? (
-            <p className="node-edit-panel-empty-text">No code mappings</p>
-          ) : (
-            <ul className="node-edit-panel-mapping-list">
-              {node.codeMappings.map((m, i) => (
-                <li key={`${m.filePath}:${m.startLine}:${m.functionName}`} className="node-edit-panel-mapping-item">
-                  <span
-                    className="node-edit-panel-mapping-ref"
-                    onClick={() => onNavigateToCode?.(m.filePath, m.startLine)}
-                    title={`${m.filePath}:${m.startLine}`}
-                  >
-                    {m.raw}
-                  </span>
-                  <span className="node-edit-panel-mapping-path">{m.filePath}:{m.startLine}</span>
-                  <button
-                    className="node-edit-panel-remove-btn"
-                    onClick={() => handleRemoveMapping(i)}
-                  >x</button>
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
-
-        <div className="node-edit-panel-field">
-          <div className="node-edit-panel-section-header">
-            <label className="node-edit-panel-label">Embed Refs</label>
-            <button className="node-edit-panel-add-btn" onClick={handleAddEmbedRef}>+ Add</button>
-          </div>
-          {node.embedRefs.length === 0 ? (
-            <p className="node-edit-panel-empty-text">No embed refs</p>
-          ) : (
-            <ul className="node-edit-panel-mapping-list">
-              {node.embedRefs.map((ref, i) => (
-                <li key={ref} className="node-edit-panel-mapping-item">
-                  <span className="node-edit-panel-mapping-ref">{ref}</span>
-                  <button
-                    className="node-edit-panel-remove-btn"
-                    onClick={() => handleRemoveEmbedRef(i)}
-                  >x</button>
-                </li>
-              ))}
-            </ul>
-          )}
         </div>
 
         <div className={`node-edit-panel-status node-edit-panel-status-${saveStatus}`}>

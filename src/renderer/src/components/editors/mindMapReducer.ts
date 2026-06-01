@@ -1,4 +1,4 @@
-import type { MindMapDocument, MindMapNode, CodeMapping } from '../../../../main/schemas/note-types'
+import type { MindMapDocument, MindMapNode } from '../../../../main/schemas/note-types'
 import { createMindMapNode } from '../../../../main/schemas/note-types'
 
 export interface MindMapAction {
@@ -9,9 +9,6 @@ export interface MindMapAction {
   parentId?: string
   newParentId?: string
   newIndex?: number
-  index?: number
-  mapping?: CodeMapping
-  ref?: string
   document?: MindMapDocument
   childId?: string
 }
@@ -68,9 +65,7 @@ function findAncestors(node: MindMapNode, targetId: string, ancestors: string[])
 function cloneNode(node: MindMapNode): MindMapNode {
   return {
     ...node,
-    children: node.children.map(cloneNode),
-    embedRefs: [...node.embedRefs],
-    codeMappings: [...node.codeMappings]
+    children: node.children.map(cloneNode)
   }
 }
 
@@ -203,42 +198,6 @@ export function mindMapReducer(doc: MindMapDocument, action: MindMapAction): Min
         updated.splice(action.newIndex!, 0, moved)
         return { ...n, children: updated }
       })
-      return cloned
-    }
-
-    case 'ADD_CODE_MAPPING': {
-      const cloned = cloneDoc(doc)
-      cloned.root = updateNodeInClone(cloned.root, action.nodeId!, (n) => ({
-        ...n,
-        codeMappings: [...n.codeMappings, action.mapping!]
-      }))
-      return cloned
-    }
-
-    case 'REMOVE_CODE_MAPPING': {
-      const cloned = cloneDoc(doc)
-      cloned.root = updateNodeInClone(cloned.root, action.nodeId!, (n) => ({
-        ...n,
-        codeMappings: n.codeMappings.filter((_, i) => i !== action.index)
-      }))
-      return cloned
-    }
-
-    case 'ADD_EMBED_REF': {
-      const cloned = cloneDoc(doc)
-      cloned.root = updateNodeInClone(cloned.root, action.nodeId!, (n) => ({
-        ...n,
-        embedRefs: [...n.embedRefs, action.ref!]
-      }))
-      return cloned
-    }
-
-    case 'REMOVE_EMBED_REF': {
-      const cloned = cloneDoc(doc)
-      cloned.root = updateNodeInClone(cloned.root, action.nodeId!, (n) => ({
-        ...n,
-        embedRefs: n.embedRefs.filter((_, i) => i !== action.index)
-      }))
       return cloned
     }
 

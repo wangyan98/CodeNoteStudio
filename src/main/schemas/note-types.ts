@@ -17,8 +17,6 @@ export interface MindMapNode {
   title: string
   content: string
   children: MindMapNode[]
-  embedRefs: string[]
-  codeMappings: CodeMapping[]
 }
 
 export interface MindMapDocument {
@@ -32,9 +30,7 @@ export function createMindMapNode(title = ''): MindMapNode {
     id: uuidv4(),
     title,
     content: '',
-    children: [],
-    embedRefs: [],
-    codeMappings: []
+    children: []
   }
 }
 
