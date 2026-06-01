@@ -104,7 +104,7 @@ export const MindMapCanvas = forwardRef<MindMapCanvasHandle, MindMapCanvasProps>
 
       const visibleRoot = getVisibleRoot(doc.root)
       const root = d3.hierarchy<MindMapNode>(visibleRoot, (d) => d.children)
-      const treeLayout = d3.tree<MindMapNode>().nodeSize([60, 180])
+      const treeLayout = d3.tree<MindMapNode>().nodeSize([60, 240])
       treeLayout(root)
 
       // Branch connectors (org-chart style): one fork per parent with visible children
@@ -117,7 +117,9 @@ export const MindMapCanvas = forwardRef<MindMapCanvasHandle, MindMapCanvasProps>
 
         const parentRightX = parent.y! + 70
         const childLeftX = firstChild.y! - 70
-        const elbowX = parentRightX + 60
+        // Place elbow close to children (75% of the gap from parent) so the
+        // vertical distribution line sits in clear space, not overlapping nodes
+        const elbowX = parentRightX + (childLeftX - parentRightX) * 0.75
 
         // Horizontal line from parent right edge to elbow
         g.append('line')
