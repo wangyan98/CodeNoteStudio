@@ -13,10 +13,12 @@ import {
 import {
   createMindMapDocument,
   createDerivationDocument,
+  createNetworkDocument,
   isValidMindMapDocument,
-  isValidDerivationDocument
+  isValidDerivationDocument,
+  isValidNetworkDocument
 } from '../schemas/note-types'
-import type { MindMapDocument, DerivationDocument } from '../schemas/note-types'
+import type { MindMapDocument, DerivationDocument, NetworkDocument } from '../schemas/note-types'
 import type { NoteFileType, NoteListItem } from '../types'
 import { loadConfig } from './notebook-config'
 
@@ -40,7 +42,7 @@ async function getFullPath(projectPath: string, relativePath: string): Promise<s
   return path.join(notesRoot, relativePath)
 }
 
-export type NoteContent = string | MindMapDocument | DerivationDocument
+export type NoteContent = string | MindMapDocument | DerivationDocument | NetworkDocument
 
 export async function createNote(
   projectPath: string,
@@ -72,7 +74,6 @@ export async function createNote(
       break
     }
     case 'net': {
-      const { createNetworkDocument } = await import('../schemas/note-types')
       const content = createNetworkDocument()
       await writeJsonFile(fullPath, content)
       break
@@ -107,8 +108,7 @@ export async function readNote(
   }
 
   if (relativePath.endsWith('.net.json')) {
-    const { isValidNetworkDocument } = await import('../schemas/note-types')
-    const doc = await readJsonFile(fullPath)
+    const doc = await readJsonFile<NetworkDocument>(fullPath)
     if (!isValidNetworkDocument(doc)) {
       throw new Error(`Invalid network document: ${relativePath}`)
     }
