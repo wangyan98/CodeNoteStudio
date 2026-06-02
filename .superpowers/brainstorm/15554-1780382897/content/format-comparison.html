@@ -1,0 +1,127 @@
+<h2>JSON Schema vs DSL — Comparison</h2>
+<p class="subtitle">How would editing a ResNet block feel in each approach?</p>
+
+<div class="split">
+  <div class="mockup">
+    <div class="mockup-header" style="background:#e8f0fe">A: JSON Schema (.net.json) — RECOMMENDED</div>
+    <div class="mockup-body" style="padding:12px;font-family:monospace;font-size:10px;line-height:1.5;max-height:400px;overflow-y:auto">
+<pre style="margin:0;white-space:pre-wrap">{
+  "type": "net",
+  "version": 1,
+  "name": "ResNet Block",
+  "blocks": [{
+    "id": "resblock1",
+    "name": "ResidualBlock",
+    "repeat": 3,
+    "layers": [
+      {
+        "id": "conv1",
+        "type": "Conv2d",
+        "params": {
+          "in_channels": 64,
+          "out_channels": 64,
+          "kernel_size": 3,
+          "stride": 1,
+          "padding": 1
+        },
+        "codeMapping": {
+          "raw": "models/resnet.py:Block.conv1:42",
+          "functionName": "conv1",
+          "filePath": "models/resnet.py",
+          "startLine": 42
+        }
+      },
+      {
+        "id": "bn1",
+        "type": "BatchNorm2d",
+        "params": { "num_features": 64 },
+        "codeMapping": {
+          "raw": "models/resnet.py:Block.bn1:43",
+          "functionName": "bn1",
+          "filePath": "models/resnet.py",
+          "startLine": 43
+        }
+      },
+      {
+        "id": "relu1",
+        "type": "ReLU",
+        "params": { "inplace": true },
+        "codeMapping": {
+          "raw": "models/resnet.py:Block.relu:44"
+        }
+      }
+    ],
+    "connections": [
+      { "from": "conv1", "to": "bn1" },
+      { "from": "bn1", "to": "relu1" },
+      { "from": "relu1", "to": "conv2" }
+    ],
+    "skipConnections": [
+      { "from": "#block_input", "to": "#block_output" }
+    ]
+  }]
+}</pre>
+    </div>
+    <div style="padding:8px;font-size:11px;line-height:1.5">
+      <div class="pros-cons">
+        <div class="pros"><h4>Pros</h4>
+          <ul>
+            <li>Matches existing .mind.json / .derive.json pattern</li>
+            <li>Reuses note-service read/write/validate pipeline</li>
+            <li>Reuses <code>CodeMapping[]</code> from derive nodes</li>
+            <li>Easy for future agents to generate</li>
+            <li>Type-safe validation</li>
+          </ul>
+        </div>
+        <div class="cons"><h4>Cons</h4>
+          <ul>
+            <li>Verbose to hand-write</li>
+            <li>Need an editor panel to fill params</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="mockup">
+    <div class="mockup-header" style="background:#fce8e6">B: DSL (.net.txt)</div>
+    <div class="mockup-body" style="padding:12px;font-family:monospace;font-size:10px;line-height:1.5;max-height:400px;overflow-y:auto">
+<pre style="margin:0;white-space:pre-wrap">network ResNetBlock {
+
+  block ResidualBlock [repeat=3] {
+    Conv2d(in=64, out=64, k=3, s=1, p=1)
+      -> BatchNorm2d(64)
+      -> ReLU(inplace=true)
+      -> Conv2d(in=64, out=64, k=3, s=1, p=1)
+      -> BatchNorm2d(64)
+
+    input -> + -> ReLU -> output  # skip
+
+    # Source mappings as annotations
+    @ref(conv1: models/resnet.py:42)
+    @ref(bn1: models/resnet.py:43)
+    @ref(relu: models/resnet.py:44)
+  }
+}</pre>
+    </div>
+    <div style="padding:8px;font-size:11px;line-height:1.5">
+      <div class="pros-cons">
+        <div class="pros"><h4>Pros</h4>
+          <ul>
+            <li>Concise, reads like PyTorch</li>
+            <li>Quick to write</li>
+          </ul>
+        </div>
+        <div class="cons"><h4>Cons</h4>
+          <ul>
+            <li>Custom parser needed (lexer + grammar)</li>
+            <li>No existing project pattern to reuse</li>
+            <li>Harder for agents to generate precisely</li>
+            <li>Validating + error messages is custom work</li>
+            <li>Must convert to IR for renderer anyway</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

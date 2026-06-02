@@ -1,0 +1,140 @@
+<h2>Which layout best fits your needs for network visualization?</h2>
+<p class="subtitle">The notes app renders these inline within .md files (similar to how mind maps and derivation trees embed now)</p>
+
+<div class="options">
+  <div class="option" data-choice="a" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="content">
+      <h3>Vertical Stack (top-down)</h3>
+      <div class="mockup">
+        <div class="mockup-body" style="padding:16px;font-family:monospace;font-size:11px;line-height:1.6">
+          <div style="background:#e8f0fe;border:2px solid #4a90d9;border-radius:6px;padding:8px 12px;margin:4px auto;max-width:260px;text-align:center">
+            <strong>Conv2d</strong> <span style="color:#888">(3→64, k=3, s=1)</span><br>
+            <span style="font-size:9px;color:#4a90d9">@ref(models/resnet.py:Block.conv1:42)</span>
+          </div>
+          <div style="text-align:center;color:#888;font-size:16px">↓<br><span style="font-size:9px">64×224×224</span></div>
+          <div style="background:#fce8e6;border:2px solid #ea4335;border-radius:6px;padding:8px 12px;margin:4px auto;max-width:260px;text-align:center">
+            <strong>BatchNorm2d</strong> (64)<br>
+            <span style="font-size:9px;color:#4a90d9">@ref(models/resnet.py:Block.bn1:43)</span>
+          </div>
+          <div style="text-align:center;color:#888;font-size:16px">↓</div>
+          <div style="background:#e6f4ea;border:2px solid #34a853;border-radius:6px;padding:8px 12px;margin:4px auto;max-width:260px;text-align:center">
+            <strong>ReLU</strong> (inplace)<br>
+            <span style="font-size:9px;color:#4a90d9">@ref(models/resnet.py:Block.relu:44)</span>
+          </div>
+          <div style="text-align:center;color:#888;font-size:16px">↓</div>
+          <div style="background:#e8f0fe;border:2px solid #4a90d9;border-radius:6px;padding:8px 12px;margin:4px auto;max-width:260px;text-align:center">
+            <strong>Conv2d</strong> <span style="color:#888">(64→64, k=3, s=1)</span><br>
+            <span style="font-size:9px;color:#4a90d9">@ref(models/resnet.py:Block.conv2:45)</span>
+          </div>
+        </div>
+      </div>
+      <p>Linear top-to-bottom flow with tensor shapes on arrows. Best for simple sequential models.</p>
+    </div>
+  </div>
+
+  <div class="option" data-choice="b" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="content">
+      <h3>Horizontal Flow (left-to-right)</h3>
+      <div class="mockup">
+        <div class="mockup-body" style="padding:16px;font-family:monospace;font-size:10px;line-height:1.4;overflow-x:auto">
+          <div style="display:flex;align-items:center;gap:4px;min-width:500px">
+            <div style="background:#e8f0fe;border:2px solid #4a90d9;border-radius:6px;padding:6px 10px;text-align:center;min-width:100px">
+              <strong>Conv2d</strong><br><span style="color:#888">3→64</span>
+            </div>
+            <span style="font-size:16px">→</span>
+            <div style="background:#fce8e6;border:2px solid #ea4335;border-radius:6px;padding:6px 10px;text-align:center;min-width:90px">
+              <strong>BN</strong><br><span style="color:#888">64</span>
+            </div>
+            <span style="font-size:16px">→</span>
+            <div style="background:#e6f4ea;border:2px solid #34a853;border-radius:6px;padding:6px 10px;text-align:center;min-width:70px">
+              <strong>ReLU</strong>
+            </div>
+            <span style="font-size:16px">→</span>
+            <div style="background:#e8f0fe;border:2px solid #4a90d9;border-radius:6px;padding:6px 10px;text-align:center;min-width:100px">
+              <strong>Conv2d</strong><br><span style="color:#888">64→64</span>
+            </div>
+            <span style="font-size:16px">→</span>
+            <div style="background:#fff3e0;border:2px dashed #ff9800;border-radius:6px;padding:6px 10px;text-align:center;min-width:70px">
+              <strong>+</strong>
+            </div>
+          </div>
+          <div style="margin-top:8px;font-size:9px;color:#4a90d9">
+            Each box clickable → jumps to source (ResNet/Block/layer)
+          </div>
+        </div>
+      </div>
+      <p>Classic architecture diagram style. Good for papers, but may overflow for deep networks.</p>
+    </div>
+  </div>
+
+  <div class="option" data-choice="c" onclick="toggleSelect(this)">
+    <div class="letter">C</div>
+    <div class="content">
+      <h3>DAG / Block Diagram (hybrid)</h3>
+      <div class="mockup">
+        <div class="mockup-body" style="padding:16px;font-family:monospace;font-size:10px;line-height:1.4">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;max-width:450px;margin:0 auto">
+            <div style="background:#e8f0fe;border:2px solid #4a90d9;border-radius:6px;padding:8px;text-align:center">
+              <strong>Input</strong><br><span style="color:#888">3×224×224</span>
+            </div>
+            <div></div>
+            <div style="background:#e8f0fe;border:2px solid #4a90d9;border-radius:6px;padding:8px;text-align:center">
+              <strong>Conv2d</strong><br>3→64 k=7 s=2<br>
+              <span style="font-size:8px;color:#4a90d9">@ref(stem.py:conv1:12)</span>
+            </div>
+            <div style="font-size:16px;color:#888;display:flex;align-items:center">→ 64×112×112 →</div>
+            <div style="background:#fce8e6;border:2px solid #ea4335;border-radius:6px;padding:8px;text-align:center">
+              <strong>MaxPool</strong><br>k=3 s=2 p=1
+            </div>
+            <div></div>
+            <div style="grid-column:1/-1;border:2px dashed #ff9800;border-radius:8px;padding:10px;margin-top:4px">
+              <div style="text-align:center;font-weight:bold;color:#ff9800;margin-bottom:6px">ResidualBlock × 3</div>
+              <div style="display:flex;align-items:center;gap:4px;justify-content:center">
+                <div style="background:#e8f0fe;border:1px solid #4a90d9;border-radius:4px;padding:4px 6px;font-size:9px">Conv2d<br>64→64</div>
+                <span>→</span>
+                <div style="background:#fce8e6;border:1px solid #ea4335;border-radius:4px;padding:4px 6px;font-size:9px">BN</div>
+                <span>→</span>
+                <div style="background:#e6f4ea;border:1px solid #34a853;border-radius:4px;padding:4px 6px;font-size:9px">ReLU</div>
+                <span>→</span>
+                <div style="background:#e8f0fe;border:1px solid #4a90d9;border-radius:4px;padding:4px 6px;font-size:9px">Conv2d<br>64→64</div>
+              </div>
+              <div style="text-align:center;margin-top:4px;font-size:9px;color:#888">⊕ skip connection</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <p>Groups repeated blocks, shows skip connections and parallel branches. Best for real-world architectures (ResNet, DenseNet, Transformers).</p>
+    </div>
+  </div>
+
+  <div class="option" data-choice="d" onclick="toggleSelect(this)">
+    <div class="letter">D</div>
+    <div class="content">
+      <h3>Table + Diagram hybrid</h3>
+      <div class="mockup">
+        <div class="mockup-body" style="padding:12px;font-family:monospace;font-size:10px">
+          <div style="display:flex;gap:12px;align-items:flex-start">
+            <div style="flex:0 0 auto">
+              <div style="background:#e8f0fe;border:2px solid #4a90d9;border-radius:4px;padding:4px 8px;margin:4px 0;font-size:9px;text-align:center">Conv2d<br>3→64</div>
+              <div style="text-align:center;font-size:12px">↓</div>
+              <div style="background:#fce8e6;border:2px solid #ea4335;border-radius:4px;padding:4px 8px;margin:4px 0;font-size:9px;text-align:center">BN+ReLU</div>
+              <div style="text-align:center;font-size:12px">↓</div>
+              <div style="background:#e8f0fe;border:2px solid #4a90d9;border-radius:4px;padding:4px 8px;margin:4px 0;font-size:9px;text-align:center">Conv2d<br>64→64</div>
+            </div>
+            <div style="flex:1;font-size:9px;line-height:1.5">
+              <table style="width:100%;border-collapse:collapse">
+                <tr style="border-bottom:1px solid #ddd"><th style="text-align:left;padding:4px">#</th><th style="text-align:left;padding:4px">Layer</th><th style="text-align:left;padding:4px">Params</th><th style="text-align:left;padding:4px">Source</th></tr>
+                <tr><td style="padding:4px">1</td><td style="padding:4px">Conv2d</td><td style="padding:4px">3→64 k=3</td><td style="padding:4px;color:#4a90d9">resnet.py:42</td></tr>
+                <tr><td style="padding:4px">2</td><td style="padding:4px">BatchNorm</td><td style="padding:4px">64</td><td style="padding:4px;color:#4a90d9">resnet.py:43</td></tr>
+                <tr><td style="padding:4px">3</td><td style="padding:4px">ReLU</td><td style="padding:4px">—</td><td style="padding:4px;color:#4a90d9">resnet.py:44</td></tr>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+      <p>Compact diagram plus a detailed parameter table. Good for documentation-heavy notes.</p>
+    </div>
+  </div>
+</div>
