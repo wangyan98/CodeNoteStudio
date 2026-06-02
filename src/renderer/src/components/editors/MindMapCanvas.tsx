@@ -1,9 +1,13 @@
 import { useRef, useEffect, useCallback, useImperativeHandle, forwardRef, useState } from 'react'
+import { createRoot } from 'react-dom/client'
 import * as d3 from 'd3'
 import type { MindMapDocument, MindMapNode, DerivationDocument } from '../../../../main/schemas/note-types'
 import type { MindMapAction } from './mindMapReducer'
 import { findNode } from './mindMapReducer'
-import { inferEmbedType } from '../../services/markdown-renderer'
+import { inferEmbedType, renderMarkdownForEmbed } from '../../services/markdown-renderer'
+import { MindMapRenderer } from './MindMapRenderer'
+import { DerivationDagViewer } from './DerivationDagViewer'
+import { SequenceDiagramViewer } from './SequenceDiagramViewer'
 
 interface MindMapCanvasProps {
   doc: MindMapDocument
@@ -80,6 +84,7 @@ export const MindMapCanvas = forwardRef<MindMapCanvasHandle, MindMapCanvasProps>
     const focusNodeIdRef = useRef<string | null>(null)
     const selectedNodeIdRef = useRef<string | null>(null)
     const embedOverlayRef = useRef<HTMLDivElement>(null)
+    const embedRootsRef = useRef<Array<() => void>>([])
 
     // Keep ref in sync so render() can read it without depending on the prop
     selectedNodeIdRef.current = selectedNodeId
@@ -407,6 +412,67 @@ export const MindMapCanvas = forwardRef<MindMapCanvasHandle, MindMapCanvasProps>
         .style('pointer-events', 'none')
         .text((d) => d.data.title.length > 22 ? d.data.title.slice(0, 20) + '..' : d.data.title)
 
+      // Embed toggle indicators
+      nodeGroup.each(function (d: d3.HierarchyNode<MindMapNode>) {
+        if (!d.data.content) return
+        const embeds = parseEmbeds(d.data.content)
+        if (embeds.length === 0) return
+
+        const g = d3.select(this)
+        embeds.forEach((embedRef, i) => {
+          const resolvedPath = resolveEmbedPath(notePath, embedRef.relativePath)
+          const cacheKey = `${d.data.id}::${resolvedPath}`
+          const isExpanded = expandedEmbeds.has(cacheKey)
+          const cached = embedCache.get(cacheKey)
+
+          const indicatorY = 22 + i * 18  // Below the node rect (y=-14 to 14 is the rect, so 22 is 8px below)
+
+          // Background rect for toggle row
+          g.append('rect')
+            .attr('x', -70)
+            .attr('y', indicatorY)
+            .attr('width', 140)
+            .attr('height', 16)
+            .attr('rx', 3)
+            .attr('fill', cached?.status === 'error' ? '#3d2020' : '#2a2a2a')
+            .attr('stroke', cached?.status === 'error' ? '#f44747' : '#444')
+            .attr('stroke-width', 0.5)
+
+          // Toggle arrow
+          g.append('text')
+            .attr('x', -62)
+            .attr('y', indicatorY + 11)
+            .attr('fill', cached?.status === 'error' ? '#f44747' : '#888')
+            .attr('font-size', '9px')
+            .style('pointer-events', 'none')
+            .text(isExpanded ? '▼' : '▶')
+
+          // Label text
+          const label = cached?.errorMessage
+            ? `⚠ ${cached.errorMessage}`
+            : `📄 ${embedRef.relativePath}`
+          g.append('text')
+            .attr('x', -48)
+            .attr('y', indicatorY + 12)
+            .attr('fill', cached?.status === 'error' ? '#f44747' : '#aaa')
+            .attr('font-size', '9px')
+            .text(label.length > 28 ? label.slice(0, 26) + '..' : label)
+
+          // Invisible click rect
+          g.append('rect')
+            .attr('x', -70)
+            .attr('y', indicatorY)
+            .attr('width', 140)
+            .attr('height', 16)
+            .attr('fill', 'transparent')
+            .style('cursor', 'pointer')
+            .on('click', (event: MouseEvent) => {
+              event.stopPropagation()
+              handleToggleEmbed(d.data.id, embedRef)
+            })
+        })
+      })
+
       // --- Events ---
 
       nodeGroup.on('click', (event: MouseEvent, d: d3.HierarchyNode<MindMapNode>) => {
@@ -667,11 +733,84 @@ export const MindMapCanvas = forwardRef<MindMapCanvasHandle, MindMapCanvasProps>
         }
       }
 
-    }, [doc, collapsedIds, dispatch, onContextMenu, onHoverNode])
+    }, [doc, collapsedIds, dispatch, onContextMenu, onHoverNode, notePath, expandedEmbeds, embedCache, handleToggleEmbed])
     // NOTE: selectedNodeId intentionally NOT in deps — selection highlight is
     // applied via the separate useEffect below, avoiding full D3 rebuild on click
 
     useEffect(() => { render() }, [render])
+
+    // Render embed content cards in the overlay
+    useEffect(() => {
+      const overlay = embedOverlayRef.current
+      if (!overlay) return
+
+      // Clean up previous React roots before clearing DOM
+      embedRootsRef.current.forEach(unmount => unmount())
+      embedRootsRef.current = []
+
+      // Clear overlay
+      overlay.innerHTML = ''
+
+      if (expandedEmbeds.size === 0) return
+
+      expandedEmbeds.forEach(cacheKey => {
+        const cached = embedCache.get(cacheKey)
+        if (!cached) return
+
+        const sepIdx = cacheKey.indexOf('::')
+        const nodeId = cacheKey.slice(0, sepIdx)
+        const embedPath = cacheKey.slice(sepIdx + 2)
+
+        const card = document.createElement('div')
+        card.className = 'embed-card'
+        card.setAttribute('data-node-id', nodeId)
+        card.setAttribute('data-embed-path', embedPath)
+
+        // Header bar
+        const header = document.createElement('div')
+        header.className = 'embed-card-header'
+        header.innerHTML = `<span class="embed-card-badge">${cached.noteType}</span> <span>${embedPath}</span>`
+        card.appendChild(header)
+
+        // Body
+        const body = document.createElement('div')
+        body.className = 'embed-card-body'
+
+        if (cached.status === 'loading') {
+          body.innerHTML = '<div class="embed-card-loading">Loading...</div>'
+        } else if (cached.status === 'loaded' && cached.content !== undefined) {
+          const root = createRoot(body)
+          embedRootsRef.current.push(() => root.unmount())
+          if (cached.noteType === 'md') {
+            const mdHtml = renderMarkdownForEmbed(cached.content as string)
+            root.render(
+              <div dangerouslySetInnerHTML={{ __html: mdHtml }} />
+            )
+          } else if (cached.noteType === 'mind') {
+            root.render(
+              <MindMapRenderer
+                document={cached.content as MindMapDocument}
+                onSave={async () => {}}
+              />
+            )
+          } else if (cached.noteType === 'derive') {
+            root.render(
+              <DerivationDagViewer document={cached.content as DerivationDocument} />
+            )
+          } else if (cached.noteType === 'seq') {
+            root.render(
+              <SequenceDiagramViewer content={cached.content as string} />
+            )
+          }
+        }
+
+        card.appendChild(body)
+        overlay.appendChild(card)
+      })
+
+      // Position cards after they're added to DOM
+      requestAnimationFrame(() => syncEmbedPositions())
+    }, [expandedEmbeds, embedCache, syncEmbedPositions])
 
     useEffect(() => {
       const container = containerRef.current
