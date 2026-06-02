@@ -1,0 +1,9 @@
+.network-canvas-container {
+  flex: 1;
+  overflow: auto;
+  background: var(--editor-bg, #1e1e1e);
+}
+
+.network-canvas-container svg {
+  display: block;
+}
