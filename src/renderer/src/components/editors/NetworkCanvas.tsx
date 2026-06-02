@@ -60,7 +60,19 @@ export function NetworkCanvas({
     active: boolean
     sourceNodeId: string | null
     line: d3.Selection<SVGLineElement, unknown, null, undefined> | null
-  }>({ active: false, sourceNodeId: null, line: null })
+    cleanup: (() => void) | null
+  }>({ active: false, sourceNodeId: null, line: null, cleanup: null })
+
+  // Cleanup drag listeners on unmount
+  useEffect(() => {
+    return () => {
+      const state = dragConnectRef.current
+      if (state.active && state.cleanup) {
+        state.cleanup()
+        state.line?.remove()
+      }
+    }
+  }, [])
 
   const render = useCallback(() => {
     const svg = d3.select(svgRef.current)
@@ -284,11 +296,12 @@ export function NetworkCanvas({
       .attr('stroke', '#4a90d9').attr('stroke-width', 2)
       .attr('stroke-dasharray', '4,2')
 
-    dragConnectRef.current = { active: true, sourceNodeId, line }
+    dragConnectRef.current = { active: true, sourceNodeId, line, cleanup: null }
 
     const handleMouseMove = (e: MouseEvent) => {
-      const mx = (e.clientX - rect.left - transform.x) / transform.k
-      const my = (e.clientY - rect.top - transform.y) / transform.k
+      const t = d3.zoomTransform(svgEl)
+      const mx = (e.clientX - rect.left - t.x) / t.k
+      const my = (e.clientY - rect.top - t.y) / t.k
       line.attr('x2', mx).attr('y2', my)
     }
 
@@ -296,7 +309,7 @@ export function NetworkCanvas({
       document.removeEventListener('mousemove', handleMouseMove)
       document.removeEventListener('mouseup', handleMouseUp)
       line.remove()
-      dragConnectRef.current = { active: false, sourceNodeId: null, line: null }
+      dragConnectRef.current = { active: false, sourceNodeId: null, line: null, cleanup: null }
 
       const els = document.elementsFromPoint(e.clientX, e.clientY)
       for (const el of els) {
@@ -310,6 +323,12 @@ export function NetworkCanvas({
         }
       }
     }
+
+    const cleanup = () => {
+      document.removeEventListener('mousemove', handleMouseMove)
+      document.removeEventListener('mouseup', handleMouseUp)
+    }
+    dragConnectRef.current.cleanup = cleanup
 
     document.addEventListener('mousemove', handleMouseMove)
     document.addEventListener('mouseup', handleMouseUp)
