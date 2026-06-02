@@ -1,0 +1,17 @@
+{
+  "type": "mind",
+  "version": 1,
+  "root": {
+    "id": "root-1",
+    "title": "Embed Test",
+    "content": "See [[embed-test/companion.md]] and [[embed-test/sub-mind.mind.json]]",
+    "children": [
+      {
+        "id": "child-1",
+        "title": "Self Ref",
+        "content": "This references [[embed-test/test.mind.json]] (circular)",
+        "children": []
+      }
+    ]
+  }
+}

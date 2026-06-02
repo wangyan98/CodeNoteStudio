@@ -1,0 +1,12 @@
+{
+  "type": "mind",
+  "version": 1,
+  "root": {
+    "id": "sub-1",
+    "title": "Sub Mind Map",
+    "content": "I'm embedded!",
+    "children": [
+      { "id": "sub-2", "title": "Sub child", "content": "", "children": [] }
+    ]
+  }
+}
