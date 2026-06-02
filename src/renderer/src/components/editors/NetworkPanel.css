@@ -1,0 +1,123 @@
+.network-panel {
+  display: flex;
+  gap: 16px;
+  padding: 10px 16px;
+  background: var(--panel-bg, #1e1e1e);
+  border-top: 1px solid var(--border-color, #333);
+  min-height: 120px;
+  max-height: 220px;
+  overflow-y: auto;
+}
+
+.network-panel-empty {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--placeholder-color, #888);
+  font-size: 12px;
+}
+
+.network-panel-main {
+  flex: 1;
+}
+
+.network-panel-side {
+  width: 220px;
+  border-left: 1px solid var(--border-color, #333);
+  padding-left: 12px;
+  flex-shrink: 0;
+}
+
+.network-panel-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.network-panel-layer-type {
+  font-weight: 700;
+  font-size: 13px;
+}
+
+.network-panel-name-input {
+  flex: 1;
+  padding: 2px 6px;
+  font-size: 11px;
+  background: var(--input-bg, #2a2a2a);
+  color: var(--text-color, #d4d4d4);
+  border: 1px solid var(--border-color, #444);
+  border-radius: 3px;
+}
+
+.network-panel-section-title {
+  font-size: 9px;
+  color: var(--placeholder-color, #888);
+  text-transform: uppercase;
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+.network-panel-params-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr 1fr;
+  gap: 4px 12px;
+}
+
+.network-panel-field {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.network-panel-field-label {
+  font-size: 9px;
+  color: var(--placeholder-color, #888);
+}
+
+.network-panel-input {
+  width: 100%;
+  padding: 2px 4px;
+  font-size: 10px;
+  background: var(--input-bg, #2a2a2a);
+  color: var(--text-color, #d4d4d4);
+  border: 1px solid var(--border-color, #444);
+  border-radius: 2px;
+  box-sizing: border-box;
+}
+
+.network-panel-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10px;
+  color: var(--text-color, #d4d4d4);
+}
+
+.network-panel-checkbox input {
+  margin: 0;
+}
+
+.network-panel-no-params {
+  font-size: 10px;
+  color: var(--placeholder-color, #666);
+  font-style: italic;
+}
+
+.network-panel-resolved-ref {
+  font-size: 9px;
+  color: var(--accent-color, #4a90d9);
+  margin-top: 2px;
+}
+
+.network-panel-shapes {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.network-panel-shape-arrow {
+  color: var(--placeholder-color, #888);
+  font-size: 12px;
+}
