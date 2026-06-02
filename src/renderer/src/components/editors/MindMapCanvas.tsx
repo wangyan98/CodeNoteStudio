@@ -71,6 +71,9 @@ function resolveEmbedPath(
   return resolved.join('/')
 }
 
+// NOTE: Currently only detects direct self-embedding (A embeds A).
+// Cross-note circular chains (A→B→A) are prevented by the first-level-only policy
+// (embedded content's [[path]] refs are stripped and not togglable).
 function isCircularReference(sourceNotePath: string, targetResolvedPath: string): boolean {
   return sourceNotePath === targetResolvedPath
 }
@@ -90,7 +93,8 @@ export const MindMapCanvas = forwardRef<MindMapCanvasHandle, MindMapCanvasProps>
     selectedNodeIdRef.current = selectedNodeId
 
     const [expandedEmbeds, setExpandedEmbeds] = useState<Set<string>>(new Set())
-    const [embedCache, setEmbedCache] = useState<Map<string, ResolvedEmbed>>(new Map())
+    const embedCacheRef = useRef<Map<string, ResolvedEmbed>>(new Map())
+    const [embedCacheVersion, setEmbedCacheVersion] = useState(0)
 
     useImperativeHandle(ref, () => ({
       zoomToFit() {
@@ -141,8 +145,8 @@ export const MindMapCanvas = forwardRef<MindMapCanvasHandle, MindMapCanvasProps>
       const resolvedPath = resolveEmbedPath(notePath, embedRef.relativePath)
       const cacheKey = `${nodeId}::${resolvedPath}`
 
-      if (embedCache.has(cacheKey)) {
-        return embedCache.get(cacheKey)!
+      if (embedCacheRef.current.has(cacheKey)) {
+        return embedCacheRef.current.get(cacheKey)!
       }
 
       if (isCircularReference(notePath, resolvedPath)) {
@@ -152,7 +156,8 @@ export const MindMapCanvas = forwardRef<MindMapCanvasHandle, MindMapCanvasProps>
           noteType: null,
           errorMessage: `Circular reference: ${embedRef.relativePath}`
         }
-        setEmbedCache(prev => new Map(prev).set(cacheKey, err))
+        embedCacheRef.current.set(cacheKey, err)
+        setEmbedCacheVersion(v => v + 1)
         return err
       }
 
@@ -164,12 +169,14 @@ export const MindMapCanvas = forwardRef<MindMapCanvasHandle, MindMapCanvasProps>
           noteType: null,
           errorMessage: `Unsupported type: ${embedRef.relativePath}`
         }
-        setEmbedCache(prev => new Map(prev).set(cacheKey, err))
+        embedCacheRef.current.set(cacheKey, err)
+        setEmbedCacheVersion(v => v + 1)
         return err
       }
 
       const loading: ResolvedEmbed = { status: 'loading', notePath: resolvedPath, noteType }
-      setEmbedCache(prev => new Map(prev).set(cacheKey, loading))
+      embedCacheRef.current.set(cacheKey, loading)
+      setEmbedCacheVersion(v => v + 1)
 
       try {
         const content = await window.electronAPI.readNote(resolvedPath) as NoteContent
@@ -179,7 +186,8 @@ export const MindMapCanvas = forwardRef<MindMapCanvasHandle, MindMapCanvasProps>
           noteType,
           content
         }
-        setEmbedCache(prev => new Map(prev).set(cacheKey, resolved))
+        embedCacheRef.current.set(cacheKey, resolved)
+        setEmbedCacheVersion(v => v + 1)
         return resolved
       } catch (e: unknown) {
         const msg = e instanceof Error ? e.message : String(e)
@@ -197,10 +205,11 @@ export const MindMapCanvas = forwardRef<MindMapCanvasHandle, MindMapCanvasProps>
           noteType,
           errorMessage
         }
-        setEmbedCache(prev => new Map(prev).set(cacheKey, err))
+        embedCacheRef.current.set(cacheKey, err)
+        setEmbedCacheVersion(v => v + 1)
         return err
       }
-    }, [notePath, embedCache])
+    }, [notePath])
 
     const handleToggleEmbed = useCallback(async (nodeId: string, embedRef: EmbedRef) => {
       const resolvedPath = resolveEmbedPath(notePath, embedRef.relativePath)
@@ -213,9 +222,13 @@ export const MindMapCanvas = forwardRef<MindMapCanvasHandle, MindMapCanvasProps>
           return next
         }
         next.add(cacheKey)
-        resolveEmbed(nodeId, embedRef)
         return next
       })
+
+      // Trigger resolution outside the setState callback
+      if (!embedCacheRef.current.has(cacheKey)) {
+        resolveEmbed(nodeId, embedRef)
+      }
     }, [notePath, resolveEmbed])
 
     const syncEmbedPositions = useCallback(() => {
@@ -423,7 +436,7 @@ export const MindMapCanvas = forwardRef<MindMapCanvasHandle, MindMapCanvasProps>
           const resolvedPath = resolveEmbedPath(notePath, embedRef.relativePath)
           const cacheKey = `${d.data.id}::${resolvedPath}`
           const isExpanded = expandedEmbeds.has(cacheKey)
-          const cached = embedCache.get(cacheKey)
+          const cached = embedCacheRef.current.get(cacheKey)
 
           const indicatorY = 22 + i * 18  // Below the node rect (y=-14 to 14 is the rect, so 22 is 8px below)
 
@@ -733,7 +746,7 @@ export const MindMapCanvas = forwardRef<MindMapCanvasHandle, MindMapCanvasProps>
         }
       }
 
-    }, [doc, collapsedIds, dispatch, onContextMenu, onHoverNode, notePath, expandedEmbeds, embedCache, handleToggleEmbed])
+    }, [doc, collapsedIds, dispatch, onContextMenu, onHoverNode, notePath, expandedEmbeds, handleToggleEmbed])
     // NOTE: selectedNodeId intentionally NOT in deps — selection highlight is
     // applied via the separate useEffect below, avoiding full D3 rebuild on click
 
@@ -754,7 +767,7 @@ export const MindMapCanvas = forwardRef<MindMapCanvasHandle, MindMapCanvasProps>
       if (expandedEmbeds.size === 0) return
 
       expandedEmbeds.forEach(cacheKey => {
-        const cached = embedCache.get(cacheKey)
+        const cached = embedCacheRef.current.get(cacheKey)
         if (!cached) return
 
         const sepIdx = cacheKey.indexOf('::')
@@ -769,7 +782,9 @@ export const MindMapCanvas = forwardRef<MindMapCanvasHandle, MindMapCanvasProps>
         // Header bar
         const header = document.createElement('div')
         header.className = 'embed-card-header'
-        header.innerHTML = `<span class="embed-card-badge">${cached.noteType}</span> <span>${embedPath}</span>`
+        header.innerHTML = `<span class="embed-card-badge">${cached.noteType}</span> <span></span>`
+        const pathSpan = header.querySelectorAll('span')[1]
+        if (pathSpan) pathSpan.textContent = embedPath
         card.appendChild(header)
 
         // Body
@@ -810,7 +825,7 @@ export const MindMapCanvas = forwardRef<MindMapCanvasHandle, MindMapCanvasProps>
 
       // Position cards after they're added to DOM
       requestAnimationFrame(() => syncEmbedPositions())
-    }, [expandedEmbeds, embedCache, syncEmbedPositions])
+    }, [expandedEmbeds, embedCacheVersion, syncEmbedPositions])
 
     useEffect(() => {
       const container = containerRef.current
@@ -823,10 +838,12 @@ export const MindMapCanvas = forwardRef<MindMapCanvasHandle, MindMapCanvasProps>
       return () => observer.disconnect()
     }, [render, syncEmbedPositions])
 
-    // Cleanup zoomRef when the component is fully unmounted
+    // Cleanup zoomRef and embed roots when the component is fully unmounted
     useEffect(() => {
       return () => {
         zoomRef.current = null
+        embedRootsRef.current.forEach(unmount => unmount())
+        embedRootsRef.current = []
       }
     }, [])
 
