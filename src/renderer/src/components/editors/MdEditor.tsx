@@ -9,7 +9,8 @@ import { createRoot } from 'react-dom/client'
 import { DerivationDagViewer } from './DerivationDagViewer'
 import { MindMapRenderer } from './MindMapRenderer'
 import { SequenceDiagramViewer } from './SequenceDiagramViewer'
-import type { MindMapDocument } from '../../../../main/schemas/note-types'
+import { NetworkEmbedViewer } from './NetworkEmbedViewer'
+import type { MindMapDocument, NetworkDocument } from '../../../../main/schemas/note-types'
 
 interface MdEditorProps {
   content: string
@@ -18,7 +19,7 @@ interface MdEditorProps {
   codeRepoPath: string | null
   onSave: (content: string) => Promise<void>
   onRefClick?: (refName: string) => void
-  onEmbedClick?: (notePath: string, noteType: 'derive' | 'mind' | 'seq') => void
+  onEmbedClick?: (notePath: string, noteType: 'derive' | 'mind' | 'seq' | 'net') => void
   codeMappings?: CodeMapping[]
 }
 
@@ -99,7 +100,7 @@ export const MdEditor = forwardRef<MdEditorHandle, MdEditorProps>(
 
     placeholders.forEach((placeholder) => {
       const notePath = placeholder.getAttribute('data-note-path')
-      const noteType = placeholder.getAttribute('data-note-type') as 'derive' | 'mind' | 'seq' | null
+      const noteType = placeholder.getAttribute('data-note-type') as 'derive' | 'mind' | 'seq' | 'net' | null
       if (!notePath || !noteType) return
 
       // Loading state
@@ -151,6 +152,21 @@ export const MdEditor = forwardRef<MdEditorHandle, MdEditorProps>(
               </div>
               <div className="note-embed-body seq-embed">
                 <SequenceDiagramViewer content={content as string} />
+              </div>
+            </div>
+          )
+        } else if (noteType === 'net') {
+          root.render(
+            <div className="note-embed-container">
+              <div
+                className="note-embed-header"
+                onClick={() => onEmbedClick?.(notePath, noteType)}
+              >
+                <span className="note-embed-badge">net</span>
+                <span className="note-embed-path">{notePath}</span>
+              </div>
+              <div className="note-embed-body net-embed">
+                <NetworkEmbedViewer document={content as NetworkDocument} />
               </div>
             </div>
           )

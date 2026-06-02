@@ -1,12 +1,13 @@
 import { useRef, useEffect, useCallback, useImperativeHandle, forwardRef, useState, useLayoutEffect, useMemo } from 'react'
 import * as d3 from 'd3'
-import type { MindMapDocument, MindMapNode, DerivationDocument } from '../../../../main/schemas/note-types'
+import type { MindMapDocument, MindMapNode, DerivationDocument, NetworkDocument } from '../../../../main/schemas/note-types'
 import type { MindMapAction } from './mindMapReducer'
 import { findNode } from './mindMapReducer'
 import { inferEmbedType, renderMarkdownForEmbed } from '../../services/markdown-renderer'
 import { MindMapRenderer } from './MindMapRenderer'
 import { DerivationDagViewer } from './DerivationDagViewer'
 import { SequenceDiagramViewer } from './SequenceDiagramViewer'
+import { NetworkEmbedViewer } from './NetworkEmbedViewer'
 
 interface MindMapCanvasProps {
   doc: MindMapDocument
@@ -22,7 +23,7 @@ export interface MindMapCanvasHandle {
   zoomToFit: () => void
 }
 
-type NoteContent = string | MindMapDocument | DerivationDocument
+type NoteContent = string | MindMapDocument | DerivationDocument | NetworkDocument
 
 interface EmbedRef {
   rawMatch: string
@@ -135,7 +136,10 @@ function EmbedCard({ cacheKey, cached }: {
           {cached.noteType === 'seq' && (
             <SequenceDiagramViewer content={cached.content as string} />
           )}
-          {cached.noteType && !['md', 'mind', 'derive', 'seq'].includes(cached.noteType) && (
+          {cached.noteType === 'net' && (
+            <NetworkEmbedViewer document={cached.content as NetworkDocument} />
+          )}
+          {cached.noteType && !['md', 'mind', 'derive', 'seq', 'net'].includes(cached.noteType) && (
             <div className="embed-card-error">⚠ Unknown embed type: {cached.noteType}</div>
           )}
         </div>

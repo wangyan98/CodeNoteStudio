@@ -57,10 +57,11 @@ function resolveImageUrl(url: string, noteAbsoluteDir?: string): string {
   return url
 }
 
-export function inferEmbedType(path: string): 'derive' | 'mind' | 'seq' | 'md' | null {
+export function inferEmbedType(path: string): 'derive' | 'mind' | 'seq' | 'md' | 'net' | null {
   if (path.endsWith('.derive.json')) return 'derive'
   if (path.endsWith('.mind.json')) return 'mind'
   if (path.endsWith('.seq.mermaid')) return 'seq'
+  if (path.endsWith('.net.json')) return 'net'
   if (path.endsWith('.md')) return 'md'
   return null
 }

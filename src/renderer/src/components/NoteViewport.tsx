@@ -7,8 +7,9 @@ import type { MdEditorHandle } from './editors/MdEditor'
 import { MindMapEditor } from './editors/MindMapEditor'
 import { DerivationEditor } from './editors/DerivationEditor'
 import { SequenceEditor } from './editors/SequenceEditor'
+import { NetworkEditor } from './editors/NetworkEditor'
 import { CodeMappingsPanel } from './CodeMappingsPanel'
-import type { MindMapDocument, DerivationDocument } from '../../../main/schemas/note-types'
+import type { MindMapDocument, DerivationDocument, NetworkDocument } from '../../../main/schemas/note-types'
 import type { CodeMapping } from '../types'
 import './NoteViewport.css'
 
@@ -179,6 +180,20 @@ export function NoteViewport() {
           />
         )
 
+      case 'net':
+        return (
+          <NetworkEditor
+            document={activeNoteContent as NetworkDocument}
+            notePath={selectedNoteId}
+            onSave={async (doc: NetworkDocument) => {
+              await saveNote(selectedNoteId, doc)
+            }}
+            onNavigateToCode={(filePath: string, line: number) => {
+              navigateToCode(filePath, line)
+            }}
+          />
+        )
+
       default:
         return <p>Unknown note type: {activeNoteType}</p>
     }
@@ -188,7 +203,8 @@ export function NoteViewport() {
     md: 'MD',
     mind: 'Mind',
     derive: 'Derive',
-    seq: 'Seq'
+    seq: 'Seq',
+    net: 'Net'
   }
 
   return (

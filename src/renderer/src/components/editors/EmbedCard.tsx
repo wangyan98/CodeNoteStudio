@@ -9,7 +9,8 @@ const typeLabels: Record<NoteType, string> = {
   mind: 'Mind Map',
   md: 'Markdown',
   derive: 'Derivation',
-  seq: 'Sequence Diagram'
+  seq: 'Sequence Diagram',
+  net: 'Network'
 }
 
 export function EmbedCard({ notePath, noteType }: EmbedCardProps) {
