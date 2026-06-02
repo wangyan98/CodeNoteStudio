@@ -1,5 +1,6 @@
 import { useReducer, useEffect, useRef, useState, useCallback, useMemo } from 'react'
 import type { NetworkDocument, CodeMapping } from '../../../../main/schemas/note-types'
+import { createNetworkDocument } from '../../../../main/schemas/note-types'
 import type { LayerDef, LayerCatalogOverrides } from '../../../../main/schemas/layer-catalog'
 import { resolveLayerCatalog, getLayerDef } from '../../../../main/schemas/layer-catalog'
 import { networkReducer } from './networkReducer'
@@ -20,7 +21,7 @@ interface NetworkEditorProps {
 type SaveStatus = 'saved' | 'saving' | 'unsaved' | 'error'
 
 export function NetworkEditor({ document: initialDoc, notePath, workspacePath, onSave, onNavigateToCode }: NetworkEditorProps) {
-  const [doc, dispatch] = useReducer(networkReducer, initialDoc)
+  const [doc, dispatch] = useReducer(networkReducer, initialDoc.version === 2 ? initialDoc : createNetworkDocument())
   const [selectedBlockId, setSelectedBlockId] = useState<string | null>(null)
   const [selectedLayerId, setSelectedLayerId] = useState<string | null>(null)
   const [panelHeight, setPanelHeight] = useState(0.3)
@@ -162,6 +163,21 @@ export function NetworkEditor({ document: initialDoc, notePath, workspacePath, o
     saveStatus === 'saved' ? 'net-save-saved' :
     saveStatus === 'saving' ? 'net-save-saving' :
     saveStatus === 'unsaved' ? 'net-save-unsaved' : 'net-save-error'
+
+  // v1 compatibility: show message for old-format documents
+  if (initialDoc.version === 1 || !initialDoc.nodes) {
+    return (
+      <div className="network-editor">
+        <div style={{
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          height: '100%', color: '#888', fontSize: 13, flexDirection: 'column', gap: 8
+        }}>
+          <p>This file uses an older format (v1).</p>
+          <p>Create a new .net.json file for the graph editor.</p>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="network-editor">
