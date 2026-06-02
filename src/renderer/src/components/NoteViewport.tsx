@@ -54,6 +54,8 @@ export function NoteViewport() {
   }, [activeNoteContent, selectedNoteId])
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
+    // Let network layer drags pass through to canvas
+    if (e.dataTransfer.types.includes('application/x-net-layer')) return
     e.preventDefault()
     e.stopPropagation()
     e.dataTransfer.dropEffect = 'copy'
@@ -67,6 +69,8 @@ export function NoteViewport() {
   }, [])
 
   const handleDrop = useCallback(async (e: React.DragEvent) => {
+    // Let network layer drags pass through to canvas
+    if (e.dataTransfer.types.includes('application/x-net-layer')) return
     e.preventDefault()
     e.stopPropagation()
     setDragOver(false)
