@@ -79,6 +79,7 @@ export const MindMapCanvas = forwardRef<MindMapCanvasHandle, MindMapCanvasProps>
     const zoomRef = useRef<d3.ZoomBehavior<SVGSVGElement, unknown> | null>(null)
     const focusNodeIdRef = useRef<string | null>(null)
     const selectedNodeIdRef = useRef<string | null>(null)
+    const embedOverlayRef = useRef<HTMLDivElement>(null)
 
     // Keep ref in sync so render() can read it without depending on the prop
     selectedNodeIdRef.current = selectedNodeId
@@ -211,6 +212,32 @@ export const MindMapCanvas = forwardRef<MindMapCanvasHandle, MindMapCanvasProps>
         return next
       })
     }, [notePath, resolveEmbed])
+
+    const syncEmbedPositions = useCallback(() => {
+      const overlay = embedOverlayRef.current
+      const container = containerRef.current
+      const svg = svgRef.current
+      if (!overlay || !container || !svg) return
+
+      const containerRect = container.getBoundingClientRect()
+
+      overlay.querySelectorAll<HTMLElement>('.embed-card').forEach(card => {
+        const nodeId = card.getAttribute('data-node-id')
+        if (!nodeId) return
+
+        const nodeEl = svg.querySelector<SVGGElement>(`[data-node-id="${nodeId}"]`)
+        if (!nodeEl) return
+
+        const nodeRect = nodeEl.getBoundingClientRect()
+        const top = nodeRect.bottom - containerRect.top + 4
+        const left = nodeRect.left - containerRect.left
+
+        card.style.position = 'absolute'
+        card.style.top = `${top}px`
+        card.style.left = `${left}px`
+        card.style.maxWidth = `${Math.min(480, containerRect.width - left - 16)}px`
+      })
+    }, [])
 
     const render = useCallback(() => {
       const svg = d3.select(svgRef.current)
@@ -560,8 +587,10 @@ export const MindMapCanvas = forwardRef<MindMapCanvasHandle, MindMapCanvasProps>
           .scaleExtent([0.3, 2.5])
           .on('zoom', (event) => {
             if (gElRef.current) {
-              d3.select(gElRef.current).attr('transform', `translate(${event.transform.x},${event.transform.y}) scale(${event.transform.k})`)
+              d3.select(gElRef.current).attr('transform',
+                `translate(${event.transform.x},${event.transform.y}) scale(${event.transform.k})`)
             }
+            requestAnimationFrame(() => syncEmbedPositions())
           })
         ;(svg as any).call(zoomRef.current)
         ;(svg as any).call(zoomRef.current.transform, d3.zoomIdentity.translate(80, height / 2))
@@ -647,10 +676,13 @@ export const MindMapCanvas = forwardRef<MindMapCanvasHandle, MindMapCanvasProps>
     useEffect(() => {
       const container = containerRef.current
       if (!container) return
-      const observer = new ResizeObserver(() => { render() })
+      const observer = new ResizeObserver(() => {
+        render()
+        requestAnimationFrame(() => syncEmbedPositions())
+      })
       observer.observe(container)
       return () => observer.disconnect()
-    }, [render])
+    }, [render, syncEmbedPositions])
 
     // Cleanup zoomRef when the component is fully unmounted
     useEffect(() => {
@@ -686,6 +718,10 @@ export const MindMapCanvas = forwardRef<MindMapCanvasHandle, MindMapCanvasProps>
         }}
       >
         <svg ref={svgRef} />
+        <div
+          ref={embedOverlayRef}
+          className="mindmap-embed-overlay"
+        />
       </div>
     )
   }
