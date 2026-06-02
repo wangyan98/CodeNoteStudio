@@ -1,5 +1,4 @@
-import { useRef, useEffect, useCallback, useImperativeHandle, forwardRef, useState } from 'react'
-import { createRoot } from 'react-dom/client'
+import { useRef, useEffect, useCallback, useImperativeHandle, forwardRef, useState, useLayoutEffect, useMemo } from 'react'
 import * as d3 from 'd3'
 import type { MindMapDocument, MindMapNode, DerivationDocument } from '../../../../main/schemas/note-types'
 import type { MindMapAction } from './mindMapReducer'
@@ -79,6 +78,84 @@ function isCircularReference(sourceNotePath: string, targetResolvedPath: string)
   return sourceNotePath === targetResolvedPath
 }
 
+// Separate component (not nested) so React preserves instances across parent re-renders
+function EmbedCard({ cacheKey, cached }: {
+  cacheKey: string
+  cached: ResolvedEmbed
+}) {
+  const sepIdx = cacheKey.indexOf('::')
+  const nodeId = cacheKey.slice(0, sepIdx)
+  const embedPath = cacheKey.slice(sepIdx + 2)
+
+  if (cached.status === 'loading') {
+    return (
+      <div className="embed-card" data-node-id={nodeId} data-embed-path={embedPath} data-embed-status="loading">
+        <div className="embed-card-header">
+          <span className="embed-card-badge">{cached.noteType || 'err'}</span>
+          <span>{embedPath}</span>
+        </div>
+        <div className="embed-card-body">
+          <div className="embed-card-loading">Loading...</div>
+        </div>
+      </div>
+    )
+  }
+
+  if (cached.status === 'error') {
+    return (
+      <div className="embed-card" data-node-id={nodeId} data-embed-path={embedPath} data-embed-status="error">
+        <div className="embed-card-header">
+          <span className="embed-card-badge">{cached.noteType || 'err'}</span>
+          <span>{embedPath}</span>
+        </div>
+        <div className="embed-card-body">
+          <div className="embed-card-error">⚠ {cached.errorMessage || 'Unknown error'}</div>
+        </div>
+      </div>
+    )
+  }
+
+  if (cached.status === 'loaded' && cached.content !== undefined) {
+    return (
+      <div className="embed-card" data-node-id={nodeId} data-embed-path={embedPath} data-embed-status="loaded">
+        <div className="embed-card-header">
+          <span className="embed-card-badge">{cached.noteType || 'err'}</span>
+          <span>{embedPath}</span>
+        </div>
+        <div className="embed-card-body">
+          {cached.noteType === 'md' && (
+            <div dangerouslySetInnerHTML={{ __html: renderMarkdownForEmbed(cached.content as string) }} />
+          )}
+          {cached.noteType === 'mind' && (
+            <MindMapRenderer document={cached.content as MindMapDocument} onSave={async () => {}} />
+          )}
+          {cached.noteType === 'derive' && (
+            <DerivationDagViewer document={cached.content as DerivationDocument} />
+          )}
+          {cached.noteType === 'seq' && (
+            <SequenceDiagramViewer content={cached.content as string} />
+          )}
+          {cached.noteType && !['md', 'mind', 'derive', 'seq'].includes(cached.noteType) && (
+            <div className="embed-card-error">⚠ Unknown embed type: {cached.noteType}</div>
+          )}
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="embed-card" data-node-id={nodeId} data-embed-path={embedPath} data-embed-status="loaded">
+      <div className="embed-card-header">
+        <span className="embed-card-badge">{cached.noteType || 'err'}</span>
+        <span>{embedPath}</span>
+      </div>
+      <div className="embed-card-body">
+        <div className="embed-card-error">⚠ Empty content</div>
+      </div>
+    </div>
+  )
+}
+
 export const MindMapCanvas = forwardRef<MindMapCanvasHandle, MindMapCanvasProps>(
   function MindMapCanvas({ doc, notePath, selectedNodeId, collapsedIds, dispatch, onContextMenu, onHoverNode }, ref) {
     const svgRef = useRef<SVGSVGElement>(null)
@@ -88,14 +165,13 @@ export const MindMapCanvas = forwardRef<MindMapCanvasHandle, MindMapCanvasProps>
     const focusNodeIdRef = useRef<string | null>(null)
     const selectedNodeIdRef = useRef<string | null>(null)
     const embedOverlayRef = useRef<HTMLDivElement>(null)
-    const embedRootsRef = useRef<Array<() => void>>([])
-
-    // Keep ref in sync so render() can read it without depending on the prop
-    selectedNodeIdRef.current = selectedNodeId
 
     const [expandedEmbeds, setExpandedEmbeds] = useState<Set<string>>(new Set())
     const embedCacheRef = useRef<Map<string, ResolvedEmbed>>(new Map())
     const [embedCacheVersion, setEmbedCacheVersion] = useState(0)
+
+    // Keep ref in sync so render() can read it without depending on the prop
+    selectedNodeIdRef.current = selectedNodeId
 
     useImperativeHandle(ref, () => ({
       zoomToFit() {
@@ -238,8 +314,6 @@ export const MindMapCanvas = forwardRef<MindMapCanvasHandle, MindMapCanvasProps>
       const svg = svgRef.current
       if (!overlay || !container || !svg) return
 
-      const containerRect = container.getBoundingClientRect()
-
       // Group cards by nodeId to stack them vertically
       const nodeCards = new Map<string, HTMLElement[]>()
       overlay.querySelectorAll<HTMLElement>('.embed-card').forEach(card => {
@@ -249,19 +323,32 @@ export const MindMapCanvas = forwardRef<MindMapCanvasHandle, MindMapCanvasProps>
         nodeCards.get(nodeId)!.push(card)
       })
 
+      const viewportH = window.innerHeight
+
       nodeCards.forEach((cards, nodeId) => {
         const nodeEl = svg.querySelector<SVGGElement>(`[data-node-id="${nodeId}"]`)
         if (!nodeEl) return
 
         const nodeRect = nodeEl.getBoundingClientRect()
-        const left = nodeRect.left - containerRect.left
-        let topOffset = nodeRect.bottom - containerRect.top + 4
+        let topOffset = nodeRect.bottom + 4
 
-        cards.forEach(card => {
-          card.style.position = 'absolute'
+        cards.forEach((card) => {
+          // Use position:fixed (viewport-relative) so the card isn't clipped
+          // by the container's overflow:hidden
+          card.style.position = 'fixed'
+          card.style.zIndex = '100'
           card.style.top = `${topOffset}px`
-          card.style.left = `${left}px`
-          card.style.maxWidth = `${Math.min(480, containerRect.width - left - 16)}px`
+          card.style.left = `${nodeRect.left}px`
+          card.style.maxWidth = `${Math.min(480, window.innerWidth - nodeRect.left - 16)}px`
+
+          // Constrain body so the card doesn't extend past the viewport bottom
+          const body = card.querySelector('.embed-card-body') as HTMLElement
+          const headerH = card.querySelector('.embed-card-header')?.getBoundingClientRect().height ?? 28
+          const availForBody = viewportH - topOffset - headerH - 28
+          if (body && availForBody > 60) {
+            body.style.maxHeight = `${availForBody}px`
+          }
+
           topOffset += card.getBoundingClientRect().height + 8
         })
       })
@@ -299,6 +386,69 @@ export const MindMapCanvas = forwardRef<MindMapCanvasHandle, MindMapCanvasProps>
       const root = d3.hierarchy<MindMapNode>(visibleRoot, (d) => d.children)
       const treeLayout = d3.tree<MindMapNode>().nodeSize([60, 240])
       treeLayout(root)
+
+      // Adjust vertical spacing for nodes with embed toggles / expanded embed cards,
+      // so the embed content doesn't overlap the next sibling node below.
+      const embedHeights = new Map<string, number>()
+      root.descendants().forEach(d => {
+        const embeds = parseEmbeds(d.data.content || '')
+        if (embeds.length === 0) {
+          embedHeights.set(d.data.id, 0)
+          return
+        }
+        let h = 0
+        for (const embedRef of embeds) {
+          const resolvedPath = resolveEmbedPath(notePath, embedRef.relativePath)
+          const cacheKey = `${d.data.id}::${resolvedPath}`
+          if (expandedEmbeds.has(cacheKey)) {
+            h += 220 // reserved height per expanded embed card
+          } else {
+            h += 18  // height per collapsed embed toggle row
+          }
+        }
+        embedHeights.set(d.data.id, h + 4) // 4px padding below the last embed element
+      })
+
+      const byDepth = new Map<number, d3.HierarchyNode<MindMapNode>[]>()
+      root.descendants().forEach(d => {
+        const arr = byDepth.get(d.depth) || []
+        arr.push(d)
+        byDepth.set(d.depth, arr)
+      })
+
+      const pushDown = new Map<string, number>()
+      root.descendants().forEach(d => pushDown.set(d.data.id, 0))
+
+      byDepth.forEach(nodes => {
+        nodes.sort((a, b) => a.x! - b.x!)
+        let cumulativeShift = 0
+        for (let i = 0; i < nodes.length; i++) {
+          if (cumulativeShift > 0) {
+            pushDown.set(nodes[i].data.id, cumulativeShift)
+          }
+          if (i < nodes.length - 1) {
+            const node = nodes[i]
+            const nextNode = nodes[i + 1]
+            const myEmbedHeight = embedHeights.get(node.data.id) || 0
+            const currentGap = (nextNode.x! - node.x!) - 28 // 28 = node rect height
+            if (myEmbedHeight > currentGap) {
+              cumulativeShift += (myEmbedHeight - currentGap)
+            }
+          }
+        }
+      })
+
+      function propagateShift(node: d3.HierarchyNode<MindMapNode>, inheritedShift: number) {
+        const myPush = pushDown.get(node.data.id) || 0
+        const totalShift = inheritedShift + myPush
+        if (totalShift > 0) {
+          node.x! += totalShift
+        }
+        if (node.children) {
+          node.children.forEach(child => propagateShift(child, totalShift))
+        }
+      }
+      propagateShift(root, 0)
 
       // Branch connectors (org-chart style): one fork per parent with visible children
       const nodesWithChildren = root.descendants().filter(d => d.children && d.children.length > 0)
@@ -818,82 +968,29 @@ export const MindMapCanvas = forwardRef<MindMapCanvasHandle, MindMapCanvasProps>
     // NOTE: selectedNodeId intentionally NOT in deps — selection highlight is
     // applied via the separate useEffect below, avoiding full D3 rebuild on click
 
-    useEffect(() => { render() }, [render])
+    useEffect(() => { render(); requestAnimationFrame(() => syncEmbedPositions()) }, [render])
 
-    // Render embed content cards in the overlay
-    useEffect(() => {
-      const overlay = embedOverlayRef.current
-      if (!overlay) return
-
-      // Clean up previous React roots before clearing DOM
-      embedRootsRef.current.forEach(unmount => unmount())
-      embedRootsRef.current = []
-
-      // Clear overlay
-      overlay.innerHTML = ''
-
-      if (expandedEmbeds.size === 0) return
-
-      expandedEmbeds.forEach(cacheKey => {
+    // Build embed card props from current expanded + cache state
+    const embedCards = useMemo(() => {
+      const cards: Array<{ cacheKey: string; nodeId: string; embedPath: string; cached: ResolvedEmbed }> = []
+      for (const cacheKey of expandedEmbeds) {
         const cached = embedCacheRef.current.get(cacheKey)
-        if (!cached) return
-
+        if (!cached) continue
         const sepIdx = cacheKey.indexOf('::')
-        const nodeId = cacheKey.slice(0, sepIdx)
-        const embedPath = cacheKey.slice(sepIdx + 2)
+        cards.push({
+          cacheKey,
+          nodeId: cacheKey.slice(0, sepIdx),
+          embedPath: cacheKey.slice(sepIdx + 2),
+          cached
+        })
+      }
+      return cards
+    }, [expandedEmbeds, embedCacheVersion])
 
-        const card = document.createElement('div')
-        card.className = 'embed-card'
-        card.setAttribute('data-node-id', nodeId)
-        card.setAttribute('data-embed-path', embedPath)
-
-        // Header bar
-        const header = document.createElement('div')
-        header.className = 'embed-card-header'
-        header.innerHTML = `<span class="embed-card-badge">${cached.noteType}</span> <span></span>`
-        const pathSpan = header.querySelectorAll('span')[1]
-        if (pathSpan) pathSpan.textContent = embedPath
-        card.appendChild(header)
-
-        // Body
-        const body = document.createElement('div')
-        body.className = 'embed-card-body'
-
-        if (cached.status === 'loading') {
-          body.innerHTML = '<div class="embed-card-loading">Loading...</div>'
-        } else if (cached.status === 'loaded' && cached.content !== undefined) {
-          const root = createRoot(body)
-          embedRootsRef.current.push(() => root.unmount())
-          if (cached.noteType === 'md') {
-            const mdHtml = renderMarkdownForEmbed(cached.content as string)
-            root.render(
-              <div dangerouslySetInnerHTML={{ __html: mdHtml }} />
-            )
-          } else if (cached.noteType === 'mind') {
-            root.render(
-              <MindMapRenderer
-                document={cached.content as MindMapDocument}
-                onSave={async () => {}}
-              />
-            )
-          } else if (cached.noteType === 'derive') {
-            root.render(
-              <DerivationDagViewer document={cached.content as DerivationDocument} />
-            )
-          } else if (cached.noteType === 'seq') {
-            root.render(
-              <SequenceDiagramViewer content={cached.content as string} />
-            )
-          }
-        }
-
-        card.appendChild(body)
-        overlay.appendChild(card)
-      })
-
-      // Position cards after they're added to DOM
-      requestAnimationFrame(() => syncEmbedPositions())
-    }, [expandedEmbeds, embedCacheVersion, syncEmbedPositions])
+    // Position cards after React commits them to the DOM
+    useLayoutEffect(() => {
+      syncEmbedPositions()
+    }, [embedCards, syncEmbedPositions])
 
     useEffect(() => {
       const container = containerRef.current
@@ -906,12 +1003,9 @@ export const MindMapCanvas = forwardRef<MindMapCanvasHandle, MindMapCanvasProps>
       return () => observer.disconnect()
     }, [render, syncEmbedPositions])
 
-    // Cleanup zoomRef and embed roots when the component is fully unmounted
     useEffect(() => {
       return () => {
         zoomRef.current = null
-        embedRootsRef.current.forEach(unmount => unmount())
-        embedRootsRef.current = []
       }
     }, [])
 
@@ -945,7 +1039,11 @@ export const MindMapCanvas = forwardRef<MindMapCanvasHandle, MindMapCanvasProps>
         <div
           ref={embedOverlayRef}
           className="mindmap-embed-overlay"
-        />
+        >
+          {embedCards.map(({ cacheKey, cached }) => (
+            <EmbedCard key={cacheKey} cacheKey={cacheKey} cached={cached} />
+          ))}
+        </div>
       </div>
     )
   }

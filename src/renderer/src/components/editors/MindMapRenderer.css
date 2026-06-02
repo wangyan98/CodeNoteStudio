@@ -258,6 +258,12 @@
   text-align: center;
 }
 
+.embed-card-error {
+  color: #f44747;
+  font-size: 11px;
+  padding: 8px;
+}
+
 /* --- SVG Embed Toggle Indicators --- */
 
 .embed-toggle-row {
