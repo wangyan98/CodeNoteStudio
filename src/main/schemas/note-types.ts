@@ -128,13 +128,45 @@ export interface NetworkBlock {
   codeMapping?: CodeMapping
 }
 
+// --- Network Graph Model (v2) ---
+
+export type NodeKind = 'input' | 'output' | 'layer' | 'block'
+
+export interface GraphNode {
+  id: string
+  kind: NodeKind
+  label: string
+  layerType?: string
+  params?: LayerParams
+  inputShape?: string
+  outputShape?: string
+  repeat?: number
+  children?: GraphNode[]
+  internalEdges?: GraphEdge[]
+  codeMapping?: CodeMapping
+}
+
+export type EdgeStyle = 'forward' | 'skip'
+
+export interface GraphEdge {
+  id: string
+  source: string
+  target: string
+  label?: string
+  style: EdgeStyle
+}
+
 export interface NetworkDocument {
   type: 'net'
-  version: 1
+  version: 1 | 2
   name: string
-  inputShape: string
-  blocks: NetworkBlock[]
-  connections: NetworkConnection[]
+  // v1 fields (kept for type compatibility, unused in v2)
+  inputShape?: string
+  blocks?: NetworkBlock[]
+  connections?: NetworkConnection[]
+  // v2 fields
+  nodes?: GraphNode[]
+  edges?: GraphEdge[]
 }
 
 export function createNetworkLayer(type = 'Linear'): NetworkLayer {
@@ -160,16 +192,24 @@ export function createNetworkBlock(name = 'New Block', repeat?: number): Network
 export function createNetworkDocument(name = 'New Network'): NetworkDocument {
   return {
     type: 'net',
-    version: 1,
+    version: 2,
     name,
+    nodes: [
+      { id: uuidv4(), kind: 'input', label: 'Input' },
+      { id: uuidv4(), kind: 'output', label: 'Output' },
+    ],
+    edges: [],
     inputShape: '',
     blocks: [],
-    connections: []
+    connections: [],
   }
 }
 
 export function isValidNetworkDocument(obj: unknown): obj is NetworkDocument {
   if (!obj || typeof obj !== 'object') return false
   const doc = obj as Record<string, unknown>
-  return doc.type === 'net' && doc.version === 1 && typeof doc.name === 'string' && Array.isArray(doc.blocks)
+  if (doc.type !== 'net') return false
+  if (doc.version === 1) return typeof doc.name === 'string' && Array.isArray(doc.blocks)
+  if (doc.version === 2) return typeof doc.name === 'string' && Array.isArray(doc.nodes)
+  return false
 }
