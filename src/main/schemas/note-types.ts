@@ -93,3 +93,83 @@ export function isValidDerivationDocument(obj: unknown): obj is DerivationDocume
   const doc = obj as Record<string, unknown>
   return doc.type === 'derive' && doc.version === 1 && Array.isArray(doc.nodes)
 }
+
+// --- Network Visualization (.net.json) ---
+
+export interface LayerParams {
+  [key: string]: string | number | boolean | number[]
+}
+
+export interface NetworkLayer {
+  id: string
+  type: string
+  name?: string
+  params: LayerParams
+  inputShape?: string
+  outputShape?: string
+  codeMapping?: CodeMapping
+}
+
+export interface NetworkConnection {
+  id: string
+  from: string
+  to: string
+  label?: string
+}
+
+export interface NetworkBlock {
+  id: string
+  name: string
+  repeat?: number
+  layers: NetworkLayer[]
+  connections: NetworkConnection[]
+  skipConnections: NetworkConnection[]
+  blocks: NetworkBlock[]
+  codeMapping?: CodeMapping
+}
+
+export interface NetworkDocument {
+  type: 'net'
+  version: 1
+  name: string
+  inputShape: string
+  blocks: NetworkBlock[]
+  connections: NetworkConnection[]
+}
+
+export function createNetworkLayer(type = 'Linear'): NetworkLayer {
+  return {
+    id: uuidv4(),
+    type,
+    params: {}
+  }
+}
+
+export function createNetworkBlock(name = 'New Block', repeat?: number): NetworkBlock {
+  return {
+    id: uuidv4(),
+    name,
+    repeat,
+    layers: [],
+    connections: [],
+    skipConnections: [],
+    blocks: []
+  }
+}
+
+export function createNetworkDocument(name = 'New Network'): NetworkDocument {
+  return {
+    type: 'net',
+    version: 1,
+    name,
+    inputShape: '',
+    blocks: [],
+    connections: []
+  }
+}
+
+export function isValidNetworkDocument(obj: unknown): obj is NetworkDocument {
+  if (!obj || typeof obj !== 'object') return false
+  const doc = obj as Record<string, unknown>
+  return doc.type === 'net' && doc.version === 1 && typeof doc.name === 'string' && Array.isArray(doc.blocks)
+}
