@@ -56,6 +56,11 @@ export function NetworkCanvas({
 
   const svgRef = useRef<SVGSVGElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
+  const dragConnectRef = useRef<{
+    active: boolean
+    sourceNodeId: string | null
+    line: d3.Selection<SVGLineElement, unknown, null, undefined> | null
+  }>({ active: false, sourceNodeId: null, line: null })
 
   const render = useCallback(() => {
     const svg = d3.select(svgRef.current)
@@ -211,6 +216,38 @@ export function NetworkCanvas({
         event.stopPropagation()
         onSelectNode(node.id)
       })
+
+      // Output port — only for nodes that are not 'output'
+      if (node.kind !== 'output') {
+        nodeG.append('circle')
+          .attr('class', 'net-port-out')
+          .attr('cx', nx + nw)
+          .attr('cy', ny + nh / 2)
+          .attr('r', 3)
+          .attr('fill', color)
+          .attr('stroke', '#333')
+          .attr('stroke-width', 0.5)
+          .attr('opacity', 0.5)
+          .style('cursor', 'crosshair')
+          .on('mouseenter', function () { d3.select(this).attr('opacity', 1).attr('r', 5) })
+          .on('mouseleave', function () { d3.select(this).attr('opacity', 0.5).attr('r', 3) })
+      }
+
+      // Input port — only for nodes that are not 'input'
+      if (node.kind !== 'input') {
+        nodeG.append('circle')
+          .attr('class', 'net-port-in')
+          .attr('cx', nx)
+          .attr('cy', ny + nh / 2)
+          .attr('r', 3)
+          .attr('fill', color)
+          .attr('stroke', '#333')
+          .attr('stroke-width', 0.5)
+          .attr('opacity', 0.5)
+          .style('cursor', 'crosshair')
+          .on('mouseenter', function () { d3.select(this).attr('opacity', 1).attr('r', 5) })
+          .on('mouseleave', function () { d3.select(this).attr('opacity', 0.5).attr('r', 3) })
+      }
     }
 
     // Background click to deselect
@@ -221,6 +258,62 @@ export function NetworkCanvas({
   useEffect(() => {
     render()
   }, [render])
+
+  const handlePortMouseDown = useCallback((event: React.MouseEvent) => {
+    const target = event.target as Element
+    if (!target.classList.contains('net-port-out')) return
+
+    const nodeEl = target.closest('.net-node') as HTMLElement | null
+    if (!nodeEl) return
+    const sourceNodeId = nodeEl.getAttribute('data-node-id')
+    if (!sourceNodeId) return
+
+    const svgEl = svgRef.current
+    const container = containerRef.current
+    if (!svgEl || !container) return
+
+    const transform = d3.zoomTransform(svgEl)
+    const rect = container.getBoundingClientRect()
+    const svgX = (event.clientX - rect.left - transform.x) / transform.k
+    const svgY = (event.clientY - rect.top - transform.y) / transform.k
+
+    const g = d3.select(svgEl).select<SVGGElement>('.canvas-content')
+    const line = g.append('line')
+      .attr('x1', svgX).attr('y1', svgY)
+      .attr('x2', svgX).attr('y2', svgY)
+      .attr('stroke', '#4a90d9').attr('stroke-width', 2)
+      .attr('stroke-dasharray', '4,2')
+
+    dragConnectRef.current = { active: true, sourceNodeId, line }
+
+    const handleMouseMove = (e: MouseEvent) => {
+      const mx = (e.clientX - rect.left - transform.x) / transform.k
+      const my = (e.clientY - rect.top - transform.y) / transform.k
+      line.attr('x2', mx).attr('y2', my)
+    }
+
+    const handleMouseUp = (e: MouseEvent) => {
+      document.removeEventListener('mousemove', handleMouseMove)
+      document.removeEventListener('mouseup', handleMouseUp)
+      line.remove()
+      dragConnectRef.current = { active: false, sourceNodeId: null, line: null }
+
+      const els = document.elementsFromPoint(e.clientX, e.clientY)
+      for (const el of els) {
+        if (el.classList.contains('net-port-in')) {
+          const targetNode = (el as Element).closest('.net-node') as HTMLElement | null
+          const targetId = targetNode?.getAttribute('data-node-id')
+          if (targetId && targetId !== sourceNodeId) {
+            onAddEdge(sourceNodeId, targetId)
+          }
+          break
+        }
+      }
+    }
+
+    document.addEventListener('mousemove', handleMouseMove)
+    document.addEventListener('mouseup', handleMouseUp)
+  }, [onAddEdge])
 
   const handleDragOver = (e: React.DragEvent) => {
     if (e.dataTransfer.types.includes('application/x-net-layer')) {
@@ -239,6 +332,7 @@ export function NetworkCanvas({
     <div
       className="network-canvas-container"
       ref={containerRef}
+      onMouseDown={handlePortMouseDown}
       onDragOver={handleDragOver}
       onDrop={handleDrop}
     >
