@@ -4,10 +4,13 @@
   height: 100%;
   overflow: hidden;
   background: var(--panel-bg);
+  isolation: isolate;
 }
 
 .mindmap-container svg {
   display: block;
+  position: relative;
+  z-index: 0;
 }
 
 .mind-node text {
@@ -103,7 +106,7 @@
   width: 100%;
   height: 100%;
   pointer-events: none;
-  z-index: 10;
+  z-index: 100;
 }
 
 .mindmap-embed-overlay .embed-card {
@@ -147,6 +150,81 @@
   line-height: 1.5;
 }
 
+.embed-card-body h1 {
+  font-size: 16px;
+  margin: 0 0 6px;
+  color: #e0e0e0;
+  border-bottom: 1px solid #444;
+  padding-bottom: 4px;
+}
+
+.embed-card-body h2 {
+  font-size: 14px;
+  margin: 0 0 4px;
+  color: #e0e0e0;
+}
+
+.embed-card-body h3 {
+  font-size: 13px;
+  margin: 0 0 4px;
+  color: #ddd;
+}
+
+.embed-card-body h4 {
+  font-size: 12px;
+  margin: 0 0 3px;
+  color: #ddd;
+}
+
+.embed-card-body p {
+  margin: 0 0 6px;
+}
+
+.embed-card-body p:last-child {
+  margin-bottom: 0;
+}
+
+.embed-card-body ul,
+.embed-card-body ol {
+  margin: 0 0 6px;
+  padding-left: 18px;
+}
+
+.embed-card-body li {
+  margin-bottom: 2px;
+}
+
+.embed-card-body blockquote {
+  margin: 0 0 6px;
+  padding: 4px 8px;
+  border-left: 3px solid #555;
+  background: #252525;
+  color: #bbb;
+}
+
+.embed-card-body strong {
+  color: #eee;
+}
+
+.embed-card-body em {
+  color: #ccc;
+}
+
+.embed-card-body a {
+  color: #569cd6;
+  text-decoration: none;
+}
+
+.embed-card-body a:hover {
+  text-decoration: underline;
+}
+
+.embed-card-body hr {
+  border: none;
+  border-top: 1px solid #444;
+  margin: 8px 0;
+}
+
 .embed-card-body .mindmap-container {
   height: 240px;
   min-height: 160px;
@@ -158,6 +236,7 @@
   border-radius: 4px;
   font-size: 11px;
   overflow-x: auto;
+  margin: 0 0 6px;
 }
 
 .embed-card-body code {
@@ -165,6 +244,11 @@
   padding: 1px 4px;
   border-radius: 2px;
   font-size: 11px;
+}
+
+.embed-card-body img {
+  max-width: 100%;
+  height: auto;
 }
 
 .embed-card-loading {
