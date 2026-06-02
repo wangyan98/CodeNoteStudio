@@ -1,16 +1,15 @@
 .network-palette {
-  display: flex;
-  align-items: center;
-  gap: 2px;
+  display: grid;
+  grid-template-rows: auto auto;
+  grid-auto-flow: column;
+  gap: 2px 10px;
   padding: 4px 10px;
   background: var(--panel-bg, #1e1e1e);
   border-bottom: 1px solid var(--border-color, #333);
   overflow-x: auto;
   overflow-y: hidden;
   flex-shrink: 0;
-  flex-wrap: wrap;
   min-height: 32px;
-  max-height: 64px;
 }
 
 .network-palette-group {
@@ -18,7 +17,13 @@
   align-items: center;
   gap: 2px;
   flex-shrink: 0;
-  white-space: nowrap;
+}
+
+.network-palette-pills {
+  display: grid;
+  grid-template-rows: auto auto;
+  grid-auto-flow: column;
+  gap: 2px;
 }
 
 .network-palette-cat-label {

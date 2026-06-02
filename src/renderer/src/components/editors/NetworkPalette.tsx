@@ -40,18 +40,20 @@ export function NetworkPalette({ catalog }: NetworkPaletteProps) {
         return (
           <span key={cat} className="network-palette-group">
             <span className="network-palette-cat-label">{CATEGORY_LABELS[cat] || cat}</span>
-            {items.map(([name, def]) => (
-              <span
-                key={name}
-                className="network-palette-pill"
-                style={{ borderLeftColor: def.color }}
-                draggable
-                onDragStart={(e) => handleDragStart(e, name)}
-                title={name}
-              >
-                {name}
-              </span>
-            ))}
+            <span className="network-palette-pills">
+              {items.map(([name, def]) => (
+                <span
+                  key={name}
+                  className="network-palette-pill"
+                  style={{ borderLeftColor: def.color }}
+                  draggable
+                  onDragStart={(e) => handleDragStart(e, name)}
+                  title={name}
+                >
+                  {name}
+                </span>
+              ))}
+            </span>
             <span className="network-palette-sep">|</span>
           </span>
         )

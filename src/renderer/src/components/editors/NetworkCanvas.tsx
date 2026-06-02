@@ -53,7 +53,15 @@ export function NetworkCanvas({
     svg.attr('width', W).attr('height', H)
     svg.selectAll('*').remove()
 
-    const g = svg.append('g')
+    const g = svg.append('g').attr('class', 'canvas-content')
+
+    // Zoom behavior
+    const zoom = d3.zoom<SVGSVGElement, unknown>()
+      .scaleExtent([0.3, 3])
+      .on('zoom', (event) => {
+        g.attr('transform', event.transform.toString())
+      })
+    svg.call(zoom)
 
     let cy = 30
 
@@ -234,7 +242,7 @@ export function NetworkCanvas({
     })
 
     // Total SVG height
-    svg.attr('height', Math.max(H, cy + 30))
+    svg.attr('height', H)
 
   }, [doc, catalog, selectedBlockId, selectedLayerId, onSelectLayer, onSelectBlock])
 
@@ -269,15 +277,20 @@ export function NetworkCanvas({
     const layerType = e.dataTransfer.getData('application/x-net-layer')
     if (!layerType) return
 
-    // Hit-test: find which block the drop landed on
     const container = containerRef.current
-    if (!container) return
+    const svg = svgRef.current
+    if (!container || !svg) return
+
     const rect = container.getBoundingClientRect()
-    const dropY = e.clientY - rect.top + container.scrollTop
+    const screenY = e.clientY - rect.top
+
+    // Account for zoom/pan transform
+    const transform = d3.zoomTransform(svg)
+    const contentY = (screenY - transform.y) / transform.k
 
     let targetBlockId: string | null = null
     for (const pos of blockPositionsRef.current) {
-      if (dropY >= pos.y && dropY <= pos.y + pos.height) {
+      if (contentY >= pos.y && contentY <= pos.y + pos.height) {
         targetBlockId = pos.blockId
         break
       }

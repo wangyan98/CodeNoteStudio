@@ -1,6 +1,6 @@
 .network-canvas-container {
   flex: 1;
-  overflow: auto;
+  overflow: hidden;
   background: var(--editor-bg, #1e1e1e);
 }
 

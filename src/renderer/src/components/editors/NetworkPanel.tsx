@@ -70,7 +70,7 @@ export function NetworkPanel({
           <div className="network-panel-params">
             <div className="network-panel-section-title">Block Settings</div>
             <div className="network-panel-params-grid">
-              <div className="network-panel-field">
+              <div className="network-panel-field" style={{ gridColumn: 'span 3' }}>
                 <label className="network-panel-field-label">Name</label>
                 <input
                   className="network-panel-input"
