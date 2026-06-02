@@ -1,8 +1,9 @@
-import { useRef, useEffect, useCallback, useImperativeHandle, forwardRef } from 'react'
+import { useRef, useEffect, useCallback, useImperativeHandle, forwardRef, useState } from 'react'
 import * as d3 from 'd3'
-import type { MindMapDocument, MindMapNode } from '../../../../main/schemas/note-types'
+import type { MindMapDocument, MindMapNode, DerivationDocument } from '../../../../main/schemas/note-types'
 import type { MindMapAction } from './mindMapReducer'
 import { findNode } from './mindMapReducer'
+import { inferEmbedType } from '../../services/markdown-renderer'
 
 interface MindMapCanvasProps {
   doc: MindMapDocument
@@ -18,6 +19,58 @@ export interface MindMapCanvasHandle {
   zoomToFit: () => void
 }
 
+type NoteContent = string | MindMapDocument | DerivationDocument
+
+interface EmbedRef {
+  rawMatch: string
+  relativePath: string
+}
+
+type EmbedStatus = 'loading' | 'loaded' | 'error'
+
+interface ResolvedEmbed {
+  status: EmbedStatus
+  notePath: string
+  noteType: string | null
+  content?: NoteContent
+  errorMessage?: string
+}
+
+function parseEmbeds(content: string): EmbedRef[] {
+  const refs: EmbedRef[] = []
+  const matches = content.matchAll(/\[\[([^\]]+)\]\]/g)
+  for (const match of matches) {
+    refs.push({
+      rawMatch: match[0],
+      relativePath: match[1].trim()
+    })
+  }
+  return refs
+}
+
+function resolveEmbedPath(
+  sourceNotePath: string,
+  embedRelativePath: string
+): string {
+  const sourceDir = sourceNotePath.replace(/\/[^/]*$/, '')
+  const combined = sourceDir ? `${sourceDir}/${embedRelativePath}` : embedRelativePath
+  const segments = combined.split('/')
+  const resolved: string[] = []
+  for (const seg of segments) {
+    if (seg === '' || seg === '.') continue
+    if (seg === '..') {
+      resolved.pop()
+    } else {
+      resolved.push(seg)
+    }
+  }
+  return resolved.join('/')
+}
+
+function isCircularReference(sourceNotePath: string, targetResolvedPath: string): boolean {
+  return sourceNotePath === targetResolvedPath
+}
+
 export const MindMapCanvas = forwardRef<MindMapCanvasHandle, MindMapCanvasProps>(
   function MindMapCanvas({ doc, notePath, selectedNodeId, collapsedIds, dispatch, onContextMenu, onHoverNode }, ref) {
     const svgRef = useRef<SVGSVGElement>(null)
@@ -29,6 +82,9 @@ export const MindMapCanvas = forwardRef<MindMapCanvasHandle, MindMapCanvasProps>
 
     // Keep ref in sync so render() can read it without depending on the prop
     selectedNodeIdRef.current = selectedNodeId
+
+    const [expandedEmbeds, setExpandedEmbeds] = useState<Set<string>>(new Set())
+    const [embedCache, setEmbedCache] = useState<Map<string, ResolvedEmbed>>(new Map())
 
     useImperativeHandle(ref, () => ({
       zoomToFit() {
@@ -74,6 +130,87 @@ export const MindMapCanvas = forwardRef<MindMapCanvasHandle, MindMapCanvasProps>
         }
       })
     }, [selectedNodeId])
+
+    const resolveEmbed = useCallback(async (nodeId: string, embedRef: EmbedRef): Promise<ResolvedEmbed> => {
+      const resolvedPath = resolveEmbedPath(notePath, embedRef.relativePath)
+      const cacheKey = `${nodeId}::${resolvedPath}`
+
+      if (embedCache.has(cacheKey)) {
+        return embedCache.get(cacheKey)!
+      }
+
+      if (isCircularReference(notePath, resolvedPath)) {
+        const err: ResolvedEmbed = {
+          status: 'error',
+          notePath: resolvedPath,
+          noteType: null,
+          errorMessage: `Circular reference: ${embedRef.relativePath}`
+        }
+        setEmbedCache(prev => new Map(prev).set(cacheKey, err))
+        return err
+      }
+
+      const noteType = inferEmbedType(resolvedPath)
+      if (!noteType) {
+        const err: ResolvedEmbed = {
+          status: 'error',
+          notePath: resolvedPath,
+          noteType: null,
+          errorMessage: `Unsupported type: ${embedRef.relativePath}`
+        }
+        setEmbedCache(prev => new Map(prev).set(cacheKey, err))
+        return err
+      }
+
+      const loading: ResolvedEmbed = { status: 'loading', notePath: resolvedPath, noteType }
+      setEmbedCache(prev => new Map(prev).set(cacheKey, loading))
+
+      try {
+        const content = await window.electronAPI.readNote(resolvedPath) as NoteContent
+        const resolved: ResolvedEmbed = {
+          status: 'loaded',
+          notePath: resolvedPath,
+          noteType,
+          content
+        }
+        setEmbedCache(prev => new Map(prev).set(cacheKey, resolved))
+        return resolved
+      } catch (e: unknown) {
+        const msg = e instanceof Error ? e.message : String(e)
+        let errorMessage: string
+        if (msg.includes('ENOENT') || msg.includes('not found') || msg.includes('does not exist')) {
+          errorMessage = `File not found: ${embedRef.relativePath}`
+        } else if (msg.includes('EACCES') || msg.includes('permission')) {
+          errorMessage = `Cannot read: ${embedRef.relativePath}`
+        } else {
+          errorMessage = `Load error: ${embedRef.relativePath}`
+        }
+        const err: ResolvedEmbed = {
+          status: 'error',
+          notePath: resolvedPath,
+          noteType,
+          errorMessage
+        }
+        setEmbedCache(prev => new Map(prev).set(cacheKey, err))
+        return err
+      }
+    }, [notePath, embedCache])
+
+    const handleToggleEmbed = useCallback(async (nodeId: string, embedRef: EmbedRef) => {
+      const resolvedPath = resolveEmbedPath(notePath, embedRef.relativePath)
+      const cacheKey = `${nodeId}::${resolvedPath}`
+
+      setExpandedEmbeds(prev => {
+        const next = new Set(prev)
+        if (next.has(cacheKey)) {
+          next.delete(cacheKey)
+          return next
+        }
+        next.add(cacheKey)
+        resolveEmbed(nodeId, embedRef)
+        return next
+      })
+    }, [notePath, resolveEmbed])
 
     const render = useCallback(() => {
       const svg = d3.select(svgRef.current)
