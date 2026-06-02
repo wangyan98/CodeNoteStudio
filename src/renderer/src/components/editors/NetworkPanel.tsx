@@ -1,10 +1,12 @@
 import type { LayerDef } from '../../../../main/schemas/layer-catalog'
-import type { NetworkLayer, CodeMapping } from '../../../../main/schemas/note-types'
+import type { NetworkLayer, NetworkBlock, CodeMapping } from '../../../../main/schemas/note-types'
 import './NetworkPanel.css'
 
 interface NetworkPanelProps {
+  block: NetworkBlock | null
   layer: NetworkLayer | null
   layerDef: LayerDef | undefined
+  onUpdateBlock: (blockId: string, field: string, value: string | number) => void
   onUpdateParam: (layerId: string, paramKey: string, value: unknown) => void
   onUpdateInputShape: (layerId: string, shape: string) => void
   onUpdateOutputShape: (layerId: string, shape: string) => void
@@ -51,14 +53,57 @@ function renderField(layer: NetworkLayer, param: { name: string; type: string; d
 }
 
 export function NetworkPanel({
-  layer, layerDef, onUpdateParam, onUpdateInputShape, onUpdateOutputShape,
-  onUpdateCodeMapping, onUpdateLayerName, onResolveRef, resolvedMapping
+  block, layer, layerDef, onUpdateBlock, onUpdateParam, onUpdateInputShape,
+  onUpdateOutputShape, onUpdateCodeMapping, onUpdateLayerName, onResolveRef, resolvedMapping
 }: NetworkPanelProps) {
+
+  // Block editing (no layer selected)
+  if (!layer && block) {
+    return (
+      <div className="network-panel">
+        <div className="network-panel-main">
+          <div className="network-panel-header">
+            <span className="network-panel-layer-type" style={{ color: '#ff9800' }}>
+              Block: {block.name}
+            </span>
+          </div>
+          <div className="network-panel-params">
+            <div className="network-panel-section-title">Block Settings</div>
+            <div className="network-panel-params-grid">
+              <div className="network-panel-field">
+                <label className="network-panel-field-label">Name</label>
+                <input
+                  className="network-panel-input"
+                  type="text"
+                  value={block.name}
+                  onChange={(e) => onUpdateBlock(block.id, 'name', e.target.value)}
+                />
+              </div>
+              <div className="network-panel-field">
+                <label className="network-panel-field-label">Repeat</label>
+                <input
+                  className="network-panel-input"
+                  type="number"
+                  value={block.repeat ?? 1}
+                  min={1}
+                  onChange={(e) => onUpdateBlock(block.id, 'repeat', Math.max(1, Number(e.target.value)))}
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+        <div className="network-panel-side">
+          <div className="network-panel-section-title">Block</div>
+          <span className="network-panel-no-params">Select a layer inside this block to edit parameters</span>
+        </div>
+      </div>
+    )
+  }
 
   if (!layer) {
     return (
       <div className="network-panel">
-        <div className="network-panel-empty">Select a layer to edit its parameters</div>
+        <div className="network-panel-empty">Select a block or layer to edit</div>
       </div>
     )
   }

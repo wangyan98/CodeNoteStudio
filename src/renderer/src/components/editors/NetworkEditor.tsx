@@ -101,6 +101,15 @@ export function NetworkEditor({ document: initialDoc, notePath, workspacePath, o
     return getLayerDef(selectedLayer.type, catalogOverrides)
   }, [selectedLayer, catalogOverrides])
 
+  const selectedBlock = useMemo(() => {
+    if (!selectedBlockId) return null
+    return doc.blocks.find(b => b.id === selectedBlockId) || null
+  }, [doc.blocks, selectedBlockId])
+
+  const handleUpdateBlock = useCallback((blockId: string, field: string, value: string | number) => {
+    dispatch({ type: 'UPDATE_BLOCK', blockId, field, value })
+  }, [])
+
   const handleSelectLayer = useCallback((blockId: string, layerId: string) => {
     setSelectedBlockId(blockId || null)
     setSelectedLayerId(layerId || null)
@@ -203,8 +212,10 @@ export function NetworkEditor({ document: initialDoc, notePath, workspacePath, o
       {/* Edit panel */}
       <div className="network-editor-panel" style={{ flex: `0 0 ${panelHeight * 100}%` }}>
         <NetworkPanel
+          block={selectedBlock}
           layer={selectedLayer}
           layerDef={selectedLayerDef}
+          onUpdateBlock={handleUpdateBlock}
           onUpdateParam={(layerId, key, val) => dispatch({ type: 'UPDATE_LAYER', blockId: selectedBlockId!, layerId, field: 'params', paramKey: key, value: val })}
           onUpdateInputShape={(layerId, shape) => dispatch({ type: 'UPDATE_LAYER', blockId: selectedBlockId!, layerId, field: 'inputShape', value: shape })}
           onUpdateOutputShape={(layerId, shape) => dispatch({ type: 'UPDATE_LAYER', blockId: selectedBlockId!, layerId, field: 'outputShape', value: shape })}
