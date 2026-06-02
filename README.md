@@ -1,6 +1,6 @@
 # Code Note Studio
 
-A desktop note-taking tool that combines Markdown, mind maps, and derivation trees with deep code repository integration. Link your notes to actual source code symbols using `@ref(name)` syntax — keep documentation and code synchronized and navigable.
+A desktop note-taking tool that combines Markdown, mind maps, derivation trees, sequence diagrams, and neural network diagrams with deep code repository integration. Link your notes to actual source code symbols using `@ref(name)` syntax — keep documentation and code synchronized and navigable.
 
 ## Features
 
@@ -8,9 +8,11 @@ A desktop note-taking tool that combines Markdown, mind maps, and derivation tre
 
 | Type | Extension | Description |
 |------|-----------|-------------|
-| **Markdown** | `.md` | Standard Markdown with Monaco editor, `@ref()` autocomplete, KaTeX math, and live preview |
+| **Markdown** | `.md` | Standard Markdown with Monaco editor, `@ref()` autocomplete, KaTeX math, live preview, and `![[path]]` embed support |
 | **Mind Map** | `.mind.json` | Hierarchical tree structure rendered as a D3.js force-directed graph |
 | **Derivation Tree** | `.derive.json` | Step-by-step derivation/explanation with linked code references |
+| **Sequence Diagram** | `.seq.mermaid` | Mermaid sequence diagrams with live preview |
+| **Network** | `.net.json` | PyTorch neural network architecture visualization with block-diagram editor, drag-and-drop layer palette, D3 SVG canvas, and `@ref()` source-code mapping per layer |
 
 ### Code Integration
 
@@ -42,7 +44,8 @@ Four-panel resizable interface:
 ┌──────────┬──────────────┬──────────────┬──────────┐
 │  Notes   │ Note Editor  │ Code Viewer  │  Code    │
 │  Tree    │ (MD/Mind/    │  (Monaco)    │  Files   │
-│          │  Derivation) │              │  Tree    │
+│          │  Derive/Seq/ │              │  Tree    │
+│          │  Network)    │              │          │
 └──────────┴──────────────┴──────────────┴──────────┘
 ```
 
@@ -120,7 +123,8 @@ src/
 │   ├── ipc-handlers.ts            # All IPC handler registrations
 │   ├── types.ts                   # Shared types
 │   ├── schemas/
-│   │   └── note-types.ts          # MindMap & Derivation document schemas
+│   │   ├── note-types.ts          # MindMap, Derivation, & Network document schemas
+│   │   └── layer-catalog.ts      # Built-in PyTorch layer definitions (~26 layers)
 │   └── services/
 │       ├── code-parser.ts         # Tree-sitter symbol extraction
 │       ├── file-system.ts         # Filesystem helpers
@@ -164,9 +168,18 @@ src/
             ├── CodeMappingsPanel.tsx # Resolved @ref links panel
             ├── SymbolPicker.tsx      # Symbol search dialog
             └── editors/
-                ├── MdEditor.tsx      # Markdown editor with preview
-                ├── MindMapRenderer.tsx
-                └── DerivationRenderer.tsx
+                ├── MdEditor.tsx             # Markdown editor with live preview + embeds
+                ├── MindMapRenderer.tsx      # D3 force-directed mind map
+                ├── MindMapCanvas.tsx        # Mind map embed rendering
+                ├── DerivationRenderer.tsx
+                ├── SequenceEditor.tsx       # Mermaid sequence diagram editor
+                ├── NetworkEditor.tsx        # 3-panel .net.json editor
+                ├── NetworkCanvas.tsx        # D3 SVG block-diagram canvas
+                ├── NetworkPalette.tsx       # Draggable layer pill strip
+                ├── NetworkPanel.tsx         # Param form + code mapping panel
+                ├── NetworkEmbedViewer.tsx   # Static embed for .md
+                ├── networkReducer.ts        # State reducer for .net.json
+                └── EmbedCard.tsx            # Generic embed card for ![[path]]
 ```
 
 ## Configuration
@@ -218,7 +231,7 @@ When the live server is running, REST endpoints are available:
 |----------|-------------|
 | `GET /api/workspace` | Current workspace path |
 | `GET /api/config` | Notebook configuration |
-| `GET /api/notes` | List notes (`?filter=md\|mind\|derive`) |
+| `GET /api/notes` | List notes (`?filter=md\|mind\|derive\|seq\|net`) |
 | `GET /api/notes/*path` | Read note content |
 | `GET /api/code/files?repo=<path>` | List code files |
 | `GET /api/code/file?path=<path>` | Read code file |
