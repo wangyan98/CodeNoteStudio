@@ -185,6 +185,7 @@ export function NoteViewport() {
           <NetworkEditor
             document={activeNoteContent as NetworkDocument}
             notePath={selectedNoteId}
+            workspacePath={state.workspacePath}
             onSave={async (doc: NetworkDocument) => {
               await saveNote(selectedNoteId, doc)
             }}

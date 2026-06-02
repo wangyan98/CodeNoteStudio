@@ -44,6 +44,9 @@ const api = {
   copyFileToAssets: (sourcePath: string) =>
     ipcRenderer.invoke('code:copy-file-to-assets', sourcePath),
 
+  // Layer catalog
+  readLayerCatalog: (projectPath: string) => ipcRenderer.invoke('catalog:read-layer-catalog', projectPath),
+
   // Server
   startServer: (port?: number) => ipcRenderer.invoke('server:start', port),
   stopServer: () => ipcRenderer.invoke('server:stop'),

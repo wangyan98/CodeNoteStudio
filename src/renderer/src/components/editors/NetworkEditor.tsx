@@ -12,13 +12,14 @@ import './NetworkEditor.css'
 interface NetworkEditorProps {
   document: NetworkDocument
   notePath: string
+  workspacePath: string | null
   onSave: (doc: NetworkDocument) => Promise<void>
   onNavigateToCode?: (filePath: string, line: number) => void
 }
 
 type SaveStatus = 'saved' | 'saving' | 'unsaved' | 'error'
 
-export function NetworkEditor({ document: initialDoc, notePath, onSave, onNavigateToCode }: NetworkEditorProps) {
+export function NetworkEditor({ document: initialDoc, notePath, workspacePath, onSave, onNavigateToCode }: NetworkEditorProps) {
   const [doc, dispatch] = useReducer(networkReducer, initialDoc)
   const [selectedBlockId, setSelectedBlockId] = useState<string | null>(null)
   const [selectedLayerId, setSelectedLayerId] = useState<string | null>(null)
@@ -77,12 +78,13 @@ export function NetworkEditor({ document: initialDoc, notePath, onSave, onNaviga
   useEffect(() => {
     const loadOverrides = async () => {
       try {
-        const ov = await (window as any).electronAPI.readLayerCatalog()
+        if (!workspacePath) return
+        const ov = await window.electronAPI.readLayerCatalog(workspacePath)
         if (ov) setCatalogOverrides(ov)
       } catch { /* no override file, use defaults */ }
     }
     loadOverrides()
-  }, [notePath])
+  }, [notePath, workspacePath])
 
   const selectedLayer = useMemo(() => {
     if (!selectedBlockId || !selectedLayerId) return null

@@ -185,6 +185,17 @@ export function registerIpcHandlers(projectPath: string): void {
     return mappings
   })
 
+  // Layer catalog
+  ipcMain.handle('catalog:read-layer-catalog', async (_event, projectPath: string) => {
+    const { readTextFile, fileExists } = await import('./services/file-system')
+    const path = await import('node:path')
+    const catalogPath = path.join(projectPath, 'notes', '.layer-catalog.json')
+    const exists = await fileExists(catalogPath)
+    if (!exists) return null
+    const raw = await readTextFile(catalogPath)
+    return JSON.parse(raw)
+  })
+
   ipcMain.handle('code:copy-file-to-assets', async (_event, sourcePath: string) => {
     const { copyFileToAssets } = await import('./services/file-system')
     return copyFileToAssets(sourcePath, currentProjectPath!)

@@ -57,6 +57,10 @@ declare global {
         parentName?: string
       }>>
       copyFileToAssets: (sourcePath: string) => Promise<{ relativePath: string; absolutePath: string }>
+      readLayerCatalog: (projectPath: string) => Promise<{
+        extend?: Record<string, { category: string; color: string; params: Array<{ name: string; type: string; default?: unknown; required?: boolean }> }>
+        override?: Record<string, { color?: string }>
+      } | null>
       startServer: (port?: number) => Promise<{ running: boolean; port: number; url: string }>
       stopServer: () => Promise<void>
       getServerStatus: () => Promise<{ running: boolean; port: number; url: string }>
