@@ -24,6 +24,7 @@ function getNoteType(fileName: string): NoteFileType | null {
   if (fileName.endsWith('.mind.json')) return 'mind'
   if (fileName.endsWith('.derive.json')) return 'derive'
   if (fileName.endsWith('.seq.mermaid')) return 'seq'
+  if (fileName.endsWith('.net.json')) return 'net'
   if (fileName.endsWith('.md')) return 'md'
   return null
 }
@@ -70,6 +71,12 @@ export async function createNote(
       await writeTextFile(fullPath, content)
       break
     }
+    case 'net': {
+      const { createNetworkDocument } = await import('../schemas/note-types')
+      const content = createNetworkDocument()
+      await writeJsonFile(fullPath, content)
+      break
+    }
   }
 }
 
@@ -97,6 +104,15 @@ export async function readNote(
 
   if (relativePath.endsWith('.seq.mermaid')) {
     return readTextFile(fullPath)
+  }
+
+  if (relativePath.endsWith('.net.json')) {
+    const { isValidNetworkDocument } = await import('../schemas/note-types')
+    const doc = await readJsonFile(fullPath)
+    if (!isValidNetworkDocument(doc)) {
+      throw new Error(`Invalid network document: ${relativePath}`)
+    }
+    return doc
   }
 
   return readTextFile(fullPath)
