@@ -1,47 +1,61 @@
 import { useRef, useEffect, useCallback } from 'react'
 import * as d3 from 'd3'
-import type { NetworkDocument, NetworkLayer } from '../../../../main/schemas/note-types'
+import dagre from 'dagre'
+import type { NetworkDocument, GraphNode, GraphEdge } from '../../../../main/schemas/note-types'
 import type { LayerDef } from '../../../../main/schemas/layer-catalog'
 import './NetworkCanvas.css'
 
 interface NetworkCanvasProps {
   doc: NetworkDocument
   catalog: Record<string, LayerDef>
-  selectedBlockId: string | null
-  selectedLayerId: string | null
-  onSelectLayer: (blockId: string, layerId: string) => void
-  onSelectBlock: (blockId: string) => void
-  onDropLayer: (blockId: string, layerType: string, afterLayerId?: string) => void
-  onDeleteLayer: (blockId: string, layerId: string) => void
+  selectedNodeId: string | null
+  onSelectNode: (nodeId: string | null) => void
+  onDropLayer: (layerType: string) => void
+  onDeleteNode: (nodeId: string) => void
+  onAddEdge: (source: string, target: string) => void
 }
 
-const LAYER_W = 120
-const LAYER_H = 42
-const LAYER_GAP = 14
-const BLOCK_PAD = 20
-const ARROW_W = 24
+const NODE_W = 120
+const NODE_H = 42
+const INPUT_W = 100
+const INPUT_H = 28
+const BLOCK_MIN_W = 200
+const BLOCK_HEADER_H = 24
 
-function formatLayerLabel(layer: NetworkLayer): string {
-  const p = layer.params
-  const inCh = p.in_channels ?? p.in_features
-  const outCh = p.out_channels ?? p.out_features
-  if (inCh !== undefined && outCh !== undefined) {
-    return `${layer.type}\n${inCh}→${outCh}`
+function runLayout(nodes: GraphNode[], edges: GraphEdge[]): Map<string, { x: number; y: number }> {
+  const g = new dagre.graphlib.Graph()
+  g.setGraph({ rankdir: 'TB', nodesep: 40, edgesep: 20, ranksep: 60, marginx: 40, marginy: 30 })
+  g.setDefaultEdgeLabel(() => ({}))
+
+  for (const n of nodes) {
+    const w = n.kind === 'input' || n.kind === 'output' ? INPUT_W
+      : n.kind === 'block' ? BLOCK_MIN_W : NODE_W
+    const h = n.kind === 'input' || n.kind === 'output' ? INPUT_H
+      : n.kind === 'block' ? NODE_H + BLOCK_HEADER_H : NODE_H
+    g.setNode(n.id, { width: w, height: h })
   }
-  if (p.num_features !== undefined) {
-    return `${layer.type}\n${p.num_features}`
+
+  for (const e of edges) {
+    g.setEdge(e.source, e.target)
   }
-  return layer.type
+
+  dagre.layout(g)
+
+  const positions = new Map<string, { x: number; y: number }>()
+  for (const n of nodes) {
+    const node = g.node(n.id)
+    if (node) positions.set(n.id, { x: node.x, y: node.y })
+  }
+  return positions
 }
 
 export function NetworkCanvas({
-  doc, catalog, selectedBlockId, selectedLayerId,
-  onSelectLayer, onSelectBlock, onDropLayer, onDeleteLayer
+  doc, catalog, selectedNodeId,
+  onSelectNode, onDropLayer, onDeleteNode, onAddEdge
 }: NetworkCanvasProps) {
 
   const svgRef = useRef<SVGSVGElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
-  const blockPositionsRef = useRef<Array<{ blockId: string; y: number; height: number }>>([])
 
   const render = useCallback(() => {
     const svg = d3.select(svgRef.current)
@@ -53,218 +67,161 @@ export function NetworkCanvas({
     svg.attr('width', W).attr('height', H)
     svg.selectAll('*').remove()
 
+    const nodes = doc.nodes ?? []
+    const edges = doc.edges ?? []
+    const positions = runLayout(nodes, edges)
+
+    // Compute bounding box for centering
+    let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity
+    for (const p of positions.values()) {
+      minX = Math.min(minX, p.x - NODE_W)
+      maxX = Math.max(maxX, p.x + NODE_W)
+      minY = Math.min(minY, p.y - NODE_H)
+      maxY = Math.max(maxY, p.y + NODE_H)
+    }
+    const contentW = maxX - minX + 80
+    const offsetX = (W - contentW) / 2 - minX + 40
+    const offsetY = 30 - minY
+
     const g = svg.append('g').attr('class', 'canvas-content')
 
-    // Zoom behavior
+    // Zoom
     const zoom = d3.zoom<SVGSVGElement, unknown>()
       .scaleExtent([0.3, 3])
-      .on('zoom', (event) => {
-        g.attr('transform', event.transform.toString())
-      })
-    svg.call(zoom)
+      .on('zoom', (event) => { g.attr('transform', event.transform.toString()) })
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    svg.call(zoom as any)
 
-    let cy = 30
+    // --- Render edges first (behind nodes) ---
+    for (const edge of edges) {
+      const srcPos = positions.get(edge.source)
+      const tgtPos = positions.get(edge.target)
+      if (!srcPos || !tgtPos) continue
 
-    // Input node
-    const inputLabel = doc.inputShape ? `Input ${doc.inputShape}` : 'Input'
-    g.append('rect')
-      .attr('x', W / 2 - 60).attr('y', cy).attr('width', 120).attr('height', 28)
-      .attr('rx', 6).attr('fill', '#f5f5f5').attr('stroke', '#666').attr('stroke-width', 2)
-    g.append('text')
-      .attr('x', W / 2).attr('y', cy + 18).attr('text-anchor', 'middle')
-      .attr('fill', '#333').attr('font-size', '11px').attr('font-weight', 'bold')
-      .text(inputLabel)
+      const srcNode = nodes.find(n => n.id === edge.source)
+      const tgtNode = nodes.find(n => n.id === edge.target)
+      const srcW = srcNode?.kind === 'input' || srcNode?.kind === 'output' ? INPUT_W : NODE_W
+      const tgtW = tgtNode?.kind === 'input' || tgtNode?.kind === 'output' ? INPUT_W : NODE_W
 
-    cy += 40
+      const x1 = offsetX + srcPos.x + srcW / 2
+      const y1 = offsetY + srcPos.y
+      const x2 = offsetX + tgtPos.x - tgtW / 2
+      const y2 = offsetY + tgtPos.y
 
-    // Reset block positions for drop hit-testing
-    const positions: Array<{ blockId: string; y: number; height: number }> = []
-
-    // Render blocks
-    for (let bi = 0; bi < doc.blocks.length; bi++) {
-      const block = doc.blocks[bi]
-
-      // Arrow between blocks
-      g.append('text')
-        .attr('x', W / 2).attr('y', cy - 6).attr('text-anchor', 'middle')
-        .attr('fill', '#888').attr('font-size', '14px')
-        .text('↓')
-      cy += 8
-
-      const layerCount = block.layers.length
-      const blockW = layerCount > 0
-        ? layerCount * (LAYER_W + ARROW_W) - ARROW_W + BLOCK_PAD * 2
-        : 200
-      const blockH = LAYER_H + BLOCK_PAD * 2 + 28
-
-      // Record block position for drop hit-test
-      positions.push({ blockId: block.id, y: cy, height: blockH })
-
-      const blockX = (W - blockW) / 2
-      const isSelected = block.id === selectedBlockId
-
-      // Block rect
-      const blockG = g.append('g')
-        .attr('class', 'net-block')
-        .attr('data-block-id', block.id)
-        .style('cursor', 'pointer')
-
-      blockG.append('rect')
-        .attr('x', blockX).attr('y', cy).attr('width', blockW).attr('height', blockH)
-        .attr('rx', 10).attr('fill', 'none')
-        .attr('stroke', isSelected ? '#4a90d9' : '#ff9800')
-        .attr('stroke-width', isSelected ? 2.5 : 1.5)
-        .attr('stroke-dasharray', '6,3')
-
-      // Block header
-      let headerText = block.name
-      if (block.repeat && block.repeat > 1) headerText += ` ×${block.repeat}`
-
-      blockG.append('text')
-        .attr('x', blockX + 10).attr('y', cy + 16)
-        .attr('fill', '#ff9800').attr('font-size', '11px').attr('font-weight', 'bold')
-        .text(headerText)
-
-      blockG.on('click', (event: MouseEvent) => {
-        event.stopPropagation()
-        onSelectBlock(block.id)
-      })
-
-      // Render layers within block
-      if (layerCount > 0) {
-        const layersStartX = blockX + BLOCK_PAD
-        const layersY = cy + BLOCK_PAD + 16
-
-        for (let li = 0; li < layerCount; li++) {
-          const layer = block.layers[li]
-          const lx = layersStartX + li * (LAYER_W + ARROW_W)
-          const def = catalog[layer.type]
-          const color = def?.color ?? '#888'
-          const isLayerSelected = layer.id === selectedLayerId
-
-          const layerG = blockG.append('g')
-            .attr('class', 'net-layer')
-            .attr('data-layer-id', layer.id)
-            .attr('data-block-id', block.id)
-            .style('cursor', 'pointer')
-
-          layerG.append('rect')
-            .attr('x', lx).attr('y', layersY).attr('width', LAYER_W).attr('height', LAYER_H)
-            .attr('rx', 6).attr('fill', color + '22')
-            .attr('stroke', color).attr('stroke-width', isLayerSelected ? 2.5 : 1.5)
-
-          // Layer type label
-          const label = formatLayerLabel(layer)
-          const lines = label.split('\n')
-          layerG.append('text')
-            .attr('x', lx + LAYER_W / 2).attr('y', layersY + 16)
-            .attr('text-anchor', 'middle').attr('fill', '#d4d4d4')
-            .attr('font-size', '10px').attr('font-weight', 'bold')
-            .text(lines[0])
-          if (lines[1]) {
-            layerG.append('text')
-              .attr('x', lx + LAYER_W / 2).attr('y', layersY + 30)
-              .attr('text-anchor', 'middle').attr('fill', '#999')
-              .attr('font-size', '9px')
-              .text(lines[1])
-          }
-
-          // Code mapping indicator
-          if (layer.codeMapping) {
-            layerG.append('circle')
-              .attr('cx', lx + LAYER_W - 8).attr('cy', layersY + 8).attr('r', 3)
-              .attr('fill', '#4a90d9')
-          }
-
-          layerG.on('click', (event: MouseEvent) => {
-            event.stopPropagation()
-            onSelectLayer(block.id, layer.id)
-          })
-
-          // Connection port dots
-          layerG.append('circle')
-            .attr('cx', lx).attr('cy', layersY + LAYER_H / 2).attr('r', 3)
-            .attr('fill', color).attr('stroke', '#333').attr('stroke-width', 0.5)
-            .style('opacity', 0.7)
-          layerG.append('circle')
-            .attr('cx', lx + LAYER_W).attr('cy', layersY + LAYER_H / 2).attr('r', 3)
-            .attr('fill', color).attr('stroke', '#333').attr('stroke-width', 0.5)
-            .style('opacity', 0.7)
-
-          // Arrow between layers
-          if (li < layerCount - 1) {
-            const ax = lx + LAYER_W
-            const ay = layersY + LAYER_H / 2
-            blockG.append('line')
-              .attr('x1', ax + 2).attr('y1', ay)
-              .attr('x2', ax + ARROW_W - 4).attr('y2', ay)
-              .attr('stroke', '#888').attr('stroke-width', 1.5)
-            blockG.append('polygon')
-              .attr('points', `${ax + ARROW_W - 4},${ay - 4} ${ax + ARROW_W},${ay} ${ax + ARROW_W - 4},${ay + 4}`)
-              .attr('fill', '#888')
-          }
-        }
+      if (edge.style === 'skip') {
+        const mx = (x1 + x2) / 2
+        const dy = Math.abs(y2 - y1) * 0.5
+        const path = d3.path()
+        path.moveTo(x1, y1)
+        path.bezierCurveTo(mx, y1 - dy, mx, y2 + dy, x2, y2)
+        g.append('path')
+          .attr('d', path.toString())
+          .attr('fill', 'none').attr('stroke', '#34a853').attr('stroke-width', 1.5)
+          .attr('stroke-dasharray', '4,3')
+        g.append('polygon')
+          .attr('points', `${x2-6},${y2-4} ${x2},${y2} ${x2-6},${y2+4}`)
+          .attr('fill', 'none').attr('stroke', '#34a853').attr('stroke-width', 1.5)
       } else {
-        // Empty block placeholder
-        blockG.append('text')
-          .attr('x', blockX + blockW / 2).attr('y', cy + blockH / 2 + 10)
-          .attr('text-anchor', 'middle').attr('fill', '#666').attr('font-size', '10px')
-          .text('Drop layers here')
+        g.append('line')
+          .attr('x1', x1).attr('y1', y1).attr('x2', x2 - 4).attr('y2', y2)
+          .attr('stroke', '#888').attr('stroke-width', 1.5)
+        g.append('polygon')
+          .attr('points', `${x2-4},${y2-4} ${x2},${y2} ${x2-4},${y2+4}`)
+          .attr('fill', '#888')
       }
 
-      // Skip connection rendering
-      if (block.skipConnections.length > 0) {
-        const connY = cy + blockH - 4
-        for (const sc of block.skipConnections) {
-          blockG.append('line')
-            .attr('x1', blockX).attr('y1', connY)
-            .attr('x2', blockX + blockW).attr('y2', connY)
-            .attr('stroke', '#34a853').attr('stroke-width', 1.5)
-            .attr('stroke-dasharray', '4,2')
-          if (sc.label) {
-            blockG.append('text')
-              .attr('x', blockX + blockW / 2).attr('y', connY - 4)
-              .attr('text-anchor', 'middle').attr('fill', '#34a853').attr('font-size', '8px')
-              .text(sc.label)
-          }
-        }
+      if (edge.label) {
+        g.append('text')
+          .attr('x', (x1 + x2) / 2).attr('y', y1 - 6)
+          .attr('text-anchor', 'middle').attr('fill', '#34a853').attr('font-size', '8px')
+          .text(edge.label)
       }
-
-      cy += blockH + 12
     }
 
-    // Save positions for drop hit-testing
-    blockPositionsRef.current = positions
+    // --- Render nodes ---
+    for (const node of nodes) {
+      const pos = positions.get(node.id)
+      if (!pos) continue
+
+      const isSelected = node.id === selectedNodeId
+      let nw = NODE_W, nh = NODE_H, color = '#888', fill = '#2a2a2a'
+
+      if (node.kind === 'input' || node.kind === 'output') {
+        nw = INPUT_W; nh = INPUT_H; color = '#666'; fill = '#f5f5f5'
+      } else if (node.kind === 'layer' && node.layerType) {
+        const def = catalog[node.layerType]
+        color = def?.color ?? '#888'
+        fill = (def?.color ?? '#888') + '22'
+      } else if (node.kind === 'block') {
+        nw = BLOCK_MIN_W; color = '#ff9800'; fill = 'none'
+      }
+
+      const nx = offsetX + pos.x - nw / 2
+      const ny = offsetY + pos.y - nh / 2
+
+      const nodeG = g.append('g')
+        .attr('class', 'net-node')
+        .attr('data-node-id', node.id)
+        .style('cursor', 'pointer')
+
+      if (node.kind === 'block') {
+        nodeG.append('rect')
+          .attr('x', nx).attr('y', ny).attr('width', nw).attr('height', nh)
+          .attr('rx', 10).attr('fill', 'none')
+          .attr('stroke', isSelected ? '#4a90d9' : '#ff9800')
+          .attr('stroke-width', isSelected ? 2.5 : 1.5)
+          .attr('stroke-dasharray', '6,3')
+        let headerText = node.label
+        if (node.repeat && node.repeat > 1) headerText += ` ×${node.repeat}`
+        nodeG.append('text')
+          .attr('x', nx + 10).attr('y', ny + 16)
+          .attr('fill', '#ff9800').attr('font-size', '11px').attr('font-weight', 'bold')
+          .text(headerText)
+      } else if (node.kind === 'input' || node.kind === 'output') {
+        nodeG.append('rect')
+          .attr('x', nx).attr('y', ny).attr('width', nw).attr('height', nh)
+          .attr('rx', 6).attr('fill', fill)
+          .attr('stroke', isSelected ? '#4a90d9' : color)
+          .attr('stroke-width', isSelected ? 2.5 : 1.5)
+        nodeG.append('text')
+          .attr('x', nx + nw / 2).attr('y', ny + nh / 2 + 4)
+          .attr('text-anchor', 'middle').attr('fill', '#333')
+          .attr('font-size', '11px').attr('font-weight', 'bold')
+          .text(node.label + (node.inputShape ? ` ${node.inputShape}` : ''))
+      } else {
+        // layer
+        nodeG.append('rect')
+          .attr('x', nx).attr('y', ny).attr('width', nw).attr('height', nh)
+          .attr('rx', 6).attr('fill', fill)
+          .attr('stroke', isSelected ? '#4a90d9' : color)
+          .attr('stroke-width', isSelected ? 2.5 : 1.5)
+        nodeG.append('text')
+          .attr('x', nx + nw / 2).attr('y', ny + nh / 2 + 4)
+          .attr('text-anchor', 'middle').attr('fill', '#d4d4d4')
+          .attr('font-size', '10px').attr('font-weight', 'bold')
+          .text(node.label)
+        if (node.codeMapping) {
+          nodeG.append('circle')
+            .attr('cx', nx + nw - 8).attr('cy', ny + 8).attr('r', 3)
+            .attr('fill', '#4a90d9')
+        }
+      }
+
+      nodeG.on('click', (event: MouseEvent) => {
+        event.stopPropagation()
+        onSelectNode(node.id)
+      })
+    }
 
     // Background click to deselect
-    svg.on('click', () => {
-      onSelectLayer('', '')
-    })
+    svg.on('click', () => { onSelectNode(null) })
 
-    // Total SVG height
-    svg.attr('height', H)
-
-  }, [doc, catalog, selectedBlockId, selectedLayerId, onSelectLayer, onSelectBlock])
+  }, [doc, catalog, selectedNodeId, onSelectNode])
 
   useEffect(() => {
     render()
   }, [render])
 
-  // Keyboard: Delete
-  useEffect(() => {
-    const handler = (e: KeyboardEvent) => {
-      const tag = (e.target as HTMLElement).tagName
-      if (tag === 'INPUT' || tag === 'TEXTAREA') return
-      if ((e.key === 'Delete' || e.key === 'Backspace') && selectedLayerId && selectedBlockId) {
-        e.preventDefault()
-        onDeleteLayer(selectedBlockId, selectedLayerId)
-      }
-    }
-    window.addEventListener('keydown', handler)
-    return () => window.removeEventListener('keydown', handler)
-  }, [selectedLayerId, selectedBlockId, onDeleteLayer])
-
-  // Handle drop from palette
   const handleDragOver = (e: React.DragEvent) => {
     if (e.dataTransfer.types.includes('application/x-net-layer')) {
       e.preventDefault()
@@ -275,35 +232,7 @@ export function NetworkCanvas({
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault()
     const layerType = e.dataTransfer.getData('application/x-net-layer')
-    if (!layerType) return
-
-    const container = containerRef.current
-    const svg = svgRef.current
-    if (!container || !svg) return
-
-    const rect = container.getBoundingClientRect()
-    const screenY = e.clientY - rect.top
-
-    // Account for zoom/pan transform
-    const transform = d3.zoomTransform(svg)
-    const contentY = (screenY - transform.y) / transform.k
-
-    let targetBlockId: string | null = null
-    for (const pos of blockPositionsRef.current) {
-      if (contentY >= pos.y && contentY <= pos.y + pos.height) {
-        targetBlockId = pos.blockId
-        break
-      }
-    }
-
-    // Fallback to first block if no hit
-    if (!targetBlockId && doc.blocks.length > 0) {
-      targetBlockId = doc.blocks[0].id
-    }
-
-    if (targetBlockId) {
-      onDropLayer(targetBlockId, layerType)
-    }
+    if (layerType) onDropLayer(layerType)
   }
 
   return (
