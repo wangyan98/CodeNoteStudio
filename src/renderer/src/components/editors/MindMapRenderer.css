@@ -1,4 +1,5 @@
 .mindmap-container {
+  position: relative;
   width: 100%;
   height: 100%;
   overflow: hidden;
@@ -91,4 +92,104 @@
   flex: 0 0 35%;
   min-height: 80px;
   overflow: hidden;
+}
+
+/* --- Embed Overlay --- */
+
+.mindmap-embed-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 10;
+}
+
+.mindmap-embed-overlay .embed-card {
+  pointer-events: auto;
+  background: #1e1e1e;
+  border: 1px solid #444;
+  border-radius: 6px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.6);
+  min-width: 220px;
+  max-width: 480px;
+  overflow: hidden;
+}
+
+.embed-card-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  background: #2d2d2d;
+  border-bottom: 1px solid #444;
+  font-size: 11px;
+  color: #aaa;
+}
+
+.embed-card-badge {
+  background: #3c3c3c;
+  color: #ccc;
+  font-size: 9px;
+  padding: 1px 6px;
+  border-radius: 3px;
+  text-transform: uppercase;
+  font-weight: 600;
+}
+
+.embed-card-body {
+  padding: 8px 10px;
+  max-height: 320px;
+  overflow-y: auto;
+  font-size: 12px;
+  color: #d4d4d4;
+  line-height: 1.5;
+}
+
+.embed-card-body .mindmap-container {
+  height: 240px;
+  min-height: 160px;
+}
+
+.embed-card-body pre {
+  background: #2d2d2d;
+  padding: 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  overflow-x: auto;
+}
+
+.embed-card-body code {
+  background: #333;
+  padding: 1px 4px;
+  border-radius: 2px;
+  font-size: 11px;
+}
+
+.embed-card-loading {
+  color: #666;
+  font-size: 11px;
+  padding: 8px;
+  text-align: center;
+}
+
+/* --- SVG Embed Toggle Indicators --- */
+
+.embed-toggle-row {
+  cursor: pointer;
+}
+
+.embed-toggle-row:hover rect {
+  fill: #3c3c3c;
+}
+
+.embed-toggle-arrow {
+  font-family: monospace;
+  user-select: none;
+}
+
+.embed-toggle-label {
+  font-family: monospace;
+  user-select: none;
 }
