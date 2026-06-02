@@ -41,6 +41,7 @@ export function NetworkCanvas({
 
   const svgRef = useRef<SVGSVGElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
+  const blockPositionsRef = useRef<Array<{ blockId: string; y: number; height: number }>>([])
 
   const render = useCallback(() => {
     const svg = d3.select(svgRef.current)
@@ -68,6 +69,9 @@ export function NetworkCanvas({
 
     cy += 40
 
+    // Reset block positions for drop hit-testing
+    const positions: Array<{ blockId: string; y: number; height: number }> = []
+
     // Render blocks
     for (let bi = 0; bi < doc.blocks.length; bi++) {
       const block = doc.blocks[bi]
@@ -84,6 +88,9 @@ export function NetworkCanvas({
         ? layerCount * (LAYER_W + ARROW_W) - ARROW_W + BLOCK_PAD * 2
         : 200
       const blockH = LAYER_H + BLOCK_PAD * 2 + 28
+
+      // Record block position for drop hit-test
+      positions.push({ blockId: block.id, y: cy, height: blockH })
 
       const blockX = (W - blockW) / 2
       const isSelected = block.id === selectedBlockId
@@ -218,6 +225,9 @@ export function NetworkCanvas({
       cy += blockH + 12
     }
 
+    // Save positions for drop hit-testing
+    blockPositionsRef.current = positions
+
     // Background click to deselect
     svg.on('click', () => {
       onSelectLayer('', '')
@@ -259,7 +269,25 @@ export function NetworkCanvas({
     const layerType = e.dataTransfer.getData('application/x-net-layer')
     if (!layerType) return
 
-    const targetBlockId = doc.blocks.length > 0 ? doc.blocks[0].id : null
+    // Hit-test: find which block the drop landed on
+    const container = containerRef.current
+    if (!container) return
+    const rect = container.getBoundingClientRect()
+    const dropY = e.clientY - rect.top + container.scrollTop
+
+    let targetBlockId: string | null = null
+    for (const pos of blockPositionsRef.current) {
+      if (dropY >= pos.y && dropY <= pos.y + pos.height) {
+        targetBlockId = pos.blockId
+        break
+      }
+    }
+
+    // Fallback to first block if no hit
+    if (!targetBlockId && doc.blocks.length > 0) {
+      targetBlockId = doc.blocks[0].id
+    }
+
     if (targetBlockId) {
       onDropLayer(targetBlockId, layerType)
     }
