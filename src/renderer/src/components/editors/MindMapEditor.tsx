@@ -11,13 +11,14 @@ import { NodeEditPanel } from './NodeEditPanel'
 
 interface MindMapEditorProps {
   document: MindMapDocument
+  notePath: string
   onSave: (doc: MindMapDocument) => Promise<void>
   onNavigateToCode?: (filePath: string, line: number) => void
 }
 
 type SaveStatus = 'saved' | 'saving' | 'unsaved' | 'error'
 
-export function MindMapEditor({ document: initialDoc, onSave, onNavigateToCode }: MindMapEditorProps) {
+export function MindMapEditor({ document: initialDoc, notePath, onSave, onNavigateToCode }: MindMapEditorProps) {
   const [doc, dispatch] = useReducer(mindMapReducer, initialDoc)
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null)
   const [collapsedIds, setCollapsedIds] = useState<Set<string>>(new Set())
@@ -182,6 +183,7 @@ export function MindMapEditor({ document: initialDoc, onSave, onNavigateToCode }
         <MindMapCanvas
           ref={canvasRef}
           doc={doc}
+          notePath={notePath}
           selectedNodeId={selectedNodeId}
           collapsedIds={collapsedIds}
           dispatch={wrappedDispatch}

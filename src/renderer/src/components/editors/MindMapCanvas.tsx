@@ -6,6 +6,7 @@ import { findNode } from './mindMapReducer'
 
 interface MindMapCanvasProps {
   doc: MindMapDocument
+  notePath: string
   selectedNodeId: string | null
   collapsedIds: Set<string>
   dispatch: React.Dispatch<MindMapAction>
@@ -18,7 +19,7 @@ export interface MindMapCanvasHandle {
 }
 
 export const MindMapCanvas = forwardRef<MindMapCanvasHandle, MindMapCanvasProps>(
-  function MindMapCanvas({ doc, selectedNodeId, collapsedIds, dispatch, onContextMenu, onHoverNode }, ref) {
+  function MindMapCanvas({ doc, notePath, selectedNodeId, collapsedIds, dispatch, onContextMenu, onHoverNode }, ref) {
     const svgRef = useRef<SVGSVGElement>(null)
     const containerRef = useRef<HTMLDivElement>(null)
     const gElRef = useRef<SVGGElement | null>(null)

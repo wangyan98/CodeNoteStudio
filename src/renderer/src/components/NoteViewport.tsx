@@ -147,6 +147,7 @@ export function NoteViewport() {
         return (
           <MindMapEditor
             document={activeNoteContent as MindMapDocument}
+            notePath={selectedNoteId}
             onSave={async (doc: MindMapDocument) => {
               await saveNote(selectedNoteId, doc)
             }}
