@@ -1,7 +1,7 @@
 import { useReducer, useEffect, useRef, useState, useCallback, useMemo } from 'react'
 import type { NetworkDocument, CodeMapping } from '../../../../main/schemas/note-types'
 import { createNetworkDocument } from '../../../../main/schemas/note-types'
-import type { LayerDef, LayerCatalogOverrides } from '../../../../main/schemas/layer-catalog'
+import type { LayerCatalogOverrides } from '../../../../main/schemas/layer-catalog'
 import { resolveLayerCatalog, getLayerDef } from '../../../../main/schemas/layer-catalog'
 import { networkReducer } from './networkReducer'
 import type { NetworkAction } from './networkReducer'
@@ -22,8 +22,7 @@ type SaveStatus = 'saved' | 'saving' | 'unsaved' | 'error'
 
 export function NetworkEditor({ document: initialDoc, notePath, workspacePath, onSave, onNavigateToCode }: NetworkEditorProps) {
   const [doc, dispatch] = useReducer(networkReducer, initialDoc.version === 2 ? initialDoc : createNetworkDocument())
-  const [selectedBlockId, setSelectedBlockId] = useState<string | null>(null)
-  const [selectedLayerId, setSelectedLayerId] = useState<string | null>(null)
+  const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null)
   const [panelHeight, setPanelHeight] = useState(0.3)
   const [saveStatus, setSaveStatus] = useState<SaveStatus>('saved')
   const [catalogOverrides, setCatalogOverrides] = useState<LayerCatalogOverrides | null>(null)
@@ -39,8 +38,7 @@ export function NetworkEditor({ document: initialDoc, notePath, workspacePath, o
     if (saveTimerRef.current) { clearTimeout(saveTimerRef.current); saveTimerRef.current = null }
     dispatch({ type: 'SET_DOCUMENT', document: initialDoc })
     oldDocRef.current = initialDoc
-    setSelectedBlockId(null)
-    setSelectedLayerId(null)
+    setSelectedNodeId(null)
     setSaveStatus('saved')
   }, [initialDoc])
 
@@ -87,61 +85,44 @@ export function NetworkEditor({ document: initialDoc, notePath, workspacePath, o
     loadOverrides()
   }, [notePath, workspacePath])
 
-  const selectedLayer = useMemo(() => {
-    if (!selectedBlockId || !selectedLayerId) return null
-    for (const block of doc.blocks) {
-      if (block.id === selectedBlockId) {
-        return block.layers.find(l => l.id === selectedLayerId) || null
-      }
-    }
-    return null
-  }, [doc.blocks, selectedBlockId, selectedLayerId])
+  const selectedNode = useMemo(() => {
+    if (!selectedNodeId) return null
+    return (doc.nodes ?? []).find(n => n.id === selectedNodeId) || null
+  }, [doc.nodes, selectedNodeId])
 
-  const selectedLayerDef = useMemo(() => {
-    if (!selectedLayer) return undefined
-    return getLayerDef(selectedLayer.type, catalogOverrides)
-  }, [selectedLayer, catalogOverrides])
+  const selectedNodeDef = useMemo(() => {
+    if (!selectedNode || selectedNode.kind !== 'layer' || !selectedNode.layerType) return undefined
+    return getLayerDef(selectedNode.layerType, catalogOverrides)
+  }, [selectedNode, catalogOverrides])
 
-  const selectedBlock = useMemo(() => {
-    if (!selectedBlockId) return null
-    return doc.blocks.find(b => b.id === selectedBlockId) || null
-  }, [doc.blocks, selectedBlockId])
-
-  const handleUpdateBlock = useCallback((blockId: string, field: string, value: string | number) => {
-    dispatch({ type: 'UPDATE_BLOCK', blockId, field, value })
+  const handleSelectNode = useCallback((nodeId: string | null) => {
+    setSelectedNodeId(nodeId)
   }, [])
 
-  const handleSelectLayer = useCallback((blockId: string, layerId: string) => {
-    setSelectedBlockId(blockId || null)
-    setSelectedLayerId(layerId || null)
+  const handleDropLayer = useCallback((layerType: string) => {
+    dispatch({ type: 'ADD_NODE', kind: 'layer', layerType, name: layerType })
   }, [])
 
-  const handleSelectBlock = useCallback((blockId: string) => {
-    setSelectedBlockId(blockId)
-    setSelectedLayerId(null)
+  const handleDeleteNode = useCallback((nodeId: string) => {
+    dispatch({ type: 'DELETE_NODE', nodeId })
+    setSelectedNodeId(null)
   }, [])
 
-  const handleDropLayer = useCallback((blockId: string, layerType: string, afterLayerId?: string) => {
-    dispatch({ type: 'ADD_LAYER', blockId, layerType, afterLayerId })
-  }, [])
-
-  const handleDeleteLayer = useCallback((blockId: string, layerId: string) => {
-    dispatch({ type: 'DELETE_LAYER', blockId, layerId })
-    setSelectedBlockId(null)
-    setSelectedLayerId(null)
+  const handleAddEdge = useCallback((source: string, target: string) => {
+    dispatch({ type: 'ADD_EDGE', source, target })
   }, [])
 
   const handleResolveRef = useCallback(async (raw: string) => {
-    if (!selectedLayerId || !selectedBlockId) return
+    if (!selectedNodeId) return
     try {
       const mappings = await window.electronAPI.resolveRefs(notePath, `@ref(${raw})`, undefined)
       if (mappings.length > 0) {
         const m = mappings[0]
         setResolvedMapping(m)
-        dispatch({ type: 'UPDATE_LAYER_CODE_MAPPING', blockId: selectedBlockId, layerId: selectedLayerId, codeMapping: m })
+        dispatch({ type: 'UPDATE_NODE', nodeId: selectedNodeId, field: 'codeMapping', value: m })
       }
     } catch { /* ref resolution failed */ }
-  }, [notePath, selectedBlockId, selectedLayerId])
+  }, [notePath, selectedNodeId])
 
   const handlePanelResize = useCallback((e: React.MouseEvent) => {
     e.preventDefault()
@@ -189,13 +170,12 @@ export function NetworkEditor({ document: initialDoc, notePath, workspacePath, o
           value={doc.name}
           onChange={(e) => dispatch({ type: 'UPDATE_NETWORK_NAME', name: e.target.value })}
         />
-        <span className="network-editor-label">Input:</span>
-        <input
-          className="network-editor-shape-input"
-          value={doc.inputShape}
-          onChange={(e) => dispatch({ type: 'UPDATE_INPUT_SHAPE', shape: e.target.value })}
-          placeholder="3×224×224"
-        />
+        <button className="network-editor-btn" onClick={() => dispatch({ type: 'ADD_NODE', kind: 'input', name: 'Input' })}>
+          + Input
+        </button>
+        <button className="network-editor-btn" onClick={() => dispatch({ type: 'ADD_NODE', kind: 'output', name: 'Output' })}>
+          + Output
+        </button>
         <span style={{ flex: 1 }} />
         <button className="network-editor-btn" onClick={() => dispatch({ type: 'ADD_BLOCK', name: 'New Block' })}>
           + Add Block
@@ -213,12 +193,11 @@ export function NetworkEditor({ document: initialDoc, notePath, workspacePath, o
         <NetworkCanvas
           doc={doc}
           catalog={catalog}
-          selectedBlockId={selectedBlockId}
-          selectedLayerId={selectedLayerId}
-          onSelectLayer={handleSelectLayer}
-          onSelectBlock={handleSelectBlock}
+          selectedNodeId={selectedNodeId}
+          onSelectNode={handleSelectNode}
           onDropLayer={handleDropLayer}
-          onDeleteLayer={handleDeleteLayer}
+          onDeleteNode={handleDeleteNode}
+          onAddEdge={handleAddEdge}
         />
       </div>
 
@@ -228,15 +207,10 @@ export function NetworkEditor({ document: initialDoc, notePath, workspacePath, o
       {/* Edit panel */}
       <div className="network-editor-panel" style={{ flex: `0 0 ${panelHeight * 100}%` }}>
         <NetworkPanel
-          block={selectedBlock}
-          layer={selectedLayer}
-          layerDef={selectedLayerDef}
-          onUpdateBlock={handleUpdateBlock}
-          onUpdateParam={(layerId, key, val) => dispatch({ type: 'UPDATE_LAYER', blockId: selectedBlockId!, layerId, field: 'params', paramKey: key, value: val })}
-          onUpdateInputShape={(layerId, shape) => dispatch({ type: 'UPDATE_LAYER', blockId: selectedBlockId!, layerId, field: 'inputShape', value: shape })}
-          onUpdateOutputShape={(layerId, shape) => dispatch({ type: 'UPDATE_LAYER', blockId: selectedBlockId!, layerId, field: 'outputShape', value: shape })}
-          onUpdateCodeMapping={(layerId, mapping) => dispatch({ type: 'UPDATE_LAYER_CODE_MAPPING', blockId: selectedBlockId!, layerId, codeMapping: mapping })}
-          onUpdateLayerName={(layerId, name) => dispatch({ type: 'UPDATE_LAYER', blockId: selectedBlockId!, layerId, field: 'name', value: name })}
+          node={selectedNode}
+          nodeDef={selectedNodeDef}
+          onUpdateNode={(nodeId, field, value, paramKey?) => dispatch({ type: 'UPDATE_NODE', nodeId, field, paramKey, value })}
+          onAddEdge={handleAddEdge}
           onResolveRef={handleResolveRef}
           resolvedMapping={resolvedMapping}
         />
