@@ -1,0 +1,40 @@
+<h2>嵌入式文件内容应该在哪里渲染？</h2>
+<p class="subtitle">当一个 mind.json 节点的 content 中包含 [[path/to/file.md]] 引用时，被引用文件的内容应该显示在哪里？</p>
+
+<div class="options">
+  <div class="option" data-choice="a" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="content">
+      <h3>方案 A: 在编辑面板中渲染</h3>
+      <p>保持 Canvas 节点为简洁的矩形标题，当选中节点时，在底部 NodeEditPanel 中渲染 content + 嵌入文件内容。类似当前 MD 预览模式。</p>
+      <div class="pros-cons">
+        <div class="pros"><h4>优点</h4><ul><li>不改变现有 Canvas 布局</li><li>嵌入内容可滚动、可交互</li><li>实现成本最低</li></ul></div>
+        <div class="cons"><h4>缺点</h4><ul><li>需要选中节点才能看到嵌入内容</li><li>无法同时看到多个节点的嵌入</li></ul></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="b" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="content">
+      <h3>方案 B: 在 Canvas 节点下方展开渲染</h3>
+      <p>在 SVG 树图中，每个有嵌入内容的节点下方展开一个 HTML 内容区域（使用 foreignObject），直接显示嵌入文件的渲染内容。</p>
+      <div class="pros-cons">
+        <div class="pros"><h4>优点</h4><ul><li>一目了然，所有嵌入内容可见</li><li>符合"思维导图"的整体视图理念</li></ul></div>
+        <div class="cons"><h4>缺点</h4><ul><li>foreignObject 在 SVG 中性能较差</li><li>嵌入内容多时视图混乱</li><li>缩放/拖拽复杂度高</li></ul></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="c" onclick="toggleSelect(this)">
+    <div class="letter">C</div>
+    <div class="content">
+      <h3>方案 C: 混合方案 — Canvas 显示缩略标记 + 编辑面板显示完整内容</h3>
+      <p>在 Canvas 节点上显示嵌入标记（如 📎 图标 + 文件名），选中节点后在编辑面板渲染完整嵌入内容。</p>
+      <div class="pros-cons">
+        <div class="pros"><h4>优点</h4><ul><li>Canvas 保持简洁</li><li>用户可感知哪些节点有嵌入</li><li>选中后可查看完整渲染</li></ul></div>
+        <div class="cons"><h4>缺点</h4><ul><li>比纯方案 A 稍复杂</li><li>仍需选中才能看详情</li></ul></div>
+      </div>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,77 @@
+<h2>嵌入式内容渲染方案确认</h2>
+<p class="subtitle">mind.json 节点的 content 中通过 [[path]] 引用其他文件，在 Canvas 节点下展开渲染</p>
+
+<div class="mockup">
+  <div class="mockup-header">思维导图 Canvas 中的渲染效果示意</div>
+  <div class="mockup-body" style="background:#1e1e1e;padding:24px;font-family:monospace;font-size:13px;line-height:1.6;color:#d4d4d4;">
+    <div style="display:flex;flex-direction:column;gap:20px;">
+
+      <!-- Root node with embed collapsed -->
+      <div style="border:1px solid #555;border-radius:6px;padding:12px;background:#252526;margin-left:0;">
+        <div style="display:flex;align-items:center;gap:8px;">
+          <span style="color:#007acc;font-weight:bold;">Root Node</span>
+          <span style="color:#888;">───</span>
+        </div>
+        <div style="margin-top:8px;padding:6px 10px;background:#2d2d2d;border-radius:4px;border-left:3px solid #007acc;">
+          <div style="display:flex;align-items:center;gap:6px;cursor:pointer;">
+            <span style="color:#888;font-size:11px;">▶</span>
+            <span style="color:#aaa;">📄 算法分析/复杂度分析.md</span>
+            <span style="color:#666;font-size:11px;">(click to expand)</span>
+          </div>
+        </div>
+        <!-- Children -->
+        <div style="margin-top:12px;margin-left:40px;">
+          <div style="border:1px solid #444;border-radius:4px;padding:8px;background:#2a2a2a;">
+            <span style="color:#d4d4d4;">Child Node 1</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Node with embed expanded -->
+      <div style="border:1px solid #ff0;border-radius:6px;padding:12px;background:#252526;margin-left:0;">
+        <div style="display:flex;align-items:center;gap:8px;">
+          <span style="color:#007acc;font-weight:bold;">Root Node</span>
+          <span style="color:#888;">───</span>
+          <span style="color:#ff0;font-size:10px;">[selected]</span>
+        </div>
+        <div style="margin-top:8px;padding:6px 10px;background:#2d2d2d;border-radius:4px;border-left:3px solid #007acc;">
+          <div style="display:flex;align-items:center;gap:6px;cursor:pointer;">
+            <span style="color:#aaa;font-size:11px;">▼</span>
+            <span style="color:#aaa;">📄 算法分析/复杂度分析.md</span>
+          </div>
+        </div>
+        <!-- Embedded content rendered -->
+        <div style="margin-top:8px;margin-left:20px;padding:10px;background:#1a1a2e;border:1px solid #333;border-radius:4px;max-width:400px;">
+          <div style="color:#d4d4d4;font-size:11px;">
+            <h3 style="color:#569cd6;font-size:13px;margin:0 0 8px;">时间复杂度分析</h3>
+            <p style="margin:0 0 4px;">冒泡排序的时间复杂度为 O(n²)...</p>
+            <code style="background:#333;padding:2px 4px;border-radius:2px;font-size:10px;">best: O(n) | avg: O(n²) | worst: O(n²)</code>
+          </div>
+        </div>
+      </div>
+
+      <!-- Circular reference warning -->
+      <div style="border:1px solid #555;border-radius:6px;padding:12px;background:#252526;">
+        <div style="padding:6px 10px;background:#3d2020;border-radius:4px;border-left:3px solid #f44747;">
+          <div style="display:flex;align-items:center;gap:6px;">
+            <span style="color:#f44747;font-size:11px;">⚠</span>
+            <span style="color:#f44747;font-size:11px;">Circular reference: 算法分析/排序算法.mind.json</span>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h3>设计要点</h3>
+  <ul>
+    <li><strong>语法:</strong> content 中使用 <code>[[relative/path]]</code> 引用文件</li>
+    <li><strong>切换按钮:</strong> 每个嵌入引用前有 ▶/▼ 按钮，默认折叠</li>
+    <li><strong>第一层:</strong> 仅渲染被引用文件的直接内容，文件内部的 [[path]] 不展开</li>
+    <li><strong>循环引用:</strong> 检测后显示 ⚠ 警告，不渲染嵌入</li>
+    <li><strong>支持类型:</strong> .md, .mind.json, .derive.json, .seq.mermaid</li>
+  </ul>
+</div>
+</div>

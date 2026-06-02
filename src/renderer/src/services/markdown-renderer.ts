@@ -79,25 +79,65 @@ export function renderMarkdown(
     }
   }
 
-  let html = md
+  // Normalize line endings
+  let html = md.replace(/\r\n/g, '\n')
+
+  // Escape HTML entities
+  html = html
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
 
-  html = html.replace(/```(\w*)\n([\s\S]*?)```/g, '<pre><code class="language-$1">$2</code></pre>')
+  // Protect fenced code blocks with placeholders so inner content isn't processed
+  const codeBlocks: string[] = []
+  html = html.replace(/```(\w*)\n([\s\S]*?)```/g, (_full, lang, code) => {
+    const idx = codeBlocks.length
+    codeBlocks.push(`<pre><code class="language-${lang}">${code}</code></pre>`)
+    return `\x00CODE${idx}\x00`
+  })
+
+  // Inline code
   html = html.replace(/`([^`]+)`/g, '<code>$1</code>')
+
+  // Headings
   html = html.replace(/^#### (.+)$/gm, '<h4>$1</h4>')
   html = html.replace(/^### (.+)$/gm, '<h3>$1</h3>')
   html = html.replace(/^## (.+)$/gm, '<h2>$1</h2>')
   html = html.replace(/^# (.+)$/gm, '<h1>$1</h1>')
+
+  // Unordered lists (consecutive lines starting with - or *)
+  html = html.replace(/(?:^[-*] .+$\n?)+/gm, (match) => {
+    const items = match.trim().split('\n')
+      .map(line => `<li>${line.replace(/^[-*] /, '')}</li>`)
+      .join('')
+    return `<ul>${items}</ul>`
+  })
+
+  // Ordered lists (consecutive lines starting with digits + dot)
+  html = html.replace(/(?:^\d+\. .+$\n?)+/gm, (match) => {
+    const items = match.trim().split('\n')
+      .map(line => `<li>${line.replace(/^\d+\. /, '')}</li>`)
+      .join('')
+    return `<ol>${items}</ol>`
+  })
+
+  // Blockquotes
+  html = html.replace(/^> (.+)$/gm, '<blockquote>$1</blockquote>')
+
+  // Bold / italic
   html = html.replace(/\*\*\*(.+?)\*\*\*/g, '<strong><em>$1</em></strong>')
   html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
   html = html.replace(/\*(.+?)\*/g, '<em>$1</em>')
+
+  // Images
   html = html.replace(/!\[([^\]]+)\]\(([^)]+)\)/g, (_match, alt, url) => {
     return `<img src="${resolveImageUrl(url, noteAbsoluteDir)}" alt="${alt}">`
   })
+
+  // Links
   html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2">$1</a>')
 
+  // Embed placeholders
   html = html.replace(/^!\[\[([^\]]+)\]\]$/gm, (_fullMatch: string, path: string) => {
     const trimmedPath = path.trim()
     const embedType = inferEmbedType(trimmedPath)
@@ -107,6 +147,7 @@ export function renderMarkdown(
     return `<div class="note-embed-placeholder" data-note-path="${trimmedPath}" data-note-type="${embedType}"></div>`
   })
 
+  // @ref code references
   html = html.replace(
     /@ref\(([a-zA-Z0-9._/\-:]+)\)/g,
     (_fullMatch: string, refBody: string) => {
@@ -122,8 +163,20 @@ export function renderMarkdown(
     }
   )
 
-  html = html.replace(/\n\n/g, '</p><p>')
-  html = '<p>' + html + '</p>'
+  // Restore protected code blocks
+  html = html.replace(/\x00CODE(\d+)\x00/g, (_full, idx) => codeBlocks[parseInt(idx)])
+
+  // Paragraph wrapping: split by blank lines, wrap non-block segments in <p>
+  const blocks = html.split(/\n\n+/)
+  const isBlock = (s: string) => /^<(h[1-4]|ul|ol|blockquote|pre|div|table)[ >]/.test(s.trim())
+  html = blocks.map(block => {
+    const trimmed = block.trim()
+    if (!trimmed) return ''
+    if (isBlock(trimmed)) return trimmed
+    return `<p>${trimmed.replace(/\n/g, '<br>')}</p>`
+  }).filter(Boolean).join('')
+
+  // Clean up empty paragraphs
   html = html.replace(/<p>\s*<\/p>/g, '')
 
   return html

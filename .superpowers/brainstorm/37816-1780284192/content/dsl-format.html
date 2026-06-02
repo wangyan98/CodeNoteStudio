@@ -1,0 +1,65 @@
+<h2>Which DSL format should we use?</h2>
+<p class="subtitle">Since we chose a text-based approach, the key decision is which syntax the user writes in</p>
+
+<div class="options">
+  <div class="option" data-choice="mermaid" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="content">
+      <h3>Mermaid syntax — .seq.mermaid or .seq.md</h3>
+      <p>Use Mermaid.js syntax for sequence diagrams. It's the most popular open-source diagramming DSL, well-documented, and has an existing JS renderer library.</p>
+      <div style="background:#1e1e2e;color:#cdd6f4;padding:12px;border-radius:6px;font-family:monospace;font-size:13px;margin-top:8px;">
+        sequenceDiagram<br/>
+        &nbsp;&nbsp;Alice->>Bob: Hello Bob!<br/>
+        &nbsp;&nbsp;Bob->>Alice: Hi Alice!<br/>
+        &nbsp;&nbsp;Alice->>Server: Request<br/>
+        &nbsp;&nbsp;Server-->>Alice: Response
+      </div>
+      <div class="pros-cons">
+        <div class="pros"><h4>Pros</h4><ul><li>Familiar syntax, large community</li><li>Mermaid.js renderer exists and is maintained</li><li>Can render to SVG in browser</li></ul></div>
+        <div class="cons"><h4>Cons</h4><ul><li>Need to bundle mermaid.js (~1MB)</li><li>Mermaid's sequence diagram syntax has limitations (no nested fragments in some versions)</li></ul></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="plantuml" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="content">
+      <h3>PlantUML syntax — .puml</h3>
+      <p>Use PlantUML syntax, rendered via a PlantUML server or WASM. More feature-rich than Mermaid for sequence diagrams.</p>
+      <div style="background:#1e1e2e;color:#cdd6f4;padding:12px;border-radius:6px;font-family:monospace;font-size:13px;margin-top:8px;">
+        @startuml<br/>
+        &nbsp;&nbsp;Alice -> Bob: Hello<br/>
+        &nbsp;&nbsp;Bob --> Alice: Hi<br/>
+        &nbsp;&nbsp;Alice -> Server: Request<br/>
+        &nbsp;&nbsp;Server --> Alice: Response<br/>
+        @enduml
+      </div>
+      <div class="pros-cons">
+        <div class="pros"><h4>Pros</h4><ul><li>More sequence diagram features (grouping, notes, etc.)</li><li>Industry standard in some domains</li></ul></div>
+        <div class="cons"><h4>Cons</h4><ul><li>Requires PlantUML server or WASM binary</li><li>Heavier dependency</li><li>Less JS-native than Mermaid</li></ul></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="custom" onclick="toggleSelect(this)">
+    <div class="letter">C</div>
+    <div class="content">
+      <h3>Custom simple DSL — .seq</h3>
+      <p>Design a minimal custom syntax, purpose-built for this app. Rendered with a custom lightweight renderer (SVG/Canvas).</p>
+      <div style="background:#1e1e2e;color:#cdd6f4;padding:12px;border-radius:6px;font-family:monospace;font-size:13px;margin-top:8px;">
+        participant Alice<br/>
+        participant Bob<br/>
+        participant Server<br/>
+        <br/>
+        Alice -> Bob: Hello<br/>
+        Bob -> Alice: Hi<br/>
+        Alice -> Server: Request<br/>
+        Server -> Alice: Response
+      </div>
+      <div class="pros-cons">
+        <div class="pros"><h4>Pros</h4><ul><li>Full control over syntax and features</li><li>Tiny bundle size</li><li>Can be optimized for this exact use case</li></ul></div>
+        <div class="cons"><h4>Cons</h4><ul><li>Build everything from scratch</li><li>No community resources or documentation</li><li>Users learn a proprietary syntax</li></ul></div>
+      </div>
+    </div>
+  </div>
+</div>

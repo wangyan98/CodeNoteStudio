@@ -56,7 +56,8 @@ function resolveEmbedPath(
   sourceNotePath: string,
   embedRelativePath: string
 ): string {
-  const sourceDir = sourceNotePath.replace(/\/[^/]*$/, '')
+  const slashIdx = sourceNotePath.lastIndexOf('/')
+  const sourceDir = slashIdx >= 0 ? sourceNotePath.slice(0, slashIdx) : ''
   const combined = sourceDir ? `${sourceDir}/${embedRelativePath}` : embedRelativePath
   const segments = combined.split('/')
   const resolved: string[] = []
@@ -239,21 +240,30 @@ export const MindMapCanvas = forwardRef<MindMapCanvasHandle, MindMapCanvasProps>
 
       const containerRect = container.getBoundingClientRect()
 
+      // Group cards by nodeId to stack them vertically
+      const nodeCards = new Map<string, HTMLElement[]>()
       overlay.querySelectorAll<HTMLElement>('.embed-card').forEach(card => {
         const nodeId = card.getAttribute('data-node-id')
         if (!nodeId) return
+        if (!nodeCards.has(nodeId)) nodeCards.set(nodeId, [])
+        nodeCards.get(nodeId)!.push(card)
+      })
 
+      nodeCards.forEach((cards, nodeId) => {
         const nodeEl = svg.querySelector<SVGGElement>(`[data-node-id="${nodeId}"]`)
         if (!nodeEl) return
 
         const nodeRect = nodeEl.getBoundingClientRect()
-        const top = nodeRect.bottom - containerRect.top + 4
         const left = nodeRect.left - containerRect.left
+        let topOffset = nodeRect.bottom - containerRect.top + 4
 
-        card.style.position = 'absolute'
-        card.style.top = `${top}px`
-        card.style.left = `${left}px`
-        card.style.maxWidth = `${Math.min(480, containerRect.width - left - 16)}px`
+        cards.forEach(card => {
+          card.style.position = 'absolute'
+          card.style.top = `${topOffset}px`
+          card.style.left = `${left}px`
+          card.style.maxWidth = `${Math.min(480, containerRect.width - left - 16)}px`
+          topOffset += card.getBoundingClientRect().height + 8
+        })
       })
     }, [])
 
@@ -326,6 +336,39 @@ export const MindMapCanvas = forwardRef<MindMapCanvasHandle, MindMapCanvasProps>
           .attr('data-orig-x2', elbowX)
           .attr('data-orig-y2', parent.x!)
 
+        // Collapse button on branch line, near the fork (elbow)
+        const btnX = elbowX - 20
+        const btnY = parent.x!
+        g.append('circle')
+          .attr('cx', btnX)
+          .attr('cy', btnY)
+          .attr('r', 7)
+          .attr('fill', '#3c3c3c')
+          .attr('stroke', '#666')
+          .attr('stroke-width', 1)
+          .attr('class', 'mind-collapse-btn')
+          .attr('data-collapse-owner-id', parentId)
+          .attr('data-orig-cx', btnX)
+          .attr('data-orig-cy', btnY)
+          .style('cursor', 'pointer')
+          .on('click', (event: MouseEvent) => {
+            event.stopPropagation()
+            dispatch({ type: 'TOGGLE_COLLAPSE', nodeId: parentId })
+          })
+
+        g.append('text')
+          .attr('x', btnX)
+          .attr('y', btnY + 3)
+          .attr('text-anchor', 'middle')
+          .attr('fill', '#aaa')
+          .attr('font-size', '9px')
+          .attr('class', 'mind-collapse-btn-text')
+          .attr('data-collapse-owner-id', parentId)
+          .attr('data-orig-x', btnX)
+          .attr('data-orig-y', btnY + 3)
+          .style('pointer-events', 'none')
+          .text('▼')
+
         // Vertical line at elbow spanning from first to last child (only if >1 child)
         if (children.length > 1) {
           g.append('line')
@@ -388,13 +431,10 @@ export const MindMapCanvas = forwardRef<MindMapCanvasHandle, MindMapCanvasProps>
         .attr('stroke', (d) => d.data.id === selId ? '#ff0' : (d.depth === 0 ? '#007acc' : '#555'))
         .attr('stroke-width', (d) => d.data.id === selId ? 2 : 1)
 
-      // Collapse indicator
-      const hasOrHadChildren = (d: d3.HierarchyNode<MindMapNode>) =>
-        (d.children && d.children.length > 0) || collapsedIds.has(d.data.id)
-
-      nodeGroup.filter(hasOrHadChildren)
+      // Collapse indicator for collapsed nodes only (no visible children, so no branch line)
+      nodeGroup.filter((d) => collapsedIds.has(d.data.id))
         .append('circle')
-        .attr('cx', -70)
+        .attr('cx', 82)
         .attr('cy', 0)
         .attr('r', 7)
         .attr('fill', '#3c3c3c')
@@ -406,15 +446,15 @@ export const MindMapCanvas = forwardRef<MindMapCanvasHandle, MindMapCanvasProps>
           dispatch({ type: 'TOGGLE_COLLAPSE', nodeId: d.data.id })
         })
 
-      nodeGroup.filter(hasOrHadChildren)
+      nodeGroup.filter((d) => collapsedIds.has(d.data.id))
         .append('text')
-        .attr('x', -70)
+        .attr('x', 82)
         .attr('y', 3)
         .attr('text-anchor', 'middle')
         .attr('fill', '#aaa')
         .attr('font-size', '9px')
         .style('pointer-events', 'none')
-        .text((d) => collapsedIds.has(d.data.id) ? '▶' : '▼')
+        .text('▶')
 
       // Title text
       nodeGroup.append('text')
@@ -577,6 +617,20 @@ export const MindMapCanvas = forwardRef<MindMapCanvasHandle, MindMapCanvasProps>
             line.setAttribute('y2', String(parseFloat(line.getAttribute('data-orig-y2') || '0') + dy))
           })
 
+          // Move collapse buttons owned by the dragged node
+          svgEl.querySelectorAll<SVGCircleElement>(
+            `.mind-collapse-btn[data-collapse-owner-id="${d.data.id}"]`
+          ).forEach(circle => {
+            circle.setAttribute('cx', String(parseFloat(circle.getAttribute('data-orig-cx') || '0') + dx))
+            circle.setAttribute('cy', String(parseFloat(circle.getAttribute('data-orig-cy') || '0') + dy))
+          })
+          svgEl.querySelectorAll<SVGTextElement>(
+            `.mind-collapse-btn-text[data-collapse-owner-id="${d.data.id}"]`
+          ).forEach(text => {
+            text.setAttribute('x', String(parseFloat(text.getAttribute('data-orig-x') || '0') + dx))
+            text.setAttribute('y', String(parseFloat(text.getAttribute('data-orig-y') || '0') + dy))
+          })
+
           // Move link lines owned by descendants
           descendantIds.forEach(descId => {
             const descLines = svgEl.querySelectorAll<SVGLineElement>(
@@ -587,6 +641,20 @@ export const MindMapCanvas = forwardRef<MindMapCanvasHandle, MindMapCanvasProps>
               line.setAttribute('y1', String(parseFloat(line.getAttribute('data-orig-y1') || '0') + dy))
               line.setAttribute('x2', String(parseFloat(line.getAttribute('data-orig-x2') || '0') + dx))
               line.setAttribute('y2', String(parseFloat(line.getAttribute('data-orig-y2') || '0') + dy))
+            })
+
+            // Move collapse buttons owned by descendants
+            svgEl.querySelectorAll<SVGCircleElement>(
+              `.mind-collapse-btn[data-collapse-owner-id="${descId}"]`
+            ).forEach(circle => {
+              circle.setAttribute('cx', String(parseFloat(circle.getAttribute('data-orig-cx') || '0') + dx))
+              circle.setAttribute('cy', String(parseFloat(circle.getAttribute('data-orig-cy') || '0') + dy))
+            })
+            svgEl.querySelectorAll<SVGTextElement>(
+              `.mind-collapse-btn-text[data-collapse-owner-id="${descId}"]`
+            ).forEach(text => {
+              text.setAttribute('x', String(parseFloat(text.getAttribute('data-orig-x') || '0') + dx))
+              text.setAttribute('y', String(parseFloat(text.getAttribute('data-orig-y') || '0') + dy))
             })
           })
 
