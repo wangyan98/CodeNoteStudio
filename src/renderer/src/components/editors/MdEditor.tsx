@@ -10,7 +10,7 @@ import { DerivationDagViewer } from './DerivationDagViewer'
 import { MindMapRenderer } from './MindMapRenderer'
 import { SequenceDiagramViewer } from './SequenceDiagramViewer'
 import { NetworkEmbedViewer } from './NetworkEmbedViewer'
-import type { MindMapDocument, NetworkDocument } from '../../../../main/schemas/note-types'
+import type { DerivationDocument, MindMapDocument, NetworkDocument } from '../../../../main/schemas/note-types'
 
 interface MdEditorProps {
   content: string
@@ -122,7 +122,7 @@ export const MdEditor = forwardRef<MdEditorHandle, MdEditorProps>(
                 <span className="note-embed-path">{notePath}</span>
               </div>
               <div className="note-embed-body dag-embed">
-                <DerivationDagViewer document={content as DerivationDocument} />
+                <DerivationDagViewer document={content as DerivationDocument} onNavigateToCode={onNavigateToCode} />
               </div>
             </div>
           )

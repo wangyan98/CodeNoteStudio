@@ -35,9 +35,10 @@ function findRoots(nodes: DerivationNode[]): DerivationNode[] {
 interface MiniDagTreeProps {
   nodes: DerivationNode[]
   onScrollToNode: (nodeId: string) => void
+  onNavigateToCode?: (filePath: string, line: number) => void
 }
 
-function MiniDagTree({ nodes, onScrollToNode }: MiniDagTreeProps) {
+function MiniDagTree({ nodes, onScrollToNode, onNavigateToCode }: MiniDagTreeProps) {
   const { roots, childrenMap } = useMemo(() => {
     const cm = buildChildrenMap(nodes)
     const roots = findRoots(nodes)
@@ -52,6 +53,7 @@ function MiniDagTree({ nodes, onScrollToNode }: MiniDagTreeProps) {
           node={root}
           childrenMap={childrenMap}
           onScrollToNode={onScrollToNode}
+          onNavigateToCode={onNavigateToCode}
         />
       ))}
     </div>
@@ -63,9 +65,10 @@ interface MiniDagTreeNodeProps {
   childrenMap: Map<string, DerivationNode[]>
   onScrollToNode: (nodeId: string) => void
   ancestorIds?: Set<string>
+  onNavigateToCode?: (filePath: string, line: number) => void
 }
 
-function MiniDagTreeNode({ node, childrenMap, onScrollToNode, ancestorIds }: MiniDagTreeNodeProps) {
+function MiniDagTreeNode({ node, childrenMap, onScrollToNode, ancestorIds, onNavigateToCode }: MiniDagTreeNodeProps) {
   const rawChildren = childrenMap.get(node.id) ?? []
   const currentAncestors = ancestorIds ?? new Set<string>()
   const children = rawChildren.length > 0
@@ -84,7 +87,7 @@ function MiniDagTreeNode({ node, childrenMap, onScrollToNode, ancestorIds }: Min
         className="mini-dag-tree-pill"
         onClick={() => onScrollToNode(node.id)}
       >
-        <KatexMiniPill latex={node.content} title={node.title} stepNumber={node.stepNumber} />
+        <KatexMiniPill latex={node.content} title={node.title} stepNumber={node.stepNumber} codeMapping={node.codeMapping} onNavigateToCode={onNavigateToCode} />
       </span>
       {children.length > 0 && (
         <>
@@ -97,6 +100,7 @@ function MiniDagTreeNode({ node, childrenMap, onScrollToNode, ancestorIds }: Min
                   childrenMap={childrenMap}
                   onScrollToNode={onScrollToNode}
                   ancestorIds={nextAncestors}
+                  onNavigateToCode={onNavigateToCode}
                 />
               </div>
             ))}
@@ -303,6 +307,7 @@ export function DerivationEditor({ document: initialDoc, notePath, onSave, codeR
               const el = document.getElementById(`derive-node-${nodeId}`)
               el?.scrollIntoView({ behavior: 'smooth', block: 'center' })
             }}
+            onNavigateToCode={onNavigateToCode}
           />
         )}
       </div>
@@ -366,15 +371,13 @@ export function DerivationEditor({ document: initialDoc, notePath, onSave, codeR
                   {collapsedPreviews.has(node.id) ? 'Show preview' : 'Hide preview'}
                 </button>
               )}
-              {selectedStepId === node.id && (
-                <div style={{ marginTop: 8, padding: '0 4px' }}>
-                  <CodeMappingField
-                    codeMapping={node.codeMapping}
-                    notePath={notePath}
-                    onChange={(mapping) => dispatch({ type: 'UPDATE_CODE_MAPPING', nodeId: node.id, codeMapping: mapping })}
-                  />
-                </div>
-              )}
+              <div style={{ marginTop: 8, padding: '0 4px' }}>
+                <CodeMappingField
+                  codeMapping={node.codeMapping}
+                  notePath={notePath}
+                  onChange={(mapping) => dispatch({ type: 'UPDATE_CODE_MAPPING', nodeId: node.id, codeMapping: mapping })}
+                />
+              </div>
             </div>
             {/* Inline add button between nodes */}
             <div className="derive-inline-add">
@@ -417,7 +420,11 @@ function KatexPreview({ latex }: { latex: string }) {
 }
 
 // Mini KaTeX pill for the DAG preview — shows step number + title + rendered formula
-function KatexMiniPill({ latex, title, stepNumber }: { latex: string; title: string; stepNumber: number }) {
+function KatexMiniPill({ latex, title, stepNumber, codeMapping, onNavigateToCode }: {
+  latex: string; title: string; stepNumber: number
+  codeMapping?: DerivationNode['codeMapping']
+  onNavigateToCode?: (filePath: string, line: number) => void
+}) {
   const [html, setHtml] = useState('')
 
   useEffect(() => {
@@ -428,6 +435,8 @@ function KatexMiniPill({ latex, title, stepNumber }: { latex: string; title: str
     }
   }, [latex])
 
+  const hasMapping = codeMapping && codeMapping.filePath && codeMapping.startLine > 0
+
   return (
     <span style={{ display: 'inline-flex', flexDirection: 'column', gap: 2 }}>
       <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
@@ -437,6 +446,18 @@ function KatexMiniPill({ latex, title, stepNumber }: { latex: string; title: str
         ) : !html ? (
           <span style={{ fontSize: 11, color: 'var(--placeholder-color)' }}>(empty)</span>
         ) : null}
+        {hasMapping && onNavigateToCode && (
+          <span
+            style={{ color: '#4a90d9', fontSize: 11, fontWeight: 'bold', cursor: 'pointer' }}
+            onClick={(e) => {
+              e.stopPropagation()
+              onNavigateToCode(codeMapping!.filePath, codeMapping!.startLine)
+            }}
+            title={`Jump to ${codeMapping!.filePath}:${codeMapping!.startLine}`}
+          >
+            →
+          </span>
+        )}
       </span>
       {html && (
         <span dangerouslySetInnerHTML={{ __html: html }} style={{ fontSize: 11, paddingLeft: 14 }} />

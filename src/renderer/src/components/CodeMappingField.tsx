@@ -3,6 +3,7 @@ import { SymbolPicker } from './SymbolPicker'
 import type { CodeSymbol } from './SymbolPicker'
 import type { CodeMapping } from '../../../main/schemas/note-types'
 import { useCodeNavigation } from '../hooks/useCodeNavigation'
+import { useAppContext } from '../contexts/AppContext'
 import './CodeMappingField.css'
 
 interface CodeMappingFieldProps {
@@ -11,10 +12,23 @@ interface CodeMappingFieldProps {
   onChange: (mapping: CodeMapping | null) => void
 }
 
+function useActiveFilePath(): string | undefined {
+  try {
+    // eslint-disable-next-line react-hooks/rules-of-hooks
+    const ctx = useAppContext()
+    const { openCodeFiles, activeCodeFileIndex } = ctx.state
+    if (activeCodeFileIndex >= 0 && activeCodeFileIndex < openCodeFiles.length) {
+      return openCodeFiles[activeCodeFileIndex].path
+    }
+  } catch { /* AppContext unavailable */ }
+  return undefined
+}
+
 export function CodeMappingField({ codeMapping, notePath, onChange }: CodeMappingFieldProps) {
   const [pickerOpen, setPickerOpen] = useState(false)
   const [rawInput, setRawInput] = useState(codeMapping?.raw ?? '')
   const { navigateToCode } = useCodeNavigation()
+  const activeFilePath = useActiveFilePath()
   const resolveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const mountedRef = useRef(true)
 
@@ -100,6 +114,7 @@ export function CodeMappingField({ codeMapping, notePath, onChange }: CodeMappin
         isOpen={pickerOpen}
         onClose={() => setPickerOpen(false)}
         onSelectSymbol={handleSymbolSelect}
+        activeFilePath={activeFilePath}
       />
     </div>
   )

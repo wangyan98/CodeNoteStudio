@@ -100,3 +100,16 @@
   font-size: 11px;
   padding-left: 14px;
 }
+
+.dag-pill-jump {
+  color: #4a90d9;
+  font-size: 13px;
+  font-weight: bold;
+  cursor: pointer;
+  margin-left: 4px;
+  padding: 0 2px;
+}
+
+.dag-pill-jump:hover {
+  color: #61afef;
+}

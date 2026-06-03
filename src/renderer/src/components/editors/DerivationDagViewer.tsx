@@ -7,6 +7,7 @@ import './DerivationDagViewer.css'
 
 interface DerivationDagViewerProps {
   document: DerivationDocument
+  onNavigateToCode?: (filePath: string, line: number) => void
 }
 
 function buildChildrenMap(nodes: DerivationNode[]): Map<string, DerivationNode[]> {
@@ -24,7 +25,11 @@ function findRoots(nodes: DerivationNode[]): DerivationNode[] {
   return nodes.filter((n) => !n.derivesFrom || !nodeIds.has(n.derivesFrom))
 }
 
-function DagPill({ latex, title, stepNumber }: { latex: string; title: string; stepNumber: number }) {
+function DagPill({ latex, title, stepNumber, codeMapping, onNavigateToCode }: {
+  latex: string; title: string; stepNumber: number
+  codeMapping?: DerivationNode['codeMapping']
+  onNavigateToCode?: (filePath: string, line: number) => void
+}) {
   const [html, setHtml] = useState('')
 
   useEffect(() => {
@@ -35,6 +40,8 @@ function DagPill({ latex, title, stepNumber }: { latex: string; title: string; s
     }
   }, [latex])
 
+  const hasMapping = codeMapping && codeMapping.filePath && codeMapping.startLine > 0
+
   return (
     <span className="dag-pill">
       <span className="dag-pill-header">
@@ -44,6 +51,18 @@ function DagPill({ latex, title, stepNumber }: { latex: string; title: string; s
         ) : !html ? (
           <span className="dag-pill-empty">(empty)</span>
         ) : null}
+        {hasMapping && onNavigateToCode && (
+          <span
+            className="dag-pill-jump"
+            onClick={(e) => {
+              e.stopPropagation()
+              onNavigateToCode(codeMapping!.filePath, codeMapping!.startLine)
+            }}
+            title={`Jump to ${codeMapping!.filePath}:${codeMapping!.startLine}`}
+          >
+            →
+          </span>
+        )}
       </span>
       {html && (
         <span className="dag-pill-formula" dangerouslySetInnerHTML={{ __html: html }} />
@@ -52,10 +71,11 @@ function DagPill({ latex, title, stepNumber }: { latex: string; title: string; s
   )
 }
 
-function DagTreeNode({ node, childrenMap, ancestorIds }: {
+function DagTreeNode({ node, childrenMap, ancestorIds, onNavigateToCode }: {
   node: DerivationNode
   childrenMap: Map<string, DerivationNode[]>
   ancestorIds?: Set<string>
+  onNavigateToCode?: (filePath: string, line: number) => void
 }) {
   const rawChildren = childrenMap.get(node.id) ?? []
   const currentAncestors = ancestorIds ?? new Set<string>()
@@ -71,7 +91,7 @@ function DagTreeNode({ node, childrenMap, ancestorIds }: {
 
   return (
     <div className="dag-tree-node">
-      <DagPill latex={node.content} title={node.title} stepNumber={node.stepNumber} />
+      <DagPill latex={node.content} title={node.title} stepNumber={node.stepNumber} codeMapping={node.codeMapping} onNavigateToCode={onNavigateToCode} />
       {children.length > 0 && (
         <>
           <div className="dag-tree-connector" />
@@ -82,6 +102,7 @@ function DagTreeNode({ node, childrenMap, ancestorIds }: {
                   node={child}
                   childrenMap={childrenMap}
                   ancestorIds={nextAncestors}
+                  onNavigateToCode={onNavigateToCode}
                 />
               </div>
             ))}
@@ -92,7 +113,7 @@ function DagTreeNode({ node, childrenMap, ancestorIds }: {
   )
 }
 
-export function DerivationDagViewer({ document }: DerivationDagViewerProps) {
+export function DerivationDagViewer({ document, onNavigateToCode }: DerivationDagViewerProps) {
   const { roots, childrenMap } = useMemo(() => {
     const cm = buildChildrenMap(document.nodes)
     const roots = findRoots(document.nodes)
@@ -110,6 +131,7 @@ export function DerivationDagViewer({ document }: DerivationDagViewerProps) {
           key={root.id}
           node={root}
           childrenMap={childrenMap}
+          onNavigateToCode={onNavigateToCode}
         />
       ))}
     </div>
