@@ -103,11 +103,12 @@ export function NetworkEditor({ document: initialDoc, notePath, workspacePath, o
       const refText = (e as CustomEvent<string>).detail
       const sel = selectedNodeRef.current
       if (!sel || sel.kind !== 'layer') return
+      const targetNodeId = sel.id
       window.electronAPI.resolveRefs(notePath, refText, undefined).then((mappings) => {
         if (mappings.length > 0) {
           const m = mappings[0]
           m.raw = refText.replace(/^@ref\(|\)$/g, '')
-          dispatch({ type: 'UPDATE_NODE', nodeId: sel.id, field: 'codeMapping', value: m })
+          dispatch({ type: 'UPDATE_NODE', nodeId: targetNodeId, field: 'codeMapping', value: m })
         }
       }).catch(() => {})
     }

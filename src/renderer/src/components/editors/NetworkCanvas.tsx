@@ -67,6 +67,7 @@ export function NetworkCanvas({
 
   const svgRef = useRef<SVGSVGElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
+  const clickTimersRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map())
   const dragConnectRef = useRef<{
     active: boolean
     sourceNodeId: string | null
@@ -420,13 +421,22 @@ export function NetworkCanvas({
 
             childG.on('click', (event: MouseEvent) => {
               event.stopPropagation()
-              onSelectNode(child.id)
+              if (clickTimersRef.current.has(child.id)) return
+              const timer = setTimeout(() => {
+                onSelectNode(child.id)
+                clickTimersRef.current.delete(child.id)
+              }, 250)
+              clickTimersRef.current.set(child.id, timer)
             })
 
             childG.on('dblclick', (event: MouseEvent) => {
               event.stopPropagation()
+              const timer = clickTimersRef.current.get(child.id)
+              if (timer) { clearTimeout(timer); clickTimersRef.current.delete(child.id) }
               if (child.codeMapping && onNavigateToCode && child.codeMapping.filePath) {
                 onNavigateToCode(child.codeMapping.filePath, child.codeMapping.startLine)
+              } else {
+                onSelectNode(child.id)
               }
             })
 
@@ -500,13 +510,22 @@ export function NetworkCanvas({
 
       nodeG.on('click', (event: MouseEvent) => {
         event.stopPropagation()
-        onSelectNode(node.id)
+        if (clickTimersRef.current.has(node.id)) return
+        const timer = setTimeout(() => {
+          onSelectNode(node.id)
+          clickTimersRef.current.delete(node.id)
+        }, 250)
+        clickTimersRef.current.set(node.id, timer)
       })
 
       nodeG.on('dblclick', (event: MouseEvent) => {
         event.stopPropagation()
+        const timer = clickTimersRef.current.get(node.id)
+        if (timer) { clearTimeout(timer); clickTimersRef.current.delete(node.id) }
         if (node.codeMapping && onNavigateToCode && node.codeMapping.filePath) {
           onNavigateToCode(node.codeMapping.filePath, node.codeMapping.startLine)
+        } else {
+          onSelectNode(node.id)
         }
       })
 
@@ -546,7 +565,7 @@ export function NetworkCanvas({
     // Background click to deselect
     svg.on('click', () => { onSelectNode(null) })
 
-  }, [doc, catalog, selectedNodeId, selectedEdgeId, onSelectNode, onSelectEdge, dims])
+  }, [doc, catalog, selectedNodeId, selectedEdgeId, onSelectNode, onSelectEdge, onNavigateToCode, dims])
 
   useEffect(() => {
     render()
