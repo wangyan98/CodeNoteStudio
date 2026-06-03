@@ -204,32 +204,34 @@ export function NetworkEditor({ document: initialDoc, notePath, workspacePath, o
       {/* Palette */}
       <NetworkPalette catalog={catalog} />
 
-      {/* Canvas */}
-      <div style={{ flex: 1, overflow: 'hidden' }}>
-        <NetworkCanvas
-          doc={doc}
-          catalog={catalog}
-          selectedNodeId={selectedNodeId}
-          onSelectNode={handleSelectNode}
-          onDropLayer={handleDropLayer}
-          onDeleteNode={handleDeleteNode}
-          onAddEdge={handleAddEdge}
-        />
-      </div>
+      {/* Canvas + Panel (split remaining space) */}
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+        <div style={{ flex: `0 0 ${100 - panelHeight * 100}%`, overflow: 'hidden' }}>
+          <NetworkCanvas
+            doc={doc}
+            catalog={catalog}
+            selectedNodeId={selectedNodeId}
+            onSelectNode={handleSelectNode}
+            onDropLayer={handleDropLayer}
+            onDeleteNode={handleDeleteNode}
+            onAddEdge={handleAddEdge}
+          />
+        </div>
 
-      {/* Resize handle */}
-      <div className="network-editor-resize-handle" onMouseDown={handlePanelResize} />
+        {/* Resize handle */}
+        <div className="network-editor-resize-handle" onMouseDown={handlePanelResize} />
 
-      {/* Edit panel */}
-      <div className="network-editor-panel" style={{ flex: `0 0 ${panelHeight * 100}%` }}>
-        <NetworkPanel
-          node={selectedNode}
-          nodeDef={selectedNodeDef}
-          onUpdateNode={(nodeId, field, value, paramKey?) => dispatch({ type: 'UPDATE_NODE', nodeId, field, paramKey, value })}
-          onAddEdge={handleAddEdge}
-          onResolveRef={handleResolveRef}
-          resolvedMapping={resolvedMapping}
-        />
+        {/* Edit panel */}
+        <div className="network-editor-panel" style={{ flex: `0 0 ${panelHeight * 100}%` }}>
+          <NetworkPanel
+            node={selectedNode}
+            nodeDef={selectedNodeDef}
+            onUpdateNode={(nodeId, field, value, paramKey?) => dispatch({ type: 'UPDATE_NODE', nodeId, field, paramKey, value })}
+            onAddEdge={handleAddEdge}
+            onResolveRef={handleResolveRef}
+            resolvedMapping={resolvedMapping}
+          />
+        </div>
       </div>
     </div>
   )
