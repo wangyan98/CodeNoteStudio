@@ -205,7 +205,7 @@ export function NetworkEditor({ document: initialDoc, notePath, workspacePath, o
       <NetworkPalette catalog={catalog} />
 
       {/* Canvas */}
-      <div style={{ flex: `0 0 ${100 - panelHeight * 100}%`, overflow: 'hidden' }}>
+      <div style={{ flex: 1, overflow: 'hidden' }}>
         <NetworkCanvas
           doc={doc}
           catalog={catalog}
