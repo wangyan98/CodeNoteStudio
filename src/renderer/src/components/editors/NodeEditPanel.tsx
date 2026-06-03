@@ -4,11 +4,13 @@ import type * as monaco from 'monaco-editor'
 import { registerRefCompletionProvider } from '../../services/monaco-completion'
 import type { MindMapNode } from '../../../../main/schemas/note-types'
 import type { MindMapAction } from './mindMapReducer'
+import { CodeMappingField } from '../CodeMappingField'
 import './NodeEditPanel.css'
 
 interface NodeEditPanelProps {
   node: MindMapNode | null
   dispatch: React.Dispatch<MindMapAction>
+  notePath: string
   onNavigateToCode?: (filePath: string, line: number) => void
   saveStatus: 'saved' | 'saving' | 'unsaved' | 'error'
 }
@@ -20,7 +22,7 @@ const statusLabels: Record<string, string> = {
   error: '保存失败'
 }
 
-export function NodeEditPanel({ node, dispatch, onNavigateToCode, saveStatus }: NodeEditPanelProps) {
+export function NodeEditPanel({ node, dispatch, notePath, onNavigateToCode, saveStatus }: NodeEditPanelProps) {
   const [title, setTitle] = useState('')
   const editorRef = useRef<monaco.editor.IStandaloneCodeEditor | null>(null)
   const completionDisposableRef = useRef<monaco.IDisposable | null>(null)
@@ -130,6 +132,15 @@ export function NodeEditPanel({ node, dispatch, onNavigateToCode, saveStatus }: 
               }}
             />
           </div>
+        </div>
+
+        <div className="node-edit-panel-field">
+          <label className="node-edit-panel-label">Code Mapping</label>
+          <CodeMappingField
+            codeMapping={node.codeMapping}
+            notePath={notePath}
+            onChange={(mapping) => dispatch({ type: 'UPDATE_CODE_MAPPING', nodeId: node.id, codeMapping: mapping })}
+          />
         </div>
 
         <div className={`node-edit-panel-status node-edit-panel-status-${saveStatus}`}>

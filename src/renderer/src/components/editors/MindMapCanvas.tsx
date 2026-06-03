@@ -17,6 +17,7 @@ interface MindMapCanvasProps {
   dispatch: React.Dispatch<MindMapAction>
   onContextMenu: (nodeId: string, x: number, y: number) => void
   onHoverNode?: (nodeId: string | null) => void
+  onNavigateToCode?: (filePath: string, line: number) => void
 }
 
 export interface MindMapCanvasHandle {
@@ -161,7 +162,7 @@ function EmbedCard({ cacheKey, cached }: {
 }
 
 export const MindMapCanvas = forwardRef<MindMapCanvasHandle, MindMapCanvasProps>(
-  function MindMapCanvas({ doc, notePath, selectedNodeId, collapsedIds, dispatch, onContextMenu, onHoverNode }, ref) {
+  function MindMapCanvas({ doc, notePath, selectedNodeId, collapsedIds, dispatch, onContextMenu, onHoverNode, onNavigateToCode }, ref) {
     const svgRef = useRef<SVGSVGElement>(null)
     const containerRef = useRef<HTMLDivElement>(null)
     const gElRef = useRef<SVGGElement | null>(null)
@@ -680,6 +681,25 @@ export const MindMapCanvas = forwardRef<MindMapCanvasHandle, MindMapCanvasProps>
         })
       })
 
+      // Jump icon for code mapping
+      nodeGroup.each(function (d: d3.HierarchyNode<MindMapNode>) {
+        if (!d.data.codeMapping || !onNavigateToCode) return
+        if (!d.data.codeMapping.filePath) return
+        const g = d3.select(this)
+        g.append('text')
+          .attr('x', 55)
+          .attr('y', -6)
+          .attr('fill', '#4a90d9')
+          .attr('font-size', '11px')
+          .attr('font-weight', 'bold')
+          .style('cursor', 'pointer')
+          .text('→')
+          .on('click', (event: MouseEvent) => {
+            event.stopPropagation()
+            onNavigateToCode(d.data.codeMapping!.filePath, d.data.codeMapping!.startLine)
+          })
+      })
+
       // --- Events ---
 
       nodeGroup.on('click', (event: MouseEvent, d: d3.HierarchyNode<MindMapNode>) => {
@@ -689,9 +709,13 @@ export const MindMapCanvas = forwardRef<MindMapCanvasHandle, MindMapCanvasProps>
 
       nodeGroup.on('dblclick', (event: MouseEvent, d: d3.HierarchyNode<MindMapNode>) => {
         event.stopPropagation()
-        dispatch({ type: 'SELECT_NODE', nodeId: d.data.id })
-        focusNodeIdRef.current = d.data.id
-        render()
+        if (d.data.codeMapping && onNavigateToCode && d.data.codeMapping.filePath) {
+          onNavigateToCode(d.data.codeMapping.filePath, d.data.codeMapping.startLine)
+        } else {
+          dispatch({ type: 'SELECT_NODE', nodeId: d.data.id })
+          focusNodeIdRef.current = d.data.id
+          render()
+        }
       })
 
       nodeGroup.on('contextmenu', (event: MouseEvent, d: d3.HierarchyNode<MindMapNode>) => {

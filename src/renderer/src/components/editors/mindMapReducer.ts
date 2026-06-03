@@ -1,4 +1,4 @@
-import type { MindMapDocument, MindMapNode } from '../../../../main/schemas/note-types'
+import type { MindMapDocument, MindMapNode, CodeMapping } from '../../../../main/schemas/note-types'
 import { createMindMapNode } from '../../../../main/schemas/note-types'
 
 export interface MindMapAction {
@@ -11,6 +11,7 @@ export interface MindMapAction {
   newIndex?: number
   document?: MindMapDocument
   childId?: string
+  codeMapping?: CodeMapping | null
 }
 
 // --- Tree navigation helpers ---
@@ -198,6 +199,15 @@ export function mindMapReducer(doc: MindMapDocument, action: MindMapAction): Min
         updated.splice(action.newIndex!, 0, moved)
         return { ...n, children: updated }
       })
+      return cloned
+    }
+
+    case 'UPDATE_CODE_MAPPING': {
+      const cloned = cloneDoc(doc)
+      cloned.root = updateNodeInClone(cloned.root, action.nodeId!, (n) => ({
+        ...n,
+        codeMapping: action.codeMapping ?? undefined
+      }))
       return cloned
     }
 

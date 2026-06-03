@@ -1,6 +1,6 @@
 import { useReducer, useCallback, useEffect, useRef, useState } from 'react'
 import { v4 as uuidv4 } from 'uuid'
-import type { MindMapDocument, MindMapNode } from '../../../../main/schemas/note-types'
+import type { MindMapDocument, MindMapNode, CodeMapping } from '../../../../main/schemas/note-types'
 import './MindMapRenderer.css'
 import { mindMapReducer, findNode } from './mindMapReducer'
 import type { MindMapAction } from './mindMapReducer'
@@ -177,6 +177,24 @@ export function MindMapEditor({ document: initialDoc, notePath, onSave, onNaviga
     return () => window.removeEventListener('keydown', handler)
   }, [selectedNodeId, doc, wrappedDispatch])
 
+  // Listen for symbol-insert events from CodeViewport
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const refText = (e as CustomEvent<string>).detail
+      const selId = selectedNodeIdRef.current
+      if (!selId) return
+      window.electronAPI.resolveRefs(notePath, refText, undefined).then((mappings) => {
+        if (mappings.length > 0) {
+          const m = mappings[0]
+          m.raw = refText.replace(/^@ref\(|\)$/g, '')
+          dispatch({ type: 'UPDATE_CODE_MAPPING', nodeId: selId, codeMapping: m })
+        }
+      }).catch(() => {})
+    }
+    window.addEventListener('symbol-insert', handler)
+    return () => window.removeEventListener('symbol-insert', handler)
+  }, [notePath])
+
   return (
     <div className="mind-editor">
       <div className="mind-editor-canvas" style={{ flex: `0 0 ${100 - panelHeight * 100}%` }}>
@@ -188,6 +206,7 @@ export function MindMapEditor({ document: initialDoc, notePath, onSave, onNaviga
           collapsedIds={collapsedIds}
           dispatch={wrappedDispatch}
           onContextMenu={handleContextMenu}
+          onNavigateToCode={onNavigateToCode}
         />
       </div>
       <div
@@ -198,6 +217,7 @@ export function MindMapEditor({ document: initialDoc, notePath, onSave, onNaviga
         <NodeEditPanel
           node={selectedNode}
           dispatch={wrappedDispatch}
+          notePath={notePath}
           onNavigateToCode={onNavigateToCode}
           saveStatus={saveStatus}
         />
