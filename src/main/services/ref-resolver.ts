@@ -36,8 +36,8 @@ export function parseRefs(content: string): RefSpec[] {
   const refs: RefSpec[] = []
   const seen = new Set<string>()
 
-  // Match @ref(...) — allow / : . digits letters underscores hyphens inside parens
-  const regex = /@ref\(([a-zA-Z0-9._/\-:]+)\)/g
+  // Match @ref(...) — allow / # : . digits letters underscores hyphens inside parens
+  const regex = /@ref\(([a-zA-Z0-9._/\-:#]+)\)/g
   let match: RegExpExecArray | null
 
   while ((match = regex.exec(content)) !== null) {
@@ -53,7 +53,9 @@ export function parseRefs(content: string): RefSpec[] {
 }
 
 function classifyRef(raw: string): RefSpec {
-  const parts = raw.split(':')
+  // Support new '#' separator (mermaid-safe) and legacy ':' separator
+  const sep = raw.includes('#') ? '#' : ':'
+  const parts = raw.split(sep)
 
   let repo: string | undefined
   let filePath: string | undefined
