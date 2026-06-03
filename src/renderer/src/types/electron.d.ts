@@ -17,6 +17,9 @@ declare global {
       readNote: (relativePath: string) => Promise<string | object>
       updateNote: (relativePath: string, content: unknown) => Promise<void>
       deleteNote: (relativePath: string) => Promise<void>
+      createFolder: (relativePath: string) => Promise<void>
+      copyFile: (sourcePath: string, targetDir: string) => Promise<void>
+      deleteFolder: (relativePath: string) => Promise<void>
       renameNote: (oldPath: string, newPath: string) => Promise<void>
       noteExists: (relativePath: string) => Promise<boolean>
       listRepoFiles: (repoPath: string) => Promise<Array<{
