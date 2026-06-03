@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from 'react'
+import { useState, useCallback, useRef, useEffect } from 'react'
 import { SymbolPicker } from './SymbolPicker'
 import type { CodeSymbol } from './SymbolPicker'
 import type { CodeMapping } from '../../../main/schemas/note-types'
@@ -16,13 +16,21 @@ export function CodeMappingField({ codeMapping, notePath, onChange }: CodeMappin
   const [rawInput, setRawInput] = useState(codeMapping?.raw ?? '')
   const { navigateToCode } = useCodeNavigation()
   const resolveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const mountedRef = useRef(true)
 
-  // Sync raw input when codeMapping changes externally
-  const lastMappingRef = useRef<CodeMapping | null | undefined>(null)
-  if (lastMappingRef.current !== codeMapping) {
-    lastMappingRef.current = codeMapping
+  // Sync raw input when codeMapping.raw changes externally
+  useEffect(() => {
     setRawInput(codeMapping?.raw ?? '')
-  }
+  }, [codeMapping?.raw])
+
+  // Cleanup on unmount
+  useEffect(() => {
+    mountedRef.current = true
+    return () => {
+      mountedRef.current = false
+      if (resolveTimerRef.current) clearTimeout(resolveTimerRef.current)
+    }
+  }, [])
 
   const resolveAndUpdate = useCallback(async (raw: string) => {
     if (!raw) {
@@ -31,12 +39,14 @@ export function CodeMappingField({ codeMapping, notePath, onChange }: CodeMappin
     }
     try {
       const mappings = await window.electronAPI.resolveRefs(notePath, `@ref(${raw})`, undefined)
+      if (!mountedRef.current) return
       if (mappings.length > 0) {
         onChange({ ...mappings[0], raw })
       } else {
         onChange({ raw, functionName: '', filePath: '', startLine: 0, endLine: 0 })
       }
     } catch {
+      if (!mountedRef.current) return
       onChange({ raw, functionName: '', filePath: '', startLine: 0, endLine: 0 })
     }
   }, [notePath, onChange])
@@ -49,9 +59,7 @@ export function CodeMappingField({ codeMapping, notePath, onChange }: CodeMappin
   }, [resolveAndUpdate])
 
   const handleSymbolSelect = useCallback((sym: CodeSymbol) => {
-    const fileName = sym.filePath.split('/').pop() || sym.filePath
-    const dirPath = sym.filePath.split('/').slice(0, -1).join('/')
-    const refRaw = `${dirPath}/${fileName}:${sym.startLine}:${sym.name}`
+    const refRaw = `${sym.filePath}:${sym.startLine}:${sym.name}`
     setRawInput(refRaw)
     setPickerOpen(false)
     resolveAndUpdate(refRaw)
@@ -76,15 +84,18 @@ export function CodeMappingField({ codeMapping, notePath, onChange }: CodeMappin
           ...
         </button>
       </div>
-      {hasResolved && (
-        <div
-          className="code-mapping-field-resolved"
-          onClick={() => navigateToCode(codeMapping!.filePath, codeMapping!.startLine)}
-          title={`Open ${codeMapping!.filePath}:${codeMapping!.startLine}`}
-        >
-          {codeMapping!.filePath.split('/').slice(-2).join('/')}:{codeMapping!.startLine} {codeMapping!.functionName}
-        </div>
-      )}
+      {hasResolved && (() => {
+        const { filePath, startLine, functionName } = codeMapping
+        return (
+          <div
+            className="code-mapping-field-resolved"
+            onClick={() => navigateToCode(filePath, startLine)}
+            title={`Open ${filePath}:${startLine}`}
+          >
+            {filePath.split('/').slice(-2).join('/')}:{startLine} {functionName}
+          </div>
+        )
+      })()}
       <SymbolPicker
         isOpen={pickerOpen}
         onClose={() => setPickerOpen(false)}
