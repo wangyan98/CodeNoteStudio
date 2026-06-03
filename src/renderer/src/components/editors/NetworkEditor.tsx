@@ -1,5 +1,5 @@
 import { useReducer, useEffect, useRef, useState, useCallback, useMemo } from 'react'
-import type { NetworkDocument, GraphNode, CodeMapping } from '../../../../main/schemas/note-types'
+import type { NetworkDocument, GraphNode, GraphEdge, CodeMapping } from '../../../../main/schemas/note-types'
 import { createNetworkDocument } from '../../../../main/schemas/note-types'
 import type { LayerCatalogOverrides } from '../../../../main/schemas/layer-catalog'
 import { resolveLayerCatalog, getLayerDef } from '../../../../main/schemas/layer-catalog'
@@ -22,6 +22,7 @@ type SaveStatus = 'saved' | 'saving' | 'unsaved' | 'error'
 export function NetworkEditor({ document: initialDoc, notePath, workspacePath, onSave, onNavigateToCode }: NetworkEditorProps) {
   const [doc, dispatch] = useReducer(networkReducer, initialDoc.version === 2 ? initialDoc : createNetworkDocument())
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null)
+  const [selectedEdgeId, setSelectedEdgeId] = useState<string | null>(null)
   const selectedNodeRef = useRef<GraphNode | null>(null)
   const [panelHeight, setPanelHeight] = useState(0.25)
   const [saveStatus, setSaveStatus] = useState<SaveStatus>('saved')
@@ -39,6 +40,7 @@ export function NetworkEditor({ document: initialDoc, notePath, workspacePath, o
     dispatch({ type: 'SET_DOCUMENT', document: initialDoc })
     oldDocRef.current = initialDoc
     setSelectedNodeId(null)
+    setSelectedEdgeId(null)
     setSaveStatus('saved')
   }, [initialDoc])
 
@@ -73,20 +75,28 @@ export function NetworkEditor({ document: initialDoc, notePath, workspacePath, o
     return () => { if (saveTimerRef.current) clearTimeout(saveTimerRef.current) }
   }, [])
 
-  // Keyboard delete for selected node
+  // Keyboard delete for selected node or edge
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       const tag = (e.target as HTMLElement).tagName
       if (tag === 'INPUT' || tag === 'TEXTAREA') return
-      if ((e.key === 'Delete' || e.key === 'Backspace') && selectedNodeId) {
-        e.preventDefault()
-        dispatch({ type: 'DELETE_NODE', nodeId: selectedNodeId })
-        setSelectedNodeId(null)
+      if (e.key === 'Delete' || e.key === 'Backspace') {
+        if (selectedEdgeId) {
+          e.preventDefault()
+          dispatch({ type: 'DELETE_EDGE', edge: { id: selectedEdgeId } as GraphEdge })
+          setSelectedEdgeId(null)
+          return
+        }
+        if (selectedNodeId) {
+          e.preventDefault()
+          dispatch({ type: 'DELETE_NODE', nodeId: selectedNodeId })
+          setSelectedNodeId(null)
+        }
       }
     }
     window.addEventListener('keydown', handler)
     return () => window.removeEventListener('keydown', handler)
-  }, [selectedNodeId])
+  }, [selectedNodeId, selectedEdgeId])
 
   // Load project-level layer catalog overrides
   useEffect(() => {
@@ -121,7 +131,13 @@ export function NetworkEditor({ document: initialDoc, notePath, workspacePath, o
 
   const handleSelectNode = useCallback((nodeId: string | null) => {
     setSelectedNodeId(nodeId)
+    setSelectedEdgeId(null)
     setResolvedMapping(null)
+  }, [])
+
+  const handleSelectEdge = useCallback((edgeId: string | null) => {
+    setSelectedEdgeId(edgeId)
+    setSelectedNodeId(null)
   }, [])
 
   const handleDropLayer = useCallback((layerType: string) => {
@@ -231,7 +247,9 @@ export function NetworkEditor({ document: initialDoc, notePath, workspacePath, o
             doc={doc}
             catalog={catalog}
             selectedNodeId={selectedNodeId}
+            selectedEdgeId={selectedEdgeId}
             onSelectNode={handleSelectNode}
+            onSelectEdge={handleSelectEdge}
             onDropLayer={handleDropLayer}
             onDeleteNode={handleDeleteNode}
             onAddEdge={handleAddEdge}

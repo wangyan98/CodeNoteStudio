@@ -227,3 +227,8 @@
   height: 300px;
   overflow: hidden;
 }
+
+.note-embed-body.net-embed {
+  max-height: 400px;
+  overflow-y: auto;
+}

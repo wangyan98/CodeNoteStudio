@@ -9,7 +9,9 @@ interface NetworkCanvasProps {
   doc: NetworkDocument
   catalog: Record<string, LayerDef>
   selectedNodeId: string | null
+  selectedEdgeId: string | null
   onSelectNode: (nodeId: string | null) => void
+  onSelectEdge: (edgeId: string | null) => void
   onDropLayer: (layerType: string) => void
   onDeleteNode: (nodeId: string) => void
   onAddEdge: (source: string, target: string) => void
@@ -22,16 +24,23 @@ const INPUT_H = 28
 const BLOCK_MIN_W = 200
 const BLOCK_HEADER_H = 24
 
-function runLayout(nodes: GraphNode[], edges: GraphEdge[]): Map<string, { x: number; y: number }> {
+function runLayout(
+  nodes: GraphNode[],
+  edges: GraphEdge[],
+  nodeSizes?: Map<string, { width: number; height: number }>
+): Map<string, { x: number; y: number }> {
   const g = new dagre.graphlib.Graph()
   g.setGraph({ rankdir: 'TB', nodesep: 40, edgesep: 20, ranksep: 60, marginx: 40, marginy: 30 })
   g.setDefaultEdgeLabel(() => ({}))
 
   for (const n of nodes) {
-    const w = n.kind === 'input' || n.kind === 'output' ? INPUT_W
-      : n.kind === 'block' ? BLOCK_MIN_W : NODE_W
-    const h = n.kind === 'input' || n.kind === 'output' ? INPUT_H
-      : n.kind === 'block' ? NODE_H + BLOCK_HEADER_H : NODE_H
+    const override = nodeSizes?.get(n.id)
+    const w = override?.width
+      ?? (n.kind === 'input' || n.kind === 'output' ? INPUT_W
+        : n.kind === 'block' ? BLOCK_MIN_W : NODE_W)
+    const h = override?.height
+      ?? (n.kind === 'input' || n.kind === 'output' ? INPUT_H
+        : n.kind === 'block' ? NODE_H + BLOCK_HEADER_H : NODE_H)
     g.setNode(n.id, { width: w, height: h })
   }
 
@@ -50,8 +59,8 @@ function runLayout(nodes: GraphNode[], edges: GraphEdge[]): Map<string, { x: num
 }
 
 export function NetworkCanvas({
-  doc, catalog, selectedNodeId,
-  onSelectNode, onDropLayer, onDeleteNode, onAddEdge
+  doc, catalog, selectedNodeId, selectedEdgeId,
+  onSelectNode, onSelectEdge, onDropLayer, onDeleteNode, onAddEdge
 }: NetworkCanvasProps) {
 
   const svgRef = useRef<SVGSVGElement>(null)
@@ -97,32 +106,81 @@ export function NetworkCanvas({
     svg.attr('width', W).attr('height', H)
     svg.selectAll('*').remove()
 
-    // Flatten: top-level nodes + block children + internal edges
+    // Separate top-level nodes/edges from block children/internal edges
     const topNodes = doc.nodes ?? []
     const topEdges = doc.edges ?? []
-    const allNodes = [...topNodes]
-    const allEdges = [...topEdges]
-    for (const n of topNodes) {
-      if (n.children) {
-        for (const child of n.children) {
-          allNodes.push(child)
+
+    // For each block with children, run sub-layout and compute block dimensions
+    type BlockLayout = {
+      positions: Map<string, { x: number; y: number }>
+      width: number
+      height: number
+      childOffsetX: number
+      childOffsetY: number
+    }
+    const blockLayouts = new Map<string, BlockLayout>()
+    const BLOCK_PAD = 20
+    const BLOCK_BOTTOM_PAD = 14
+
+    for (const node of topNodes) {
+      if (node.kind === 'block' && node.children && node.children.length > 0) {
+        const children = node.children
+        const internalEdges = node.internalEdges ?? []
+        const childPositions = runLayout(children, internalEdges)
+
+        // Compute bounding box of children (positions are node centers)
+        let cMinX = Infinity, cMaxX = -Infinity, cMinY = Infinity, cMaxY = -Infinity
+        for (const cp of childPositions.values()) {
+          cMinX = Math.min(cMinX, cp.x - NODE_W / 2)
+          cMaxX = Math.max(cMaxX, cp.x + NODE_W / 2)
+          cMinY = Math.min(cMinY, cp.y - NODE_H / 2)
+          cMaxY = Math.max(cMaxY, cp.y + NODE_H / 2)
         }
-      }
-      if (n.internalEdges) {
-        for (const ie of n.internalEdges) {
-          allEdges.push(ie)
+        if (!isFinite(cMinX)) {
+          cMinX = -NODE_W / 2; cMaxX = NODE_W / 2
+          cMinY = -NODE_H / 2; cMaxY = NODE_H / 2
         }
+
+        const contentW = cMaxX - cMinX
+        const contentH = cMaxY - cMinY
+        const bw = Math.max(BLOCK_MIN_W, contentW + BLOCK_PAD * 2)
+        const bh = BLOCK_HEADER_H + contentH + BLOCK_PAD + BLOCK_BOTTOM_PAD
+
+        blockLayouts.set(node.id, {
+          positions: childPositions,
+          width: bw,
+          height: bh,
+          childOffsetX: BLOCK_PAD - cMinX,
+          childOffsetY: BLOCK_HEADER_H + BLOCK_PAD - cMinY,
+        })
       }
     }
-    const positions = runLayout(allNodes, allEdges)
+
+    // Build node size overrides from block layouts for the top-level layout
+    const nodeSizes = new Map<string, { width: number; height: number }>()
+    for (const [id, bl] of blockLayouts) {
+      nodeSizes.set(id, { width: bl.width, height: bl.height })
+    }
+
+    // Run main layout with actual block sizes
+    const positions = runLayout(topNodes, topEdges, nodeSizes)
 
     // Compute bounding box for centering
     let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity
-    for (const p of positions.values()) {
-      minX = Math.min(minX, p.x - NODE_W)
-      maxX = Math.max(maxX, p.x + NODE_W)
-      minY = Math.min(minY, p.y - NODE_H)
-      maxY = Math.max(maxY, p.y + NODE_H)
+    const DEFAULT_BLOCK_H = NODE_H + BLOCK_HEADER_H
+    for (const [id, p] of positions) {
+      const node = topNodes.find(n => n.id === id)
+      let nw = node?.kind === 'input' || node?.kind === 'output' ? INPUT_W : NODE_W
+      let nh = node?.kind === 'input' || node?.kind === 'output' ? INPUT_H : NODE_H
+      if (node?.kind === 'block') {
+        const bl = blockLayouts.get(id)
+        nw = bl?.width ?? BLOCK_MIN_W
+        nh = bl?.height ?? DEFAULT_BLOCK_H
+      }
+      minX = Math.min(minX, p.x - nw / 2)
+      maxX = Math.max(maxX, p.x + nw / 2)
+      minY = Math.min(minY, p.y - nh / 2)
+      maxY = Math.max(maxY, p.y + nh / 2)
     }
     const pad = 40
     const contentW = maxX - minX + pad * 2
@@ -151,24 +209,30 @@ export function NetworkCanvas({
     const initTy = (H - contentH * fitScale) / 2
     svg.call(zoom.transform as any, d3.zoomIdentity.translate(initTx, initTy).scale(fitScale))
 
-    // --- Render edges first (behind nodes) ---
-    for (const edge of allEdges) {
-      const srcPos = positions.get(edge.source)
-      const tgtPos = positions.get(edge.target)
-      if (!srcPos || !tgtPos) continue
+    // Helper to render a single edge (used for both top-level and internal edges)
+    const renderEdge = (
+      edge: GraphEdge,
+      srcPos: { x: number; y: number },
+      tgtPos: { x: number; y: number },
+      srcW: number,
+      srcH: number,
+      tgtW: number,
+      tgtH: number,
+      parentG: d3.Selection<SVGGElement, unknown, null, undefined>
+    ) => {
+      const x1 = srcPos.x
+      const y1 = srcPos.y + srcH / 2
+      const x2 = tgtPos.x
+      const y2 = tgtPos.y - tgtH / 2
+      const isSelected = edge.id === selectedEdgeId
+      const strokeColor = isSelected ? '#4a90d9' : '#888'
+      const skipColor = isSelected ? '#4a90d9' : '#34a853'
+      const strokeW = isSelected ? 2.5 : 1.5
 
-      const srcNode = allNodes.find(n => n.id === edge.source)
-      const tgtNode = allNodes.find(n => n.id === edge.target)
-      const srcW = srcNode?.kind === 'input' || srcNode?.kind === 'output' ? INPUT_W : NODE_W
-      const srcH = srcNode?.kind === 'input' || srcNode?.kind === 'output' ? INPUT_H : NODE_H
-      const tgtW = tgtNode?.kind === 'input' || tgtNode?.kind === 'output' ? INPUT_W : NODE_W
-      const tgtH = tgtNode?.kind === 'input' || tgtNode?.kind === 'output' ? INPUT_H : NODE_H
-
-      // Vertical layout: edges go from bottom of source to top of target
-      const x1 = offsetX + srcPos.x
-      const y1 = offsetY + srcPos.y + srcH / 2
-      const x2 = offsetX + tgtPos.x
-      const y2 = offsetY + tgtPos.y - tgtH / 2
+      const edgeG = parentG.append('g')
+        .attr('class', 'net-edge')
+        .attr('data-edge-id', edge.id)
+        .style('cursor', 'pointer')
 
       if (edge.style === 'skip') {
         const my = (y1 + y2) / 2
@@ -176,37 +240,76 @@ export function NetworkCanvas({
         const path = d3.path()
         path.moveTo(x1, y1)
         path.bezierCurveTo(x1 - dx, my, x2 - dx, my, x2, y2)
-        g.append('path')
+        edgeG.append('path')
           .attr('d', path.toString())
-          .attr('fill', 'none').attr('stroke', '#34a853').attr('stroke-width', 1.5)
+          .attr('fill', 'none').attr('stroke', skipColor).attr('stroke-width', strokeW)
           .attr('stroke-dasharray', '4,3')
-        g.append('polygon')
+        edgeG.append('polygon')
           .attr('points', `${x2-4},${y2-6} ${x2},${y2} ${x2+4},${y2-6}`)
-          .attr('fill', 'none').attr('stroke', '#34a853').attr('stroke-width', 1.5)
+          .attr('fill', 'none').attr('stroke', skipColor).attr('stroke-width', strokeW)
       } else {
-        g.append('line')
+        // Wider invisible hit area for easier clicking
+        edgeG.append('line')
+          .attr('x1', x1).attr('y1', y1).attr('x2', x2).attr('y2', y2)
+          .attr('stroke', 'transparent').attr('stroke-width', 12)
+          .style('cursor', 'pointer')
+        edgeG.append('line')
           .attr('x1', x1).attr('y1', y1).attr('x2', x2).attr('y2', y2 - 4)
-          .attr('stroke', '#888').attr('stroke-width', 1.5)
-        g.append('polygon')
+          .attr('stroke', strokeColor).attr('stroke-width', strokeW)
+        edgeG.append('polygon')
           .attr('points', `${x2-4},${y2-4} ${x2},${y2} ${x2+4},${y2-4}`)
-          .attr('fill', '#888')
+          .attr('fill', strokeColor)
       }
 
       if (edge.label) {
-        g.append('text')
+        edgeG.append('text')
           .attr('x', (x1 + x2) / 2).attr('y', y1 - 6)
-          .attr('text-anchor', 'middle').attr('fill', '#34a853').attr('font-size', '8px')
+          .attr('text-anchor', 'middle').attr('fill', skipColor).attr('font-size', '8px')
           .text(edge.label)
       }
+
+      edgeG.on('click', (event: MouseEvent) => {
+        event.stopPropagation()
+        onSelectEdge(edge.id)
+      })
+    }
+
+    // Helper to get actual rendered dimensions of a node (accounting for block expansion)
+    const getNodeSize = (node: GraphNode | undefined): { w: number; h: number } => {
+      if (!node) return { w: NODE_W, h: NODE_H }
+      if (node.kind === 'input' || node.kind === 'output') return { w: INPUT_W, h: INPUT_H }
+      if (node.kind === 'block') {
+        const bl = blockLayouts.get(node.id)
+        return bl ? { w: bl.width, h: bl.height } : { w: BLOCK_MIN_W, h: NODE_H + BLOCK_HEADER_H }
+      }
+      return { w: NODE_W, h: NODE_H }
+    }
+
+    // --- Render top-level edges (behind nodes) ---
+    for (const edge of topEdges) {
+      const srcPos = positions.get(edge.source)
+      const tgtPos = positions.get(edge.target)
+      if (!srcPos || !tgtPos) continue
+
+      const srcNode = topNodes.find(n => n.id === edge.source)
+      const tgtNode = topNodes.find(n => n.id === edge.target)
+      const { w: srcW, h: srcH } = getNodeSize(srcNode)
+      const { w: tgtW, h: tgtH } = getNodeSize(tgtNode)
+
+      renderEdge(edge,
+        { x: offsetX + srcPos.x, y: offsetY + srcPos.y },
+        { x: offsetX + tgtPos.x, y: offsetY + tgtPos.y },
+        srcW, srcH, tgtW, tgtH, g)
     }
 
     // --- Render nodes ---
-    for (const node of allNodes) {
+    for (const node of topNodes) {
       const pos = positions.get(node.id)
       if (!pos) continue
 
       const isSelected = node.id === selectedNodeId
       let nw = NODE_W, nh = NODE_H, color = '#888', fill = '#2a2a2a'
+      let blockLayout: BlockLayout | undefined
 
       if (node.kind === 'input' || node.kind === 'output') {
         nw = INPUT_W; nh = INPUT_H; color = '#666'; fill = '#f5f5f5'
@@ -215,7 +318,15 @@ export function NetworkCanvas({
         color = def?.color ?? '#888'
         fill = (def?.color ?? '#888') + '22'
       } else if (node.kind === 'block') {
-        nw = BLOCK_MIN_W; color = '#ff9800'; fill = 'none'
+        blockLayout = blockLayouts.get(node.id)
+        if (blockLayout) {
+          nw = blockLayout.width
+          nh = blockLayout.height
+        } else {
+          nw = BLOCK_MIN_W
+          nh = NODE_H + BLOCK_HEADER_H
+        }
+        color = '#ff9800'; fill = 'none'
       }
 
       const nx = offsetX + pos.x - nw / 2
@@ -227,6 +338,7 @@ export function NetworkCanvas({
         .style('cursor', 'pointer')
 
       if (node.kind === 'block') {
+        // Block container — dashed border
         nodeG.append('rect')
           .attr('x', nx).attr('y', ny).attr('width', nw).attr('height', nh)
           .attr('rx', 10).attr('fill', 'none')
@@ -239,6 +351,100 @@ export function NetworkCanvas({
           .attr('x', nx + 10).attr('y', ny + 16)
           .attr('fill', '#ff9800').attr('font-size', '11px').attr('font-weight', 'bold')
           .text(headerText)
+
+        // Render children inside block
+        if (blockLayout && node.children) {
+          const childOffsetX = nx + blockLayout.childOffsetX
+          const childOffsetY = ny + blockLayout.childOffsetY
+
+          // Internal edges first
+          for (const ie of (node.internalEdges ?? [])) {
+            const cpSrc = blockLayout.positions.get(ie.source)
+            const cpTgt = blockLayout.positions.get(ie.target)
+            if (!cpSrc || !cpTgt) continue
+            const cSrcNode = node.children.find(c => c.id === ie.source)
+            const cTgtNode = node.children.find(c => c.id === ie.target)
+            const cSrcW = cSrcNode?.kind === 'input' || cSrcNode?.kind === 'output' ? INPUT_W : NODE_W
+            const cSrcH = cSrcNode?.kind === 'input' || cSrcNode?.kind === 'output' ? INPUT_H : NODE_H
+            const cTgtW = cTgtNode?.kind === 'input' || cTgtNode?.kind === 'output' ? INPUT_W : NODE_W
+            const cTgtH = cTgtNode?.kind === 'input' || cTgtNode?.kind === 'output' ? INPUT_H : NODE_H
+            renderEdge(ie,
+              { x: childOffsetX + cpSrc.x, y: childOffsetY + cpSrc.y },
+              { x: childOffsetX + cpTgt.x, y: childOffsetY + cpTgt.y },
+              cSrcW, cSrcH, cTgtW, cTgtH, nodeG)
+          }
+
+          // Children
+          for (const child of node.children) {
+            const cp = blockLayout.positions.get(child.id)
+            if (!cp) continue
+            const cx = childOffsetX + cp.x - NODE_W / 2
+            const cy = childOffsetY + cp.y - NODE_H / 2
+            const childIsSelected = child.id === selectedNodeId
+            let cc = '#888', cf = '#2a2a2a'
+            if (child.layerType) {
+              const def = catalog[child.layerType]
+              cc = def?.color ?? '#888'
+              cf = (def?.color ?? '#888') + '22'
+            }
+
+            const childG = nodeG.append('g')
+              .attr('class', 'net-node')
+              .attr('data-node-id', child.id)
+              .style('cursor', 'pointer')
+
+            childG.append('rect')
+              .attr('x', cx).attr('y', cy).attr('width', NODE_W).attr('height', NODE_H)
+              .attr('rx', 6).attr('fill', cf)
+              .attr('stroke', childIsSelected ? '#4a90d9' : cc)
+              .attr('stroke-width', childIsSelected ? 2.5 : 1.5)
+            childG.append('text')
+              .attr('x', cx + NODE_W / 2).attr('y', cy + NODE_H / 2 + 4)
+              .attr('text-anchor', 'middle').attr('fill', '#d4d4d4')
+              .attr('font-size', '10px').attr('font-weight', 'bold')
+              .text(child.label)
+            if (child.codeMapping) {
+              childG.append('circle')
+                .attr('cx', cx + NODE_W - 8).attr('cy', cy + 8).attr('r', 3)
+                .attr('fill', '#4a90d9')
+            }
+
+            childG.on('click', (event: MouseEvent) => {
+              event.stopPropagation()
+              onSelectNode(child.id)
+            })
+
+            // Child output port (unless block — block uses its own outer ports)
+            if (child.kind !== 'output') {
+              childG.append('circle')
+                .attr('class', 'net-port-out')
+                .attr('cx', cx + NODE_W / 2)
+                .attr('cy', cy + NODE_H)
+                .attr('r', 5)
+                .attr('fill', cc)
+                .attr('stroke', '#333')
+                .attr('stroke-width', 0.5)
+                .attr('opacity', 0.5)
+                .style('cursor', 'crosshair')
+                .on('mouseenter', function () { d3.select(this).attr('opacity', 1).attr('r', 7) })
+                .on('mouseleave', function () { d3.select(this).attr('opacity', 0.5).attr('r', 5) })
+            }
+            if (child.kind !== 'input') {
+              childG.append('circle')
+                .attr('class', 'net-port-in')
+                .attr('cx', cx + NODE_W / 2)
+                .attr('cy', cy)
+                .attr('r', 5)
+                .attr('fill', cc)
+                .attr('stroke', '#333')
+                .attr('stroke-width', 0.5)
+                .attr('opacity', 0.5)
+                .style('cursor', 'crosshair')
+                .on('mouseenter', function () { d3.select(this).attr('opacity', 1).attr('r', 7) })
+                .on('mouseleave', function () { d3.select(this).attr('opacity', 0.5).attr('r', 5) })
+            }
+          }
+        }
       } else if (node.kind === 'input' || node.kind === 'output') {
         nodeG.append('rect')
           .attr('x', nx).attr('y', ny).attr('width', nw).attr('height', nh)
@@ -274,7 +480,7 @@ export function NetworkCanvas({
         onSelectNode(node.id)
       })
 
-      // Output port — bottom center (only for non-output nodes)
+      // Output port — bottom center of block (only for non-output nodes)
       if (node.kind !== 'output') {
         nodeG.append('circle')
           .attr('class', 'net-port-out')
@@ -290,7 +496,7 @@ export function NetworkCanvas({
           .on('mouseleave', function () { d3.select(this).attr('opacity', 0.5).attr('r', 6) })
       }
 
-      // Input port — top center (only for non-input nodes)
+      // Input port — top center of block (only for non-input nodes)
       if (node.kind !== 'input') {
         nodeG.append('circle')
           .attr('class', 'net-port-in')
@@ -310,7 +516,7 @@ export function NetworkCanvas({
     // Background click to deselect
     svg.on('click', () => { onSelectNode(null) })
 
-  }, [doc, catalog, selectedNodeId, onSelectNode, dims])
+  }, [doc, catalog, selectedNodeId, selectedEdgeId, onSelectNode, onSelectEdge, dims])
 
   useEffect(() => {
     render()
