@@ -50,7 +50,7 @@ export function SequenceDiagramViewer({ content, notePath }: SequenceDiagramView
         const processedContent = content.replace(/@ref\(([^)]+)\)/g, (fullMatch, inner) => {
           const sep = inner.includes('#') ? '#' : ':'
           const displayName = inner.split(sep).pop() || inner
-          const placeholder = `◆${counter}`
+          const placeholder = `[R${counter}]`
           refMap.set(placeholder, { displayName, refText: fullMatch })
           counter++
           return placeholder
@@ -86,7 +86,7 @@ export function SequenceDiagramViewer({ content, notePath }: SequenceDiagramView
 
       texts.forEach((textEl) => {
         const original = textEl.textContent || ''
-        const matches = [...original.matchAll(/◆(\d+)/g)]
+        const matches = [...original.matchAll(/\[R(\d+)\]/g)]
         if (matches.length === 0) return
 
         // Clear existing content
