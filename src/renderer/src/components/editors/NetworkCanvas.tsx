@@ -74,6 +74,18 @@ export function NetworkCanvas({
     }
   }, [])
 
+  // Keep SVG dimensions in sync with container
+  useEffect(() => {
+    const container = containerRef.current
+    if (!container) return
+    const observer = new ResizeObserver(() => {
+      const svg = d3.select(svgRef.current)
+      svg.attr('width', container.clientWidth).attr('height', container.clientHeight)
+    })
+    observer.observe(container)
+    return () => observer.disconnect()
+  }, [])
+
   const render = useCallback(() => {
     const svg = d3.select(svgRef.current)
     const container = containerRef.current
@@ -97,8 +109,9 @@ export function NetworkCanvas({
       maxY = Math.max(maxY, p.y + NODE_H)
     }
     const contentW = maxX - minX + 80
+    const contentH = maxY - minY + 80
     const offsetX = (W - contentW) / 2 - minX + 40
-    const offsetY = 30 - minY
+    const offsetY = (H - contentH) / 2 - minY + 40
 
     const g = svg.append('g').attr('class', 'canvas-content')
 
