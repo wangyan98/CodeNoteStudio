@@ -194,7 +194,7 @@ export function NoteDirectory() {
   const [contextMenu, setContextMenu] = useState<{
     x: number
     y: number
-    node: TreeNode
+    node: TreeNode | null
   } | null>(null)
 
   const typeOptions: { label: string; value: NoteType; suffix: string }[] = [
@@ -360,10 +360,46 @@ export function NoteDirectory() {
     ]
   }, [createNote, renameNote, refreshNotes])
 
+  const buildRootContextMenu = useCallback((): MenuEntry[] => {
+    return [
+      {
+        label: 'New Note',
+        action: () => {
+          const baseName = prompt('Note name:')
+          if (!baseName) return
+          createNote(baseName + '.md', 'md')
+        }
+      },
+      {
+        label: 'New Folder',
+        action: () => {
+          const folderName = prompt('Folder name:')
+          if (!folderName) return
+          window.electronAPI.createFolder(folderName).then(() => refreshNotes())
+        }
+      },
+      ...(getClipboardFile() ? [{
+        label: 'Paste File',
+        action: async () => {
+          const cf = getClipboardFile()!
+          await window.electronAPI.copyFile(cf.sourcePath, '')
+          clearClipboardFile()
+          await refreshNotes()
+        }
+      }] : [])
+    ]
+  }, [createNote, refreshNotes])
+
   const handleContextMenu = useCallback((e: React.MouseEvent, node: TreeNode) => {
     e.preventDefault()
     e.stopPropagation()
     setContextMenu({ x: e.clientX, y: e.clientY, node })
+  }, [])
+
+  const handleRootContextMenu = useCallback((e: React.MouseEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setContextMenu({ x: e.clientX, y: e.clientY, node: null })
   }, [])
 
   const filteredTree = searchQuery
@@ -465,7 +501,7 @@ export function NoteDirectory() {
             )}
           </div>
         </div>
-        <div className="note-tree">
+        <div className="note-tree" onContextMenu={handleRootContextMenu}>
           {filteredTree.map((node) => (
             <TreeItem
               key={node.path}
@@ -483,9 +519,11 @@ export function NoteDirectory() {
           <NodeContextMenu
             x={contextMenu.x}
             y={contextMenu.y}
-            items={contextMenu.node.type === 'folder'
-              ? buildFolderContextMenu(contextMenu.node)
-              : buildFileContextMenu(contextMenu.node)
+            items={contextMenu.node === null
+              ? buildRootContextMenu()
+              : contextMenu.node.type === 'folder'
+                ? buildFolderContextMenu(contextMenu.node)
+                : buildFileContextMenu(contextMenu.node)
             }
             onClose={() => setContextMenu(null)}
           />
