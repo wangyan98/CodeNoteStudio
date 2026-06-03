@@ -32,6 +32,7 @@ export function SequenceDiagramViewer({ content, notePath }: SequenceDiagramView
   const [error, setError] = useState<string | null>(null)
   const [svg, setSvg] = useState<string | null>(null)
   const { navigateToCode } = useCodeNavigation()
+  const refMapRef = useRef<Map<string, { displayName: string; refText: string }>>(new Map())
 
   useEffect(() => {
     initMermaid()
@@ -42,8 +43,22 @@ export function SequenceDiagramViewer({ content, notePath }: SequenceDiagramView
         return
       }
       try {
+        // Pre-process: replace @ref(...) with short placeholders so mermaid
+        // calculates correct line lengths based on display names
+        const refMap = new Map<string, { displayName: string; refText: string }>()
+        let counter = 0
+        const processedContent = content.replace(/@ref\(([^)]+)\)/g, (fullMatch, inner) => {
+          const sep = inner.includes('#') ? '#' : ':'
+          const displayName = inner.split(sep).pop() || inner
+          const placeholder = `◆${counter}`
+          refMap.set(placeholder, { displayName, refText: fullMatch })
+          counter++
+          return placeholder
+        })
+        refMapRef.current = refMap
+
         const id = 'mermaid-' + Math.random().toString(36).substring(2, 8)
-        const { svg: rendered } = await mermaid.render(id, content)
+        const { svg: rendered } = await mermaid.render(id, processedContent)
         setSvg(rendered)
         setError(null)
       } catch (err) {
@@ -55,7 +70,7 @@ export function SequenceDiagramViewer({ content, notePath }: SequenceDiagramView
     renderDiagram()
   }, [content])
 
-  // Post-process SVG to make @ref clickable
+  // Post-process SVG: replace placeholders with clickable display names
   useEffect(() => {
     if (!svg || !containerRef.current) return
     let cancelled = false
@@ -67,10 +82,11 @@ export function SequenceDiagramViewer({ content, notePath }: SequenceDiagramView
 
       const svgns = 'http://www.w3.org/2000/svg'
       const texts = svgEl.querySelectorAll('text')
+      const refMap = refMapRef.current
 
       texts.forEach((textEl) => {
         const original = textEl.textContent || ''
-        const matches = [...original.matchAll(/@ref\(([^)]+)\)/g)]
+        const matches = [...original.matchAll(/◆(\d+)/g)]
         if (matches.length === 0) return
 
         // Clear existing content
@@ -87,27 +103,32 @@ export function SequenceDiagramViewer({ content, notePath }: SequenceDiagramView
             textEl.appendChild(tspan)
           }
 
-          // Clickable @ref link — show only the last segment (class/function name)
-          const linkSpan = document.createElementNS(svgns, 'tspan')
-          const rawInside = match[1]
-          const sep = rawInside.includes('#') ? '#' : ':'
-          const displayName = rawInside.split(sep).pop() || rawInside
-          linkSpan.textContent = displayName
-          linkSpan.setAttribute('fill', '#61afef')
-          linkSpan.setAttribute('text-decoration', 'underline')
-          linkSpan.style.cursor = 'pointer'
-          const refText = match[0]
-          linkSpan.addEventListener('click', (e) => {
-            e.stopPropagation()
-            window.electronAPI.resolveRefs(notePath, refText, undefined).then((mappings) => {
-              if (mappings.length > 0) {
-                navigateToCode(mappings[0].filePath, mappings[0].startLine)
-              }
-            }).catch(() => {})
-          })
-          textEl.appendChild(linkSpan)
+          // Resolve placeholder to clickable link
+          const placeholder = match[0]
+          const ref = refMap.get(placeholder)
+          if (ref) {
+            const linkSpan = document.createElementNS(svgns, 'tspan')
+            linkSpan.textContent = ref.displayName
+            linkSpan.setAttribute('fill', '#61afef')
+            linkSpan.setAttribute('text-decoration', 'underline')
+            linkSpan.style.cursor = 'pointer'
+            linkSpan.addEventListener('click', (e) => {
+              e.stopPropagation()
+              window.electronAPI.resolveRefs(notePath, ref.refText, undefined).then((mappings) => {
+                if (mappings.length > 0) {
+                  navigateToCode(mappings[0].filePath, mappings[0].startLine)
+                }
+              }).catch(() => {})
+            })
+            textEl.appendChild(linkSpan)
+          } else {
+            // Unknown placeholder, render as-is
+            const tspan = document.createElementNS(svgns, 'tspan')
+            tspan.textContent = placeholder
+            textEl.appendChild(tspan)
+          }
 
-          cursor = matchStart + match[0].length
+          cursor = matchStart + placeholder.length
         }
 
         // Remaining text after last match
