@@ -1,15 +1,18 @@
-import { useReducer, useEffect, useMemo, useRef, useState } from 'react'
+import { useReducer, useEffect, useMemo, useRef, useState, useCallback } from 'react'
 import katex from 'katex'
 import 'katex/dist/katex.min.css'
-import type { DerivationDocument, DerivationNode } from '../../../../main/schemas/note-types'
+import type { CodeMapping, DerivationDocument, DerivationNode } from '../../../../main/schemas/note-types'
 import './DerivationEditor.css'
 import { derivationReducer } from './derivationReducer'
 import type { DerivationAction } from './derivationReducer'
+import { CodeMappingField } from '../CodeMappingField'
 
 interface DerivationEditorProps {
   document: DerivationDocument
+  notePath: string
   onSave: (doc: DerivationDocument) => Promise<void>
   codeRepoPath: string | null
+  onNavigateToCode?: (filePath: string, line: number) => void
 }
 
 type SaveStatus = 'saved' | 'saving' | 'unsaved' | 'error'
@@ -104,7 +107,7 @@ function MiniDagTreeNode({ node, childrenMap, onScrollToNode, ancestorIds }: Min
   )
 }
 
-export function DerivationEditor({ document: initialDoc, onSave, codeRepoPath }: DerivationEditorProps) {
+export function DerivationEditor({ document: initialDoc, notePath, onSave, codeRepoPath, onNavigateToCode }: DerivationEditorProps) {
   const [doc, dispatch] = useReducer(derivationReducer, initialDoc)
   const [saveStatus, setSaveStatus] = useState<SaveStatus>('saved')
   const [collapsedPreviews, setCollapsedPreviews] = useState<Set<string>>(new Set())
@@ -112,6 +115,7 @@ export function DerivationEditor({ document: initialDoc, onSave, codeRepoPath }:
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null)
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const oldDocRef = useRef(doc)
+  const [selectedStepId, setSelectedStepId] = useState<string | null>(null)
   // Reset when opening a different document
   useEffect(() => {
     // Clear any pending save from the previous document
@@ -122,6 +126,7 @@ export function DerivationEditor({ document: initialDoc, onSave, codeRepoPath }:
     dispatch({ type: 'SET_DOCUMENT', document: initialDoc })
     oldDocRef.current = initialDoc
     setCollapsedPreviews(new Set())
+    setSelectedStepId(null)
     setSaveStatus('saved')
   }, [initialDoc])
 
@@ -165,6 +170,23 @@ export function DerivationEditor({ document: initialDoc, onSave, codeRepoPath }:
     }
   }, [])
 
+  // Listen for symbol-insert events from SymbolPicker
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const refText = (e as CustomEvent<string>).detail
+      if (!selectedStepId) return
+      window.electronAPI.resolveRefs(notePath, refText, undefined).then((mappings) => {
+        if (mappings.length > 0) {
+          const m = mappings[0] as CodeMapping
+          m.raw = refText.replace(/^@ref\(|\)$/g, '')
+          dispatch({ type: 'UPDATE_CODE_MAPPING', nodeId: selectedStepId, codeMapping: m })
+        }
+      }).catch(() => {})
+    }
+    window.addEventListener('symbol-insert', handler)
+    return () => window.removeEventListener('symbol-insert', handler)
+  }, [notePath, selectedStepId])
+
   // Build cycle-safe dropdown options for each node (precomputed)
   const derivesFromOptions = useMemo(() => {
     const map = new Map<string, Array<{ id: string; stepNumber: number; title: string }>>()
@@ -207,6 +229,10 @@ export function DerivationEditor({ document: initialDoc, onSave, codeRepoPath }:
     setDragIndex(null)
     setDragOverIndex(null)
   }
+
+  const handleSelectStep = useCallback((nodeId: string) => {
+    setSelectedStepId((prev) => prev === nodeId ? null : nodeId)
+  }, [])
 
   const handleDeleteNode = (nodeId: string) => {
     const childCount = doc.nodes.filter((n) => n.derivesFrom === nodeId).length
@@ -290,7 +316,8 @@ export function DerivationEditor({ document: initialDoc, onSave, codeRepoPath }:
             )}
             <div
               id={`derive-node-${node.id}`}
-              className={`derive-node-card${dragIndex === index ? ' dragging' : ''}`}
+              className={`derive-node-card${dragIndex === index ? ' dragging' : ''}${selectedStepId === node.id ? ' selected' : ''}`}
+              onClick={() => handleSelectStep(node.id)}
               onDragOver={(e) => handleDragOver(e, index)}
               onDrop={() => handleDrop(index)}
             >
@@ -338,6 +365,15 @@ export function DerivationEditor({ document: initialDoc, onSave, codeRepoPath }:
                 <button className="derive-katex-collapse-btn" onClick={() => togglePreview(node.id)}>
                   {collapsedPreviews.has(node.id) ? 'Show preview' : 'Hide preview'}
                 </button>
+              )}
+              {selectedStepId === node.id && (
+                <div style={{ marginTop: 8, padding: '0 4px' }}>
+                  <CodeMappingField
+                    codeMapping={node.codeMapping}
+                    notePath={notePath}
+                    onChange={(mapping) => dispatch({ type: 'UPDATE_CODE_MAPPING', nodeId: node.id, codeMapping: mapping })}
+                  />
+                </div>
               )}
             </div>
             {/* Inline add button between nodes */}

@@ -166,10 +166,14 @@ export function NoteViewport() {
         return (
           <DerivationEditor
             document={activeNoteContent as DerivationDocument}
+            notePath={selectedNoteId}
             onSave={async (doc: DerivationDocument) => {
               await saveNote(selectedNoteId, doc)
             }}
             codeRepoPath={state.codeRepoPath}
+            onNavigateToCode={(filePath: string, line: number) => {
+              navigateToCode(filePath, line)
+            }}
           />
         )
 

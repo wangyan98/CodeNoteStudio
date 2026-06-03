@@ -1,4 +1,4 @@
-import type { DerivationDocument, DerivationNode } from '../../../../main/schemas/note-types'
+import type { CodeMapping, DerivationDocument, DerivationNode } from '../../../../main/schemas/note-types'
 import { createDerivationNode } from '../../../../main/schemas/note-types'
 
 export interface DerivationAction {
@@ -11,12 +11,13 @@ export interface DerivationAction {
   fromIndex?: number
   toIndex?: number
   document?: DerivationDocument
+  codeMapping?: CodeMapping | null
 }
 
 function cloneDoc(doc: DerivationDocument): DerivationDocument {
   return {
     ...doc,
-    nodes: doc.nodes.map((n) => ({ ...n, embedRefs: [...n.embedRefs], codeMappings: [...n.codeMappings], derivesTo: [...n.derivesTo] }))
+    nodes: doc.nodes.map((n) => ({ ...n, embedRefs: [...n.embedRefs], derivesTo: [...n.derivesTo] }))
   }
 }
 
@@ -113,6 +114,14 @@ export function derivationReducer(doc: DerivationDocument, action: DerivationAct
       const [moved] = cloned.nodes.splice(action.fromIndex, 1)
       cloned.nodes.splice(action.toIndex, 0, moved)
       return { ...cloned, nodes: syncDerivesTo(recalcStepNumbers(cloned.nodes)) }
+    }
+
+    case 'UPDATE_CODE_MAPPING': {
+      const cloned = cloneDoc(doc)
+      cloned.nodes = cloned.nodes.map((n) =>
+        n.id === action.nodeId! ? { ...n, codeMapping: action.codeMapping ?? undefined } : n
+      )
+      return cloned
     }
 
     default:
