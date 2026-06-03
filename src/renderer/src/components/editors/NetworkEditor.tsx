@@ -73,6 +73,21 @@ export function NetworkEditor({ document: initialDoc, notePath, workspacePath, o
     return () => { if (saveTimerRef.current) clearTimeout(saveTimerRef.current) }
   }, [])
 
+  // Keyboard delete for selected node
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      const tag = (e.target as HTMLElement).tagName
+      if (tag === 'INPUT' || tag === 'TEXTAREA') return
+      if ((e.key === 'Delete' || e.key === 'Backspace') && selectedNodeId) {
+        e.preventDefault()
+        dispatch({ type: 'DELETE_NODE', nodeId: selectedNodeId })
+        setSelectedNodeId(null)
+      }
+    }
+    window.addEventListener('keydown', handler)
+    return () => window.removeEventListener('keydown', handler)
+  }, [selectedNodeId])
+
   // Load project-level layer catalog overrides
   useEffect(() => {
     const loadOverrides = async () => {
