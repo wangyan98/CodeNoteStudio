@@ -209,3 +209,46 @@ export async function listNotes(
   await scanDir(notesRoot, '')
   return result
 }
+
+export async function createFolder(
+  projectPath: string,
+  relativePath: string
+): Promise<void> {
+  const notesRoot = await getNotesRoot(projectPath)
+  const fullPath = path.join(notesRoot, relativePath)
+  await ensureDir(fullPath)
+}
+
+export async function copyFileToNotes(
+  projectPath: string,
+  sourcePath: string,
+  targetDirRelative: string
+): Promise<void> {
+  const notesRoot = await getNotesRoot(projectPath)
+  const targetDir = path.join(notesRoot, targetDirRelative)
+  await ensureDir(targetDir)
+
+  const originalName = path.basename(sourcePath)
+  let destName = originalName
+  let destPath = path.join(targetDir, destName)
+
+  let counter = 1
+  while (await fileExists(destPath)) {
+    const ext = path.extname(originalName)
+    const base = path.basename(originalName, ext)
+    destName = `${base}-${counter}${ext}`
+    destPath = path.join(targetDir, destName)
+    counter++
+  }
+
+  await fs.copyFile(sourcePath, destPath)
+}
+
+export async function deleteFolder(
+  projectPath: string,
+  relativePath: string
+): Promise<void> {
+  const notesRoot = await getNotesRoot(projectPath)
+  const fullPath = path.join(notesRoot, relativePath)
+  await fs.rm(fullPath, { recursive: true, force: true })
+}
