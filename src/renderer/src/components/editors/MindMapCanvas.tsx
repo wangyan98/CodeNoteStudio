@@ -991,14 +991,16 @@ export const MindMapCanvas = forwardRef<MindMapCanvasHandle, MindMapCanvasProps>
             const siblings = d.parent.children || []
             if (siblings.length > 0) {
               // Only allow reorder within the same parent (cross-parent reorder not supported)
+              // Use zoom transform to correctly convert SVG positions to viewport
+              const zoomTransform = d3.zoomTransform(svgEl)
+              const svgRect = svgEl.getBoundingClientRect()
               let insertIdx = siblings.length
               for (let i = 0; i < siblings.length; i++) {
                 if (siblings[i].id === d.data.id) continue
                 const sibOrig = originalPositions.get(siblings[i].id)
                 if (!sibOrig) continue
-                // Convert sibling SVG position to viewport Y
-                const svgRect = svgEl.getBoundingClientRect()
-                const sibViewportY = svgRect.top + sibOrig.x
+                // Convert sibling SVG position to viewport Y accounting for zoom
+                const sibViewportY = svgRect.top + zoomTransform.applyY(sibOrig.x)
                 if (clientY < sibViewportY) {
                   insertIdx = i
                   break
