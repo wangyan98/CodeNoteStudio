@@ -1,7 +1,11 @@
 import { useEffect, useState, useCallback } from 'react'
 import { useAppContext } from '../contexts/AppContext'
 import type { CodeFile } from '../types'
+import { NodeContextMenu } from './editors/NodeContextMenu'
+import type { MenuEntry } from './editors/NodeContextMenu'
+import { setClipboardFile } from '../services/clipboard'
 import './CodeDirectory.css'
+import './ContextMenu.css'
 
 interface RepoFileNode {
   name: string
@@ -14,11 +18,13 @@ interface RepoFileNode {
 function FileTreeItem({
   file,
   depth,
-  onSelect
+  onSelect,
+  onContextMenu
 }: {
   file: RepoFileNode
   depth: number
   onSelect: (file: RepoFileNode) => void
+  onContextMenu: (e: React.MouseEvent, file: RepoFileNode) => void
 }) {
   const [expanded, setExpanded] = useState(depth < 1)
   const icon = file.isDirectory ? (expanded ? '▾' : '▸') : getFileIcon(file.name)
@@ -57,6 +63,7 @@ function FileTreeItem({
         onClick={handleClick}
         draggable={!file.isDirectory}
         onDragStart={handleDragStart}
+        onContextMenu={(e) => onContextMenu(e, file)}
       >
         <span className="code-file-icon">{icon}</span>
         <span>{file.name}</span>
@@ -67,6 +74,7 @@ function FileTreeItem({
           file={child}
           depth={depth + 1}
           onSelect={onSelect}
+          onContextMenu={onContextMenu}
         />
       ))}
     </>
@@ -130,6 +138,11 @@ export function CodeDirectory() {
   const [repoFiles, setRepoFiles] = useState<RepoFileNode[]>([])
   const [filter, setFilter] = useState<string>('all')
   const [loading, setLoading] = useState(false)
+  const [contextMenu, setContextMenu] = useState<{
+    x: number
+    y: number
+    file: RepoFileNode
+  } | null>(null)
 
   const fileTypes = ['all', '.ts', '.tsx', '.js', '.py', '.rs', '.go', '.cpp', '.md', '.json']
 
@@ -190,6 +203,53 @@ export function CodeDirectory() {
 
   const tree = buildTree(filteredFiles)
 
+  const IMAGE_EXTS = new Set(['png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp', 'svg'])
+
+  const isImageFile = (name: string): boolean => {
+    const ext = name.split('.').pop()?.toLowerCase() || ''
+    return IMAGE_EXTS.has(ext)
+  }
+
+  const buildFileContextMenu = useCallback((file: RepoFileNode): MenuEntry[] => {
+    const items: MenuEntry[] = [
+      {
+        label: 'Copy File',
+        action: () => { setClipboardFile(file.absolutePath) }
+      },
+      { separator: true },
+      {
+        label: 'Copy Relative Path',
+        action: () => { navigator.clipboard.writeText(file.relativePath) }
+      },
+      {
+        label: 'Copy Absolute Path',
+        action: () => { navigator.clipboard.writeText(file.absolutePath) }
+      }
+    ]
+
+    if (isImageFile(file.name)) {
+      items.push(
+        { separator: true },
+        {
+          label: 'Insert Image into MD',
+          action: () => {
+            window.dispatchEvent(new CustomEvent('image-insert', {
+              detail: { sourcePath: file.absolutePath, fileName: file.name }
+            }))
+          }
+        }
+      )
+    }
+
+    return items
+  }, [])
+
+  const handleContextMenu = useCallback((e: React.MouseEvent, file: RepoFileNode) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setContextMenu({ x: e.clientX, y: e.clientY, file })
+  }, [])
+
   return (
     <div className="panel panel-code-directory">
       <div className="panel-header">Code</div>
@@ -218,6 +278,7 @@ export function CodeDirectory() {
                     file={file}
                     depth={0}
                     onSelect={handleFileSelect}
+                    onContextMenu={handleContextMenu}
                   />
                 ))
               )}
@@ -227,6 +288,14 @@ export function CodeDirectory() {
           <div className="code-no-repo">
             <p>No code repository selected.<br/>Use the toolbar to add a repo.</p>
           </div>
+        )}
+        {contextMenu && (
+          <NodeContextMenu
+            x={contextMenu.x}
+            y={contextMenu.y}
+            items={buildFileContextMenu(contextMenu.file)}
+            onClose={() => setContextMenu(null)}
+          />
         )}
       </div>
     </div>
