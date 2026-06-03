@@ -1,4 +1,4 @@
-import { useRef, useEffect, useCallback } from 'react'
+import { useRef, useEffect, useCallback, useState } from 'react'
 import * as d3 from 'd3'
 import dagre from 'dagre'
 import type { NetworkDocument, GraphNode, GraphEdge } from '../../../../main/schemas/note-types'
@@ -74,14 +74,15 @@ export function NetworkCanvas({
     }
   }, [])
 
-  // Keep SVG dimensions in sync with container
+  const [dims, setDims] = useState({ w: 0, h: 0 })
+
+  // Keep SVG dimensions in sync with container, re-render when size changes
   useEffect(() => {
     const container = containerRef.current
     if (!container) return
-    const observer = new ResizeObserver(() => {
-      const svg = d3.select(svgRef.current)
-      svg.attr('width', container.clientWidth).attr('height', container.clientHeight)
-    })
+    const update = () => setDims({ w: container.clientWidth, h: container.clientHeight })
+    update()
+    const observer = new ResizeObserver(update)
     observer.observe(container)
     return () => observer.disconnect()
   }, [])
@@ -91,8 +92,8 @@ export function NetworkCanvas({
     const container = containerRef.current
     if (!container) return
 
-    const W = container.clientWidth || 800
-    const H = container.clientHeight || 500
+    const W = dims.w || container.clientWidth || 800
+    const H = dims.h || container.clientHeight || 500
     svg.attr('width', W).attr('height', H)
     svg.selectAll('*').remove()
 
@@ -285,7 +286,7 @@ export function NetworkCanvas({
     // Background click to deselect
     svg.on('click', () => { onSelectNode(null) })
 
-  }, [doc, catalog, selectedNodeId, onSelectNode])
+  }, [doc, catalog, selectedNodeId, onSelectNode, dims])
 
   useEffect(() => {
     render()
