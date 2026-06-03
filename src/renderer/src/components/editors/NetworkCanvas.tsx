@@ -194,6 +194,21 @@ export function NetworkCanvas({
 
     const g = svg.append('g').attr('class', 'canvas-content')
 
+    // Pre-build set of valid drag-connect target IDs (exclude input/output)
+    const validDragTargetIds = new Set<string>()
+    for (const node of topNodes) {
+      if (node.kind !== 'input' && node.kind !== 'output') {
+        validDragTargetIds.add(node.id)
+      }
+      if (node.children) {
+        for (const child of node.children) {
+          if (child.kind !== 'input' && child.kind !== 'output') {
+            validDragTargetIds.add(child.id)
+          }
+        }
+      }
+    }
+
     // Auto-fit: scale content to fit available space
     const fitScale = Math.min(1, W / contentW, H / contentH)
 
@@ -339,6 +354,7 @@ export function NetworkCanvas({
       const nodeG = g.append('g')
         .attr('class', 'net-node')
         .attr('data-node-id', node.id)
+        .attr('data-node-kind', node.kind)
         .style('cursor', 'pointer')
 
       if (node.kind === 'block') {
@@ -395,6 +411,7 @@ export function NetworkCanvas({
             const childG = nodeG.append('g')
               .attr('class', 'net-node')
               .attr('data-node-id', child.id)
+              .attr('data-node-kind', child.kind)
               .style('cursor', 'pointer')
 
             childG.append('rect')
@@ -444,6 +461,87 @@ export function NetworkCanvas({
                 onSelectNode?.(child.id)
               }
             })
+
+            // Drag-to-connect for child nodes inside blocks
+            if (!readOnly && child.kind !== 'input' && child.kind !== 'output') {
+              const childDrag = d3.drag<SVGGElement, unknown>()
+                .on('start', function (event: d3.D3DragEvent<SVGGElement, unknown, unknown>) {
+                  d3.select(this).raise()
+                  d3.select(this).select('rect').attr('stroke', '#ff0').attr('stroke-width', 2.5)
+                  const transform = d3.zoomTransform(svgEl!)
+                  const r = container.getBoundingClientRect()
+                  const sx = (event.sourceEvent.clientX - r.left - transform.x) / transform.k
+                  const sy = (event.sourceEvent.clientY - r.top - transform.y) / transform.k
+                  g.append('line')
+                    .attr('class', 'net-drag-line')
+                    .attr('x1', sx).attr('y1', sy)
+                    .attr('x2', sx).attr('y2', sy)
+                    .attr('stroke', '#4a90d9').attr('stroke-width', 2)
+                    .attr('stroke-dasharray', '4,2')
+                })
+                .on('drag', function (event: d3.D3DragEvent<SVGGElement, unknown, unknown>) {
+                  const transform = d3.zoomTransform(svgEl!)
+                  const r = container.getBoundingClientRect()
+                  const mx = (event.sourceEvent.clientX - r.left - transform.x) / transform.k
+                  const my = (event.sourceEvent.clientY - r.top - transform.y) / transform.k
+                  svgEl!.querySelector('.net-drag-line')?.setAttribute('x2', String(mx))
+                  svgEl!.querySelector('.net-drag-line')?.setAttribute('y2', String(my))
+                  // Detect target
+                  const els = document.elementsFromPoint(event.sourceEvent.clientX, event.sourceEvent.clientY)
+                  svgEl!.querySelectorAll('.net-drag-target').forEach(el => {
+                    el.classList.remove('net-drag-target')
+                    const r2 = (el as SVGGElement).querySelector('rect')
+                    if (r2) {
+                      const os = r2.getAttribute('data-orig-stroke')
+                      const ow = r2.getAttribute('data-orig-stroke-width')
+                      if (os) r2.setAttribute('stroke', os)
+                      if (ow) r2.setAttribute('stroke-width', ow)
+                    }
+                  })
+                  for (const el of els) {
+                    const nodeEl = (el as Element).closest?.('.net-node') as HTMLElement | null
+                    if (!nodeEl) continue
+                    const tid = nodeEl.getAttribute('data-node-id')
+                    if (!tid || tid === child.id || !validDragTargetIds.has(tid)) continue
+                    nodeEl.classList.add('net-drag-target')
+                    const tr = nodeEl.querySelector('rect')
+                    if (tr) {
+                      tr.setAttribute('data-orig-stroke', tr.getAttribute('stroke') || '#888')
+                      tr.setAttribute('data-orig-stroke-width', tr.getAttribute('stroke-width') || '1.5')
+                      tr.setAttribute('stroke', '#ff0')
+                      tr.setAttribute('stroke-width', '2.5')
+                    }
+                    break
+                  }
+                })
+                .on('end', function (event: d3.D3DragEvent<SVGGElement, unknown, unknown>) {
+                  svgEl!.querySelector('.net-drag-line')?.remove()
+                  const isSel = child.id === selectedNodeId
+                  d3.select(this).select('rect')
+                    .attr('stroke', isSel ? '#4a90d9' : cc)
+                    .attr('stroke-width', isSel ? 2.5 : 1.5)
+                  svgEl!.querySelectorAll('.net-drag-target').forEach(el => {
+                    el.classList.remove('net-drag-target')
+                    const r2 = (el as SVGGElement).querySelector('rect')
+                    if (r2) {
+                      const os = r2.getAttribute('data-orig-stroke')
+                      const ow = r2.getAttribute('data-orig-stroke-width')
+                      if (os) r2.setAttribute('stroke', os)
+                      if (ow) r2.setAttribute('stroke-width', ow)
+                    }
+                  })
+                  const els = document.elementsFromPoint(event.sourceEvent.clientX, event.sourceEvent.clientY)
+                  for (const el of els) {
+                    const nodeEl = (el as Element).closest?.('.net-node') as HTMLElement | null
+                    if (!nodeEl) continue
+                    const tid = nodeEl.getAttribute('data-node-id')
+                    if (!tid || tid === child.id || !validDragTargetIds.has(tid)) continue
+                    onAddEdge?.(child.id, tid)
+                    break
+                  }
+                })
+              childG.call(childDrag as any)
+            }
 
             // Child output port (unless block — block uses its own outer ports)
             if (!readOnly && child.kind !== 'output') {
@@ -538,6 +636,94 @@ export function NetworkCanvas({
         }
       })
 
+      // Drag-to-connect: drag layer/block node onto another node to create edge
+      if (!readOnly && node.kind !== 'input' && node.kind !== 'output') {
+        const layerDrag = d3.drag<SVGGElement, unknown>()
+          .on('start', function (event: d3.D3DragEvent<SVGGElement, unknown, unknown>) {
+            d3.select(this).raise()
+            d3.select(this).select('rect').attr('stroke', '#ff0').attr('stroke-width', 2.5)
+            // Draw dashed line from node center to cursor
+            const transform = d3.zoomTransform(svgEl!)
+            const rect = container.getBoundingClientRect()
+            const svgX = (event.sourceEvent.clientX - rect.left - transform.x) / transform.k
+            const svgY = (event.sourceEvent.clientY - rect.top - transform.y) / transform.k
+            g.append('line')
+              .attr('class', 'net-drag-line')
+              .attr('x1', svgX).attr('y1', svgY)
+              .attr('x2', svgX).attr('y2', svgY)
+              .attr('stroke', '#4a90d9').attr('stroke-width', 2)
+              .attr('stroke-dasharray', '4,2')
+          })
+          .on('drag', function (event: d3.D3DragEvent<SVGGElement, unknown, unknown>) {
+            const transform = d3.zoomTransform(svgEl!)
+            const r = container.getBoundingClientRect()
+            const mx = (event.sourceEvent.clientX - r.left - transform.x) / transform.k
+            const my = (event.sourceEvent.clientY - r.top - transform.y) / transform.k
+            svgEl!.querySelector('.net-drag-line')?.setAttribute('x2', String(mx))
+            svgEl!.querySelector('.net-drag-line')?.setAttribute('y2', String(my))
+
+            // Detect target node under cursor
+            const els = document.elementsFromPoint(event.sourceEvent.clientX, event.sourceEvent.clientY)
+            // Clear previous highlights
+            svgEl!.querySelectorAll('.net-drag-target').forEach(el => {
+              el.classList.remove('net-drag-target')
+              const r2 = (el as SVGGElement).querySelector('rect')
+              if (r2) {
+                const origStroke = r2.getAttribute('data-orig-stroke')
+                const origWidth = r2.getAttribute('data-orig-stroke-width')
+                if (origStroke) r2.setAttribute('stroke', origStroke)
+                if (origWidth) r2.setAttribute('stroke-width', origWidth)
+              }
+            })
+            for (const el of els) {
+              const nodeEl = (el as Element).closest?.('.net-node') as HTMLElement | null
+              if (!nodeEl) continue
+              const targetId = nodeEl.getAttribute('data-node-id')
+              if (!targetId || targetId === node.id || !validDragTargetIds.has(targetId)) continue
+              nodeEl.classList.add('net-drag-target')
+              const targetRect = nodeEl.querySelector('rect')
+              if (targetRect) {
+                targetRect.setAttribute('data-orig-stroke', targetRect.getAttribute('stroke') || '#888')
+                targetRect.setAttribute('data-orig-stroke-width', targetRect.getAttribute('stroke-width') || '1.5')
+                targetRect.setAttribute('stroke', '#ff0')
+                targetRect.setAttribute('stroke-width', '2.5')
+              }
+              break
+            }
+          })
+          .on('end', function (event: d3.D3DragEvent<SVGGElement, unknown, unknown>) {
+            // Remove dashed line
+            svgEl!.querySelector('.net-drag-line')?.remove()
+            // Restore dragged node border
+            const isSelected = node.id === selectedNodeId
+            d3.select(this).select('rect')
+              .attr('stroke', isSelected ? '#4a90d9' : color)
+              .attr('stroke-width', isSelected ? 2.5 : 1.5)
+            // Clear target highlights
+            svgEl!.querySelectorAll('.net-drag-target').forEach(el => {
+              el.classList.remove('net-drag-target')
+              const r2 = (el as SVGGElement).querySelector('rect')
+              if (r2) {
+                const origStroke = r2.getAttribute('data-orig-stroke')
+                const origWidth = r2.getAttribute('data-orig-stroke-width')
+                if (origStroke) r2.setAttribute('stroke', origStroke)
+                if (origWidth) r2.setAttribute('stroke-width', origWidth)
+              }
+            })
+            // Find target and create edge
+            const els = document.elementsFromPoint(event.sourceEvent.clientX, event.sourceEvent.clientY)
+            for (const el of els) {
+              const nodeEl = (el as Element).closest?.('.net-node') as HTMLElement | null
+              if (!nodeEl) continue
+              const targetId = nodeEl.getAttribute('data-node-id')
+              if (!targetId || targetId === node.id || !validDragTargetIds.has(targetId)) continue
+              onAddEdge?.(node.id, targetId)
+              break
+            }
+          })
+        nodeG.call(layerDrag as any)
+      }
+
       // Output port — bottom center of block (only for non-output nodes)
       if (!readOnly && node.kind !== 'output') {
         nodeG.append('circle')
@@ -574,7 +760,7 @@ export function NetworkCanvas({
     // Background click to deselect
     svg.on('click', () => { onSelectNode?.(null) })
 
-  }, [doc, catalog, selectedNodeId, selectedEdgeId, onSelectNode, onSelectEdge, onNavigateToCode, dims])
+  }, [doc, catalog, selectedNodeId, selectedEdgeId, onSelectNode, onSelectEdge, onNavigateToCode, onAddEdge, readOnly, dims])
 
   useEffect(() => {
     render()
