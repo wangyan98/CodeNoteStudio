@@ -40,15 +40,24 @@ export function networkReducer(doc: NetworkDocument, action: NetworkAction): Net
         layerType: action.layerType,
         params: {},
       }
-      // If parentId is set, add as child of that block
+      // If parentId is set, add as child of that block, chaining to last child
       if (action.parentId) {
         return {
           ...cloned,
-          nodes: (cloned.nodes ?? []).map(n =>
-            n.id === action.parentId
-              ? { ...n, children: [...(n.children ?? []), newNode] }
-              : n
-          ),
+          nodes: (cloned.nodes ?? []).map(n => {
+            if (n.id !== action.parentId) return n
+            const prevChildren = n.children ?? []
+            const newInternalEdge: GraphEdge | null = prevChildren.length > 0
+              ? { id: uuidv4(), source: prevChildren[prevChildren.length - 1].id, target: newNode.id, style: 'forward' }
+              : null
+            return {
+              ...n,
+              children: [...prevChildren, newNode],
+              internalEdges: newInternalEdge
+                ? [...(n.internalEdges ?? []), newInternalEdge]
+                : (n.internalEdges ?? []),
+            }
+          }),
         }
       }
       return { ...cloned, nodes: [...(cloned.nodes ?? []), newNode] }
