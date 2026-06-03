@@ -76,8 +76,12 @@ Uses `navigator.clipboard.writeText()` — no IPC needed.
 
 | Item | Action | Condition |
 |------|--------|-----------|
+| New Note | Show inline input → create note in this folder | always |
+| New Folder | Show inline input → create folder in this folder | always |
+| --- | | |
 | Paste File | IPC copy-file from clipboardFile into this folder | clipboard not empty |
 | Rename | prompt() → IPC rename | always |
+| --- | | |
 | Delete Folder | confirm() → IPC `notes:delete-folder` (recursive) | always |
 
 ## 4. Insert Image into MD Flow

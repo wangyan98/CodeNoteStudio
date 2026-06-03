@@ -577,6 +577,26 @@ Add these functions inside `NoteDirectory`, before the return statement:
 
   const buildFolderContextMenu = useCallback((node: TreeNode): MenuEntry[] => {
     return [
+      {
+        label: 'New Note',
+        action: () => {
+          const baseName = prompt('Note name:')
+          if (!baseName) return
+          const ext = '.md'
+          const relPath = node.path ? `${node.path}/${baseName}${ext}` : `${baseName}${ext}`
+          createNote(relPath, 'md')
+        }
+      },
+      {
+        label: 'New Folder',
+        action: () => {
+          const folderName = prompt('Folder name:')
+          if (!folderName) return
+          const relPath = node.path ? `${node.path}/${folderName}` : folderName
+          window.electronAPI.createFolder(relPath).then(() => refreshNotes())
+        }
+      },
+      { separator: true },
       ...(getClipboardFile() ? [{
         label: 'Paste File',
         action: async () => {
@@ -609,7 +629,7 @@ Add these functions inside `NoteDirectory`, before the return statement:
         }
       }
     ]
-  }, [renameNote, refreshNotes])
+  }, [createNote, renameNote, refreshNotes])
 
   const handleContextMenu = useCallback((e: React.MouseEvent, node: TreeNode) => {
     e.preventDefault()
