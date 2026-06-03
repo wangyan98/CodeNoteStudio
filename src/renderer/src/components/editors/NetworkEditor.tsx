@@ -23,6 +23,8 @@ type SaveStatus = 'saved' | 'saving' | 'unsaved' | 'error'
 export function NetworkEditor({ document: initialDoc, notePath, workspacePath, onSave, onNavigateToCode }: NetworkEditorProps) {
   const [doc, dispatch] = useReducer(networkReducer, initialDoc.version === 2 ? initialDoc : createNetworkDocument())
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null)
+  const selectedNodeIdRef = useRef<string | null>(null)
+  selectedNodeIdRef.current = selectedNodeId
   const [panelHeight, setPanelHeight] = useState(0.25)
   const [saveStatus, setSaveStatus] = useState<SaveStatus>('saved')
   const [catalogOverrides, setCatalogOverrides] = useState<LayerCatalogOverrides | null>(null)
@@ -116,7 +118,12 @@ export function NetworkEditor({ document: initialDoc, notePath, workspacePath, o
   }, [])
 
   const handleDropLayer = useCallback((layerType: string) => {
-    dispatch({ type: 'ADD_NODE', kind: 'layer', layerType, name: layerType })
+    const newNodeId = crypto.randomUUID()
+    dispatch({ type: 'ADD_NODE', nodeId: newNodeId, kind: 'layer', layerType, name: layerType })
+    const sourceId = selectedNodeIdRef.current
+    if (sourceId) {
+      dispatch({ type: 'ADD_EDGE', source: sourceId, target: newNodeId })
+    }
   }, [])
 
   const handleDeleteNode = useCallback((nodeId: string) => {

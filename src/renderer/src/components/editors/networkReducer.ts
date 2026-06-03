@@ -33,7 +33,7 @@ export function networkReducer(doc: NetworkDocument, action: NetworkAction): Net
     case 'ADD_NODE': {
       const cloned = cloneDoc(doc)
       const newNode: GraphNode = {
-        id: uuidv4(),
+        id: action.nodeId ?? uuidv4(),
         kind: action.kind ?? 'layer',
         label: action.name ?? action.layerType ?? 'New Node',
         layerType: action.layerType,
@@ -69,10 +69,10 @@ export function networkReducer(doc: NetworkDocument, action: NetworkAction): Net
     case 'ADD_EDGE': {
       const cloned = cloneDoc(doc)
       const newEdge: GraphEdge = {
-        id: uuidv4(),
+        id: action.edge?.id ?? uuidv4(),
         source: action.source!,
         target: action.target!,
-        style: 'forward',
+        style: action.value as GraphEdge['style'] ?? 'forward',
       }
       // Avoid duplicate edges
       const exists = (cloned.edges ?? []).some(
