@@ -2,10 +2,19 @@ import { useCallback } from 'react'
 import { useAppContext } from '../contexts/AppContext'
 import type { CodeFile } from '../types'
 
+function useAppDispatch() {
+  try {
+    return useAppContext().dispatch
+  } catch {
+    return undefined
+  }
+}
+
 export function useCodeNavigation() {
-  const { dispatch } = useAppContext()
+  const dispatch = useAppDispatch()
 
   const navigateToCode = useCallback((filePath: string, startLine: number, repoPath?: string) => {
+    if (!dispatch) return
     const fileName = filePath.split('/').pop() || filePath
     const ext = filePath.split('.').pop()?.toLowerCase() || ''
     const langMap: Record<string, string> = {
