@@ -5,9 +5,7 @@
 11. 思维导图嵌入文档卡片内容消失
 12. 双击点击事件有问题
 13. 嵌入卡片被下一个同级节点遮挡
-14. .mind.json这类文件后缀还是太乱了，改为图标显示，隐藏掉后缀
 15. 将derive转为skills，方便agentcrud
 16. repos设置页，防止代码库移动位置忘记了是什么仓库，读取git存储git地址，crud，必须明确删除才会删除代码库
 17. 自动校验输入模型layer的input shape和output shape
-18. seq 图 可以使用ref,在渲染时直接跳转代码
 19. layer叠加到另一个layer上时直接连线

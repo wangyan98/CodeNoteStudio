@@ -29,7 +29,7 @@ function findNodeInTree(node: MindMapNode, id: string): MindMapNode | null {
   return null
 }
 
-function findParentAndIndex(doc: MindMapDocument, nodeId: string): { parent: MindMapNode; index: number } | null {
+export function findParentAndIndex(doc: MindMapDocument, nodeId: string): { parent: MindMapNode; index: number } | null {
   return findParentInTree(doc.root, nodeId, null, 0)
 }
 

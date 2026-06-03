@@ -2,7 +2,7 @@ import { useRef, useEffect, useCallback, useImperativeHandle, forwardRef, useSta
 import * as d3 from 'd3'
 import type { MindMapDocument, MindMapNode, DerivationDocument, NetworkDocument } from '../../../../main/schemas/note-types'
 import type { MindMapAction } from './mindMapReducer'
-import { findNode } from './mindMapReducer'
+import { findNode, findParentAndIndex } from './mindMapReducer'
 import { inferEmbedType, renderMarkdownForEmbed } from '../../services/markdown-renderer'
 import { MindMapRenderer } from './MindMapRenderer'
 import { DerivationDagViewer } from './DerivationDagViewer'
@@ -736,6 +736,11 @@ export const MindMapCanvas = forwardRef<MindMapCanvasHandle, MindMapCanvasProps>
       let dragOffset: { x: number; y: number } | null = null
       let dragged = false
 
+      // Drag target tracking
+      let dragTargetNodeId: string | null = null
+      let dragTargetAction: 'reparent' | 'reorder' | null = null
+      let dragInsertIndex: number | null = null
+
       // Collect descendant IDs for a node
       function getDescendantIds(nodeId: string): Set<string> {
         const ids = new Set<string>()
@@ -751,6 +756,61 @@ export const MindMapCanvas = forwardRef<MindMapCanvasHandle, MindMapCanvasProps>
           }
         }
         return ids
+      }
+
+      function clearDragHighlight() {
+        const svgEl = svgRef.current
+        if (!svgEl) return
+        // Remove yellow border from all nodes
+        svgEl.querySelectorAll('[data-node-id] rect').forEach((rect) => {
+          const g = rect.parentElement
+          const nodeId = g?.getAttribute('data-node-id')
+          const isSelected = nodeId === selectedNodeIdRef.current
+          const depth = g?.getAttribute('data-depth')
+          const isRoot = depth === '0'
+          rect.setAttribute('fill', isSelected ? '#094771' : (isRoot ? '#007acc' : '#3c3c3c'))
+          rect.setAttribute('stroke', isSelected ? '#ff0' : (isRoot ? '#007acc' : '#555'))
+          rect.setAttribute('stroke-width', isSelected ? '2' : '1')
+        })
+        // Restore sibling positions (remove any shift-down transform overrides)
+        svgEl.querySelectorAll('[data-node-id]').forEach((el) => {
+          const nodeId = (el as SVGGElement).getAttribute('data-node-id')
+          const orig = originalPositions.get(nodeId || '')
+          if (orig) {
+            el.setAttribute('transform', `translate(${orig.y},${orig.x})`)
+          }
+        })
+        dragTargetNodeId = null
+        dragTargetAction = null
+        dragInsertIndex = null
+      }
+
+      function highlightReparentTarget(targetId: string) {
+        const svgEl = svgRef.current
+        if (!svgEl) return
+        const targetG = svgEl.querySelector(`[data-node-id="${targetId}"]`)
+        if (!targetG) return
+        const rect = targetG.querySelector('rect')
+        if (rect) {
+          rect.setAttribute('stroke', '#ff0')
+          rect.setAttribute('stroke-width', '2')
+        }
+      }
+
+      function shiftSiblingsForInsert(parentId: string, insertIndex: number, draggedNodeId: string) {
+        const svgEl = svgRef.current
+        if (!svgEl) return
+        const siblings = svgEl.querySelectorAll(`[data-parent-id="${parentId}"]`)
+        siblings.forEach((el) => {
+          const sid = el.getAttribute('data-node-id')
+          if (!sid || sid === draggedNodeId) return
+          const orig = originalPositions.get(sid)
+          if (!orig) return
+          const parentInfo = findParentAndIndex(doc, sid)
+          if (parentInfo && parentInfo.index >= insertIndex) {
+            el.setAttribute('transform', `translate(${orig.y},${orig.x + 32})`)
+          }
+        })
       }
 
       const dragHandler = d3.drag<SVGGElement, d3.HierarchyNode<MindMapNode>>()
@@ -882,19 +942,99 @@ export const MindMapCanvas = forwardRef<MindMapCanvasHandle, MindMapCanvasProps>
               }
             }
           }
+
+          // --- Hit detection for drop target ---
+          const clientX = event.sourceEvent.clientX
+          const clientY = event.sourceEvent.clientY
+          const elementsUnderCursor = document.elementsFromPoint(clientX, clientY)
+
+          // Clear previous drag highlight
+          if (dragTargetNodeId) {
+            clearDragHighlight()
+            // Re-apply drag movement to dragged node and descendants (clearDragHighlight resets them)
+            d3.select(this).attr('transform', `translate(${pt[0] - dragOffset.x},${pt[1] - dragOffset.y})`)
+            descendantIds.forEach(id => {
+              const el = svgEl.querySelector<SVGGElement>(`[data-node-id="${id}"]`)
+              const orig = originalPositions.get(id)
+              if (el && orig) {
+                el.setAttribute('transform', `translate(${orig.y + dx},${orig.x + dy})`)
+              }
+            })
+          }
+
+          // Check for direct node overlap (reparent)
+          let foundTarget = false
+          for (const el of elementsUnderCursor) {
+            const nodeEl = (el as Element).closest?.('.mind-node') as HTMLElement | null
+            if (!nodeEl) continue
+            const targetId = nodeEl.getAttribute('data-node-id')
+            if (!targetId || targetId === d.data.id || descendantIds.has(targetId)) continue
+            // Prevent dragging onto own ancestor (would create cycle)
+            const ancestors = new Set<string>()
+            let current = d.parent
+            while (current) {
+              ancestors.add(current.data.id)
+              current = current.parent
+            }
+            if (ancestors.has(targetId)) continue
+
+            dragTargetNodeId = targetId
+            dragTargetAction = 'reparent'
+            highlightReparentTarget(targetId)
+            foundTarget = true
+            break
+          }
+
+          // If no direct node hit, check for between-siblings reorder
+          if (!foundTarget && d.parent) {
+            const parentNodeId = d.parent.data.id
+            const siblings = d.parent.children || []
+            if (siblings.length > 0) {
+              // Only allow reorder within the same parent (cross-parent reorder not supported)
+              let insertIdx = siblings.length
+              for (let i = 0; i < siblings.length; i++) {
+                if (siblings[i].id === d.data.id) continue
+                const sibOrig = originalPositions.get(siblings[i].id)
+                if (!sibOrig) continue
+                // Convert sibling SVG position to viewport Y
+                const svgRect = svgEl.getBoundingClientRect()
+                const sibViewportY = svgRect.top + sibOrig.x
+                if (clientY < sibViewportY) {
+                  insertIdx = i
+                  break
+                }
+              }
+              // Adjust insertIdx to skip the dragged node's original position
+              const draggedOrigIdx = siblings.findIndex(s => s.id === d.data.id)
+              if (draggedOrigIdx >= 0 && insertIdx > draggedOrigIdx) {
+                insertIdx--
+              }
+              if (insertIdx >= 0 && insertIdx !== draggedOrigIdx) {
+                dragTargetAction = 'reorder'
+                dragInsertIndex = insertIdx
+                shiftSiblingsForInsert(parentNodeId, insertIdx, d.data.id)
+              }
+            }
+          }
         })
-        .on('end', function (_event: d3.D3DragEvent<SVGGElement, unknown, unknown>, _d: d3.HierarchyNode<MindMapNode>) {
+        .on('end', function (_event: d3.D3DragEvent<SVGGElement, unknown, unknown>, d: d3.HierarchyNode<MindMapNode>) {
           dragOffset = null
+          clearDragHighlight()
+
           if (dragged) {
             dragged = false
-            // Full re-render to snap all nodes and lines back to original positions
+            if (dragTargetAction === 'reparent' && dragTargetNodeId) {
+              dispatch({ type: 'REPARENT', nodeId: d.data.id, newParentId: dragTargetNodeId })
+            } else if (dragTargetAction === 'reorder' && dragInsertIndex !== null) {
+              dispatch({ type: 'REORDER', nodeId: d.data.id, newIndex: dragInsertIndex })
+            }
+            // Always re-render after drag (either action was dispatched or it snaps back)
             render()
           } else {
-            // Pure click (no drag movement) — restore the highlight stroke that
-            // 'start' set, so the selection useEffect can apply the correct style
-            const isSelected = _d.data.id === selectedNodeIdRef.current
+            // Pure click (no drag movement)
+            const isSelected = d.data.id === selectedNodeIdRef.current
             d3.select(this).select('rect')
-              .attr('stroke', isSelected ? '#ff0' : (_d.depth === 0 ? '#007acc' : '#555'))
+              .attr('stroke', isSelected ? '#ff0' : (d.depth === 0 ? '#007acc' : '#555'))
               .attr('stroke-width', isSelected ? 2 : 1)
           }
         })
