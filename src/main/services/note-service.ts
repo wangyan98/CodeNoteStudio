@@ -192,6 +192,12 @@ export async function listNotes(
       }
 
       if (stat.isDirectory()) {
+        result.push({
+          name: entry,
+          relativePath: relPath,
+          type: 'md',
+          isDirectory: true
+        })
         await scanDir(fullPath, relPath)
       } else {
         const type = getNoteType(entry)

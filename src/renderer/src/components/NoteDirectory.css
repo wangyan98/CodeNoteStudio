@@ -193,3 +193,19 @@
 .note-directory-toolbar-buttons .new-note-btn {
   flex: 1;
 }
+
+.tree-item-inline-input {
+  flex: 1;
+  padding: 1px 6px;
+  font-size: 12px;
+  background: var(--input-bg, #3c3c3c);
+  border: 1px solid var(--accent-color);
+  border-radius: 3px;
+  color: var(--text-color);
+  outline: none;
+  min-width: 0;
+}
+
+.tree-item-create {
+  opacity: 0.85;
+}

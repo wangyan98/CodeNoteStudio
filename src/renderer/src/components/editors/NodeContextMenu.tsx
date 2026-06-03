@@ -26,7 +26,7 @@ export function NodeContextMenu({ x, y, items, onClose }: NodeContextMenuProps) 
   const menuRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
-    const handleClick = (e: MouseEvent) => {
+    const handleClickOutside = (e: MouseEvent) => {
       if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
         onClose()
       }
@@ -36,14 +36,35 @@ export function NodeContextMenu({ x, y, items, onClose }: NodeContextMenuProps) 
     }
     // Delay listeners so the right-click event doesn't immediately close the menu
     setTimeout(() => {
-      document.addEventListener('mousedown', handleClick)
+      document.addEventListener('mousedown', handleClickOutside)
       document.addEventListener('keydown', handleKey)
     }, 0)
     return () => {
-      document.removeEventListener('mousedown', handleClick)
+      document.removeEventListener('mousedown', handleClickOutside)
       document.removeEventListener('keydown', handleKey)
     }
   }, [onClose])
+
+  // Use native click listener on the menu container to bypass React synthetic event
+  // issues with portal-rendered content
+  useEffect(() => {
+    const menu = menuRef.current
+    if (!menu) return
+
+    const handleItemClick = (e: MouseEvent) => {
+      const actionEl = (e.target as HTMLElement).closest('[data-menu-action]') as HTMLElement | null
+      if (!actionEl) return
+      const index = parseInt(actionEl.dataset.menuAction!, 10)
+      const entry = items[index]
+      if (!entry || 'separator' in entry) return
+      e.preventDefault()
+      e.stopPropagation()
+      Promise.resolve(entry.action()).then(() => onClose())
+    }
+
+    menu.addEventListener('click', handleItemClick)
+    return () => menu.removeEventListener('click', handleItemClick)
+  }, [items, onClose])
 
   // Adjust position so menu stays within viewport
   const adjustedX = Math.min(x, window.innerWidth - 200)
@@ -62,11 +83,8 @@ export function NodeContextMenu({ x, y, items, onClose }: NodeContextMenuProps) 
         return (
           <div
             key={i}
+            data-menu-action={i}
             className={`node-context-menu-item${entry.danger ? ' node-context-menu-item-danger' : ''}`}
-            onClick={async () => {
-              await entry.action()
-              onClose()
-            }}
           >
             <span>{entry.label}</span>
             {entry.shortcut && (

@@ -6,6 +6,7 @@ export interface NoteItem {
   name: string
   relativePath: string
   type: NoteType
+  isDirectory?: boolean
 }
 
 export interface CodeFile {

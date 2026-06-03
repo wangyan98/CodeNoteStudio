@@ -17,4 +17,5 @@ export interface NoteListItem {
   name: string
   relativePath: string
   type: NoteFileType
+  isDirectory?: boolean
 }

@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
 import { useAppContext } from '../contexts/AppContext'
 import { useNotes } from '../hooks/useNotes'
 import type { NoteItem, NoteFilter, NoteType } from '../types'
@@ -28,14 +28,21 @@ function buildTree(notes: NoteItem[]): TreeNode[] {
       let node = current.find((n) => n.name === partName)
 
       if (!node) {
+        const isDir = note.isDirectory || !isLast
         node = {
           name: partName,
           path: parts.slice(0, i + 1).join('/'),
-          type: isLast ? note.type : 'folder',
+          type: isDir ? 'folder' : note.type,
           children: []
         }
         current.push(node)
       }
+
+      // Directory entries always have type 'folder'
+      if (isLast && note.isDirectory) {
+        node.type = 'folder'
+      }
+
       current = node.children
     }
   }
@@ -50,7 +57,18 @@ function TreeItem({
   onSelect,
   onDelete,
   onRename,
-  onContextMenu
+  onContextMenu,
+  renamingPath,
+  renameValue,
+  onRenameValueChange,
+  onRenameSubmit,
+  onRenameCancel,
+  creatingIn,
+  creatingType,
+  creatingValue,
+  onCreatingValueChange,
+  onCreateSubmit,
+  onCreateCancel
 }: {
   node: TreeNode
   depth: number
@@ -59,11 +77,25 @@ function TreeItem({
   onDelete: (node: TreeNode) => void
   onRename: (node: TreeNode) => void
   onContextMenu: (e: React.MouseEvent, node: TreeNode) => void
+  renamingPath: string | null
+  renameValue: string
+  onRenameValueChange: (v: string) => void
+  onRenameSubmit: () => void
+  onRenameCancel: () => void
+  creatingIn: string | null
+  creatingType: 'note' | 'folder'
+  creatingValue: string
+  onCreatingValueChange: (v: string) => void
+  onCreateSubmit: () => void
+  onCreateCancel: () => void
 }) {
   const [expanded, setExpanded] = useState(true)
   const isFolder = node.type === 'folder'
   const isSelected = selectedPath === node.path && !isFolder
   const isNote = node.type !== 'folder'
+  const isRenaming = renamingPath === node.path
+  const renameInputRef = useRef<HTMLInputElement>(null)
+  const createInputRef = useRef<HTMLInputElement>(null)
 
   const icons: Record<string, string> = {
     mind: '🧠',
@@ -75,6 +107,19 @@ function TreeItem({
   }
 
   const isEmbeddable = node.type === 'derive' || node.type === 'mind' || node.type === 'seq' || node.type === 'net'
+
+  useEffect(() => {
+    if (isRenaming && renameInputRef.current) {
+      renameInputRef.current.focus()
+      renameInputRef.current.select()
+    }
+  }, [isRenaming])
+
+  useEffect(() => {
+    if (creatingIn === node.path && createInputRef.current) {
+      createInputRef.current.focus()
+    }
+  }, [creatingIn, node.path])
 
   return (
     <>
@@ -99,8 +144,23 @@ function TreeItem({
         onContextMenu={(e) => onContextMenu(e, node)}
       >
         <span className="tree-item-icon">{icons[node.type]}</span>
-        <span>{node.name}</span>
-        {isNote && (
+        {isRenaming ? (
+          <input
+            ref={renameInputRef}
+            className="tree-item-inline-input"
+            value={renameValue}
+            onChange={(e) => onRenameValueChange(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') onRenameSubmit()
+              if (e.key === 'Escape') onRenameCancel()
+            }}
+            onBlur={onRenameCancel}
+            onClick={(e) => e.stopPropagation()}
+          />
+        ) : (
+          <span>{node.name}</span>
+        )}
+        {isNote && !isRenaming && (
           <span className="note-actions">
             <button
               className="note-action-btn"
@@ -125,18 +185,51 @@ function TreeItem({
           </span>
         )}
       </div>
-      {isFolder && expanded && node.children.map((child) => (
-        <TreeItem
-          key={child.path}
-          node={child}
-          depth={depth + 1}
-          selectedPath={selectedPath}
-          onSelect={onSelect}
-          onDelete={onDelete}
-          onRename={onRename}
-          onContextMenu={onContextMenu}
-        />
-      ))}
+      {isFolder && expanded && (
+        <>
+          {node.children.map((child) => (
+            <TreeItem
+              key={child.path}
+              node={child}
+              depth={depth + 1}
+              selectedPath={selectedPath}
+              onSelect={onSelect}
+              onDelete={onDelete}
+              onRename={onRename}
+              onContextMenu={onContextMenu}
+              renamingPath={renamingPath}
+              renameValue={renameValue}
+              onRenameValueChange={onRenameValueChange}
+              onRenameSubmit={onRenameSubmit}
+              onRenameCancel={onRenameCancel}
+              creatingIn={creatingIn}
+              creatingType={creatingType}
+              creatingValue={creatingValue}
+              onCreatingValueChange={onCreatingValueChange}
+              onCreateSubmit={onCreateSubmit}
+              onCreateCancel={onCreateCancel}
+            />
+          ))}
+          {creatingIn === node.path && (
+            <div className="tree-item tree-item-create" style={{ '--depth': depth + 1 } as React.CSSProperties}>
+              <span className="tree-item-icon">{creatingType === 'folder' ? '📁' : '📝'}</span>
+              <input
+                ref={createInputRef}
+                className="tree-item-inline-input"
+                value={creatingValue}
+                placeholder={creatingType === 'folder' ? 'folder name' : 'file name'}
+                onChange={(e) => onCreatingValueChange(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') onCreateSubmit()
+                  if (e.key === 'Escape') onCreateCancel()
+                }}
+                onBlur={onCreateCancel}
+                onClick={(e) => e.stopPropagation()}
+              />
+            </div>
+          )}
+        </>
+      )}
     </>
   )
 }
@@ -146,6 +239,15 @@ export function NoteDirectory() {
   const { refreshNotes, selectNote, createNote, deleteNote, renameNote } = useNotes()
   const [tree, setTree] = useState<TreeNode[]>([])
   const [searchQuery, setSearchQuery] = useState('')
+
+  // Inline rename state
+  const [renamingPath, setRenamingPath] = useState<string | null>(null)
+  const [renameValue, setRenameValue] = useState('')
+
+  // Inline create state
+  const [creatingIn, setCreatingIn] = useState<string | null>(null)
+  const [creatingType, setCreatingType] = useState<'note' | 'folder'>('note')
+  const [creatingValue, setCreatingValue] = useState('')
 
   const filters: { label: string; value: NoteFilter }[] = [
     { label: 'All', value: 'all' },
@@ -176,15 +278,58 @@ export function NoteDirectory() {
     }
   }, [deleteNote])
 
-  const handleRename = useCallback(async (node: TreeNode) => {
+  const handleRename = useCallback((node: TreeNode) => {
     if (node.type === 'folder') return
-    const newName = prompt('New name:', node.name)
-    if (newName && newName !== node.name) {
-      const parts = node.path.split('/')
-      parts[parts.length - 1] = newName
-      await renameNote(node.path, parts.join('/'))
+    setRenamingPath(node.path)
+    setRenameValue(node.name)
+  }, [])
+
+  const handleRenameSubmit = useCallback(async () => {
+    if (!renamingPath || !renameValue.trim() || renameValue === renamingPath.split('/').pop()) {
+      setRenamingPath(null)
+      setRenameValue('')
+      return
     }
-  }, [renameNote])
+    const parts = renamingPath.split('/')
+    parts[parts.length - 1] = renameValue.trim()
+    await renameNote(renamingPath, parts.join('/'))
+    setRenamingPath(null)
+    setRenameValue('')
+  }, [renamingPath, renameValue, renameNote])
+
+  const handleRenameCancel = useCallback(() => {
+    setRenamingPath(null)
+    setRenameValue('')
+  }, [])
+
+  const handleCreateSubmit = useCallback(async () => {
+    if (!creatingValue.trim()) {
+      setCreatingIn(null)
+      setCreatingValue('')
+      return
+    }
+    const name = creatingValue.trim()
+    const parentPath = creatingIn || ''
+    try {
+      if (creatingType === 'folder') {
+        const relPath = parentPath ? `${parentPath}/${name}` : name
+        await window.electronAPI.createFolder(relPath)
+      } else {
+        const relPath = parentPath ? `${parentPath}/${name}` : name
+        await createNote(relPath, 'md')
+      }
+      await refreshNotes()
+    } catch (err) {
+      console.error('Failed to create:', err)
+    }
+    setCreatingIn(null)
+    setCreatingValue('')
+  }, [creatingValue, creatingIn, creatingType, createNote, refreshNotes])
+
+  const handleCreateCancel = useCallback(() => {
+    setCreatingIn(null)
+    setCreatingValue('')
+  }, [])
 
   const [showNewNoteInput, setShowNewNoteInput] = useState(false)
   const [newNoteName, setNewNoteName] = useState('')
@@ -273,13 +418,9 @@ export function NoteDirectory() {
       }] : []),
       {
         label: 'Rename',
-        action: async () => {
-          const newName = prompt('New name:', node.name)
-          if (newName && newName !== node.name) {
-            const parts = node.path.split('/')
-            parts[parts.length - 1] = newName
-            await renameNote(node.path, parts.join('/'))
-          }
+        action: () => {
+          setRenamingPath(node.path)
+          setRenameValue(node.name)
         }
       },
       { separator: true },
@@ -302,28 +443,24 @@ export function NoteDirectory() {
         }
       }
     ]
-  }, [state.workspacePath, renameNote, deleteNote, refreshNotes])
+  }, [state.workspacePath, deleteNote, refreshNotes])
 
   const buildFolderContextMenu = useCallback((node: TreeNode): MenuEntry[] => {
     return [
       {
         label: 'New Note',
-        action: async () => {
-          const baseName = prompt('Note name:')
-          if (!baseName) return
-          const ext = '.md'
-          const relPath = node.path ? `${node.path}/${baseName}${ext}` : `${baseName}${ext}`
-          await createNote(relPath, 'md')
+        action: () => {
+          setCreatingIn(node.path)
+          setCreatingType('note')
+          setCreatingValue('')
         }
       },
       {
         label: 'New Folder',
-        action: async () => {
-          const folderName = prompt('Folder name:')
-          if (!folderName) return
-          const relPath = node.path ? `${node.path}/${folderName}` : folderName
-          await window.electronAPI.createFolder(relPath)
-          await refreshNotes()
+        action: () => {
+          setCreatingIn(node.path)
+          setCreatingType('folder')
+          setCreatingValue('')
         }
       },
       { separator: true },
@@ -338,13 +475,9 @@ export function NoteDirectory() {
       }] : []),
       {
         label: 'Rename',
-        action: async () => {
-          const newName = prompt('New folder name:', node.name)
-          if (newName && newName !== node.name) {
-            const parts = node.path.split('/')
-            parts[parts.length - 1] = newName
-            await renameNote(node.path, parts.join('/'))
-          }
+        action: () => {
+          setRenamingPath(node.path)
+          setRenameValue(node.name)
         }
       },
       { separator: true },
@@ -359,25 +492,24 @@ export function NoteDirectory() {
         }
       }
     ]
-  }, [createNote, renameNote, refreshNotes])
+  }, [refreshNotes])
 
   const buildRootContextMenu = useCallback((): MenuEntry[] => {
     return [
       {
         label: 'New Note',
-        action: async () => {
-          const baseName = prompt('Note name:')
-          if (!baseName) return
-          await createNote(baseName + '.md', 'md')
+        action: () => {
+          setCreatingIn('')
+          setCreatingType('note')
+          setCreatingValue('')
         }
       },
       {
         label: 'New Folder',
-        action: async () => {
-          const folderName = prompt('Folder name:')
-          if (!folderName) return
-          await window.electronAPI.createFolder(folderName)
-          await refreshNotes()
+        action: () => {
+          setCreatingIn('')
+          setCreatingType('folder')
+          setCreatingValue('')
         }
       },
       ...(getClipboardFile() ? [{
@@ -390,7 +522,7 @@ export function NoteDirectory() {
         }
       }] : [])
     ]
-  }, [createNote, refreshNotes])
+  }, [refreshNotes])
 
   const handleContextMenu = useCallback((e: React.MouseEvent, node: TreeNode) => {
     e.preventDefault()
@@ -514,8 +646,36 @@ export function NoteDirectory() {
               onDelete={handleDelete}
               onRename={handleRename}
               onContextMenu={handleContextMenu}
+              renamingPath={renamingPath}
+              renameValue={renameValue}
+              onRenameValueChange={setRenameValue}
+              onRenameSubmit={handleRenameSubmit}
+              onRenameCancel={handleRenameCancel}
+              creatingIn={creatingIn}
+              creatingType={creatingType}
+              creatingValue={creatingValue}
+              onCreatingValueChange={setCreatingValue}
+              onCreateSubmit={handleCreateSubmit}
+              onCreateCancel={handleCreateCancel}
             />
           ))}
+          {creatingIn === '' && (
+            <div className="tree-item tree-item-create" style={{ '--depth': 0 } as React.CSSProperties}>
+              <span className="tree-item-icon">{creatingType === 'folder' ? '📁' : '📝'}</span>
+              <input
+                className="tree-item-inline-input"
+                value={creatingValue}
+                placeholder={creatingType === 'folder' ? 'folder name' : 'file name'}
+                onChange={(e) => setCreatingValue(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') handleCreateSubmit()
+                  if (e.key === 'Escape') handleCreateCancel()
+                }}
+                onBlur={handleCreateCancel}
+                autoFocus
+              />
+            </div>
+          )}
         </div>
         {contextMenu && (
           <NodeContextMenu
