@@ -17,6 +17,7 @@ export interface MindMapNode {
   title: string
   content: string
   children: MindMapNode[]
+  codeMapping?: CodeMapping
 }
 
 export interface MindMapDocument {
@@ -58,7 +59,7 @@ export interface DerivationNode {
   derivesFrom: string | null
   derivesTo: string[]
   embedRefs: string[]
-  codeMappings: CodeMapping[]
+  codeMapping?: CodeMapping
 }
 
 export interface DerivationDocument {
@@ -75,8 +76,7 @@ export function createDerivationNode(title = ''): DerivationNode {
     stepNumber: 0,
     derivesFrom: null,
     derivesTo: [],
-    embedRefs: [],
-    codeMappings: []
+    embedRefs: []
   }
 }
 
