@@ -122,32 +122,35 @@ export function NetworkCanvas({
       const srcNode = nodes.find(n => n.id === edge.source)
       const tgtNode = nodes.find(n => n.id === edge.target)
       const srcW = srcNode?.kind === 'input' || srcNode?.kind === 'output' ? INPUT_W : NODE_W
+      const srcH = srcNode?.kind === 'input' || srcNode?.kind === 'output' ? INPUT_H : NODE_H
       const tgtW = tgtNode?.kind === 'input' || tgtNode?.kind === 'output' ? INPUT_W : NODE_W
+      const tgtH = tgtNode?.kind === 'input' || tgtNode?.kind === 'output' ? INPUT_H : NODE_H
 
-      const x1 = offsetX + srcPos.x + srcW / 2
-      const y1 = offsetY + srcPos.y
-      const x2 = offsetX + tgtPos.x - tgtW / 2
-      const y2 = offsetY + tgtPos.y
+      // Vertical layout: edges go from bottom of source to top of target
+      const x1 = offsetX + srcPos.x
+      const y1 = offsetY + srcPos.y + srcH / 2
+      const x2 = offsetX + tgtPos.x
+      const y2 = offsetY + tgtPos.y - tgtH / 2
 
       if (edge.style === 'skip') {
-        const mx = (x1 + x2) / 2
-        const dy = Math.abs(y2 - y1) * 0.5
+        const my = (y1 + y2) / 2
+        const dx = Math.abs(x2 - x1) * 0.5
         const path = d3.path()
         path.moveTo(x1, y1)
-        path.bezierCurveTo(mx, y1 - dy, mx, y2 + dy, x2, y2)
+        path.bezierCurveTo(x1 - dx, my, x2 - dx, my, x2, y2)
         g.append('path')
           .attr('d', path.toString())
           .attr('fill', 'none').attr('stroke', '#34a853').attr('stroke-width', 1.5)
           .attr('stroke-dasharray', '4,3')
         g.append('polygon')
-          .attr('points', `${x2-6},${y2-4} ${x2},${y2} ${x2-6},${y2+4}`)
+          .attr('points', `${x2-4},${y2-6} ${x2},${y2} ${x2+4},${y2-6}`)
           .attr('fill', 'none').attr('stroke', '#34a853').attr('stroke-width', 1.5)
       } else {
         g.append('line')
-          .attr('x1', x1).attr('y1', y1).attr('x2', x2 - 4).attr('y2', y2)
+          .attr('x1', x1).attr('y1', y1).attr('x2', x2).attr('y2', y2 - 4)
           .attr('stroke', '#888').attr('stroke-width', 1.5)
         g.append('polygon')
-          .attr('points', `${x2-4},${y2-4} ${x2},${y2} ${x2-4},${y2+4}`)
+          .attr('points', `${x2-4},${y2-4} ${x2},${y2} ${x2+4},${y2-4}`)
           .attr('fill', '#888')
       }
 
@@ -233,36 +236,36 @@ export function NetworkCanvas({
         onSelectNode(node.id)
       })
 
-      // Output port — only for nodes that are not 'output'
+      // Output port — bottom center (only for non-output nodes)
       if (node.kind !== 'output') {
         nodeG.append('circle')
           .attr('class', 'net-port-out')
-          .attr('cx', nx + nw)
-          .attr('cy', ny + nh / 2)
-          .attr('r', 3)
+          .attr('cx', nx + nw / 2)
+          .attr('cy', ny + nh)
+          .attr('r', 6)
           .attr('fill', color)
           .attr('stroke', '#333')
           .attr('stroke-width', 0.5)
           .attr('opacity', 0.5)
           .style('cursor', 'crosshair')
-          .on('mouseenter', function () { d3.select(this).attr('opacity', 1).attr('r', 5) })
-          .on('mouseleave', function () { d3.select(this).attr('opacity', 0.5).attr('r', 3) })
+          .on('mouseenter', function () { d3.select(this).attr('opacity', 1).attr('r', 8) })
+          .on('mouseleave', function () { d3.select(this).attr('opacity', 0.5).attr('r', 6) })
       }
 
-      // Input port — only for nodes that are not 'input'
+      // Input port — top center (only for non-input nodes)
       if (node.kind !== 'input') {
         nodeG.append('circle')
           .attr('class', 'net-port-in')
-          .attr('cx', nx)
-          .attr('cy', ny + nh / 2)
-          .attr('r', 3)
+          .attr('cx', nx + nw / 2)
+          .attr('cy', ny)
+          .attr('r', 6)
           .attr('fill', color)
           .attr('stroke', '#333')
           .attr('stroke-width', 0.5)
           .attr('opacity', 0.5)
           .style('cursor', 'crosshair')
-          .on('mouseenter', function () { d3.select(this).attr('opacity', 1).attr('r', 5) })
-          .on('mouseleave', function () { d3.select(this).attr('opacity', 0.5).attr('r', 3) })
+          .on('mouseenter', function () { d3.select(this).attr('opacity', 1).attr('r', 8) })
+          .on('mouseleave', function () { d3.select(this).attr('opacity', 0.5).attr('r', 6) })
       }
     }
 
