@@ -87,9 +87,10 @@ export function SequenceDiagramViewer({ content, notePath }: SequenceDiagramView
             textEl.appendChild(tspan)
           }
 
-          // Clickable @ref link
+          // Clickable @ref link — show only the last segment (class/function name)
           const linkSpan = document.createElementNS(svgns, 'tspan')
-          linkSpan.textContent = match[0]
+          const displayName = match[1].split(':').pop() || match[1]
+          linkSpan.textContent = displayName
           linkSpan.setAttribute('fill', '#61afef')
           linkSpan.setAttribute('text-decoration', 'underline')
           linkSpan.style.cursor = 'pointer'
