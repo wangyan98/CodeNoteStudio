@@ -51,3 +51,23 @@
 - **New Note/New Folder:** Clicking any "New X" option adds an inline input row under the target folder (or at root level). Pre-filled with the file suffix, cursor at start. Enter to create, Escape or blur to cancel.
 
 **Files changed:** `src/renderer/src/components/NoteDirectory.tsx`, `src/renderer/src/components/NoteDirectory.css`
+
+---
+
+## Issue 5: Context Menu and Toolbar Used File Suffixes Instead of Display Names
+
+**Symptom:** Context menu showed "New .md", "New .mind.json" and toolbar type selector showed ".md", ".mind.json" — these suffix-based labels were not intuitive.
+
+**Fix:** Added `displayName` field to `typeOptions` with human-readable names (Markdown, Mindmap, Derive, Sequence, Network). Context menu now shows "New Markdown", "New Mindmap", etc. Toolbar `<select>` shows display names instead of suffixes.
+
+**Files changed:** `src/renderer/src/components/NoteDirectory.tsx`
+
+---
+
+## Issue 6: Notes Directory Not Sorted
+
+**Symptom:** Files and folders in the Notes tree appeared in arbitrary filesystem order.
+
+**Fix:** Added sorting to `listNotes()`: directories appear first (A-Z), followed by files grouped by type in order (md → mind → derive → seq → net), each group sorted A-Z.
+
+**Files changed:** `src/main/services/note-service.ts`
