@@ -97,6 +97,7 @@ export function NetworkEditor({ document: initialDoc, notePath, workspacePath, o
 
   const handleSelectNode = useCallback((nodeId: string | null) => {
     setSelectedNodeId(nodeId)
+    setResolvedMapping(null)
   }, [])
 
   const handleDropLayer = useCallback((layerType: string) => {
