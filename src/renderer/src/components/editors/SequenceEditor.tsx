@@ -124,7 +124,7 @@ export function SequenceEditor({ content: initialContent, notePath, onSave }: Se
         </div>
         <div className="seq-editor-resize-handle" onMouseDown={handleResize} />
         <div className="seq-editor-preview">
-          <SequenceDiagramViewer content={value} />
+          <SequenceDiagramViewer content={value} notePath={notePath} />
         </div>
       </div>
     </div>
