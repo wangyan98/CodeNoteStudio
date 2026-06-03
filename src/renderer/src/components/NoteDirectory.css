@@ -183,3 +183,13 @@
   color: var(--header-color);
   cursor: pointer;
 }
+
+.note-directory-toolbar-buttons {
+  display: flex;
+  gap: 4px;
+  width: 100%;
+}
+
+.note-directory-toolbar-buttons .new-note-btn {
+  flex: 1;
+}

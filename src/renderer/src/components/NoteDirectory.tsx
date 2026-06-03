@@ -181,6 +181,8 @@ export function NoteDirectory() {
   const [showNewNoteInput, setShowNewNoteInput] = useState(false)
   const [newNoteName, setNewNoteName] = useState('')
   const [newNoteType, setNewNoteType] = useState<NoteType>('md')
+  const [showNewFolderInput, setShowNewFolderInput] = useState(false)
+  const [newFolderName, setNewFolderName] = useState('')
 
   const typeOptions: { label: string; value: NoteType; suffix: string }[] = [
     { label: '.md', value: 'md', suffix: '.md' },
@@ -213,6 +215,27 @@ export function NoteDirectory() {
     }
   }, [newNoteName, newNoteType, createNote])
 
+  const handleNewFolder = useCallback(() => {
+    setShowNewFolderInput(true)
+    setNewFolderName('')
+  }, [])
+
+  const handleSubmitNewFolder = useCallback(async () => {
+    const folderName = newFolderName.trim()
+    if (!folderName) {
+      setShowNewFolderInput(false)
+      return
+    }
+    try {
+      await window.electronAPI.createFolder(folderName)
+      await refreshNotes()
+      setShowNewFolderInput(false)
+      setNewFolderName('')
+    } catch (err) {
+      console.error('Failed to create folder:', err)
+    }
+  }, [newFolderName, refreshNotes])
+
   const filteredTree = searchQuery
     ? tree.filter((node) =>
         node.name.toLowerCase().includes(searchQuery.toLowerCase())
@@ -240,45 +263,77 @@ export function NoteDirectory() {
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           />
-          {showNewNoteInput ? (
-            <div className="new-note-input-group">
-              <div className="new-note-input-row">
-                <input
-                  className="new-note-name-input"
-                  type="text"
-                  placeholder="filename"
-                  value={newNoteName}
-                  onChange={(e) => setNewNoteName(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') handleSubmitNewNote()
-                    if (e.key === 'Escape') setShowNewNoteInput(false)
-                  }}
-                  autoFocus
-                />
-                <select
-                  className="new-note-type-select"
-                  value={newNoteType}
-                  onChange={(e) => setNewNoteType(e.target.value as NoteType)}
-                >
-                  {typeOptions.map((opt) => (
-                    <option key={opt.value} value={opt.value}>{opt.label}</option>
-                  ))}
-                </select>
+          <div className="note-directory-toolbar-buttons">
+            {showNewNoteInput ? (
+              <div className="new-note-input-group">
+                <div className="new-note-input-row">
+                  <input
+                    className="new-note-name-input"
+                    type="text"
+                    placeholder="filename"
+                    value={newNoteName}
+                    onChange={(e) => setNewNoteName(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') handleSubmitNewNote()
+                      if (e.key === 'Escape') setShowNewNoteInput(false)
+                    }}
+                    autoFocus
+                  />
+                  <select
+                    className="new-note-type-select"
+                    value={newNoteType}
+                    onChange={(e) => setNewNoteType(e.target.value as NoteType)}
+                  >
+                    {typeOptions.map((opt) => (
+                      <option key={opt.value} value={opt.value}>{opt.label}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="new-note-actions">
+                  <button className="new-note-submit-btn" onClick={handleSubmitNewNote}>
+                    OK
+                  </button>
+                  <button className="new-note-cancel-btn" onClick={() => setShowNewNoteInput(false)}>
+                    Cancel
+                  </button>
+                </div>
               </div>
-              <div className="new-note-actions">
-                <button className="new-note-submit-btn" onClick={handleSubmitNewNote}>
-                  OK
-                </button>
-                <button className="new-note-cancel-btn" onClick={() => setShowNewNoteInput(false)}>
-                  Cancel
-                </button>
+            ) : (
+              <button className="new-note-btn" onClick={handleNewNote} title="New Note">
+                📝+
+              </button>
+            )}
+            {showNewFolderInput ? (
+              <div className="new-note-input-group">
+                <div className="new-note-input-row">
+                  <input
+                    className="new-note-name-input"
+                    type="text"
+                    placeholder="folder name"
+                    value={newFolderName}
+                    onChange={(e) => setNewFolderName(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') handleSubmitNewFolder()
+                      if (e.key === 'Escape') setShowNewFolderInput(false)
+                    }}
+                    autoFocus
+                  />
+                </div>
+                <div className="new-note-actions">
+                  <button className="new-note-submit-btn" onClick={handleSubmitNewFolder}>
+                    OK
+                  </button>
+                  <button className="new-note-cancel-btn" onClick={() => setShowNewFolderInput(false)}>
+                    Cancel
+                  </button>
+                </div>
               </div>
-            </div>
-          ) : (
-            <button className="new-note-btn" onClick={handleNewNote}>
-              + New Note
-            </button>
-          )}
+            ) : (
+              <button className="new-note-btn" onClick={handleNewFolder} title="New Folder">
+                📁+
+              </button>
+            )}
+          </div>
         </div>
         <div className="note-tree">
           {filteredTree.map((node) => (
