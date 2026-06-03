@@ -1,10 +1,9 @@
 import { useReducer, useEffect, useRef, useState, useCallback, useMemo } from 'react'
-import type { NetworkDocument, CodeMapping } from '../../../../main/schemas/note-types'
+import type { NetworkDocument, GraphNode, CodeMapping } from '../../../../main/schemas/note-types'
 import { createNetworkDocument } from '../../../../main/schemas/note-types'
 import type { LayerCatalogOverrides } from '../../../../main/schemas/layer-catalog'
 import { resolveLayerCatalog, getLayerDef } from '../../../../main/schemas/layer-catalog'
 import { networkReducer } from './networkReducer'
-import type { NetworkAction } from './networkReducer'
 import { NetworkPalette } from './NetworkPalette'
 import { NetworkCanvas } from './NetworkCanvas'
 import { NetworkPanel } from './NetworkPanel'
@@ -23,8 +22,7 @@ type SaveStatus = 'saved' | 'saving' | 'unsaved' | 'error'
 export function NetworkEditor({ document: initialDoc, notePath, workspacePath, onSave, onNavigateToCode }: NetworkEditorProps) {
   const [doc, dispatch] = useReducer(networkReducer, initialDoc.version === 2 ? initialDoc : createNetworkDocument())
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null)
-  const selectedNodeIdRef = useRef<string | null>(null)
-  selectedNodeIdRef.current = selectedNodeId
+  const selectedNodeRef = useRef<GraphNode | null>(null)
   const [panelHeight, setPanelHeight] = useState(0.25)
   const [saveStatus, setSaveStatus] = useState<SaveStatus>('saved')
   const [catalogOverrides, setCatalogOverrides] = useState<LayerCatalogOverrides | null>(null)
@@ -104,8 +102,17 @@ export function NetworkEditor({ document: initialDoc, notePath, workspacePath, o
 
   const selectedNode = useMemo(() => {
     if (!selectedNodeId) return null
-    return (doc.nodes ?? []).find(n => n.id === selectedNodeId) || null
+    for (const n of (doc.nodes ?? [])) {
+      if (n.id === selectedNodeId) return n
+      if (n.children) {
+        const child = n.children.find(c => c.id === selectedNodeId)
+        if (child) return child
+      }
+    }
+    return null
   }, [doc.nodes, selectedNodeId])
+
+  selectedNodeRef.current = selectedNode
 
   const selectedNodeDef = useMemo(() => {
     if (!selectedNode || selectedNode.kind !== 'layer' || !selectedNode.layerType) return undefined
@@ -119,10 +126,16 @@ export function NetworkEditor({ document: initialDoc, notePath, workspacePath, o
 
   const handleDropLayer = useCallback((layerType: string) => {
     const newNodeId = crypto.randomUUID()
-    dispatch({ type: 'ADD_NODE', nodeId: newNodeId, kind: 'layer', layerType, name: layerType })
-    const sourceId = selectedNodeIdRef.current
-    if (sourceId) {
-      dispatch({ type: 'ADD_EDGE', source: sourceId, target: newNodeId })
+    const sel = selectedNodeRef.current
+    if (sel && sel.kind === 'block') {
+      // Drop inside selected block as child
+      dispatch({ type: 'ADD_NODE', nodeId: newNodeId, parentId: sel.id, kind: 'layer', layerType, name: layerType })
+    } else {
+      // Drop as standalone node, auto-connect if something is selected
+      dispatch({ type: 'ADD_NODE', nodeId: newNodeId, kind: 'layer', layerType, name: layerType })
+      if (sel) {
+        dispatch({ type: 'ADD_EDGE', source: sel.id, target: newNodeId })
+      }
     }
   }, [])
 

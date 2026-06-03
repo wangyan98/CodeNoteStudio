@@ -97,9 +97,24 @@ export function NetworkCanvas({
     svg.attr('width', W).attr('height', H)
     svg.selectAll('*').remove()
 
-    const nodes = doc.nodes ?? []
-    const edges = doc.edges ?? []
-    const positions = runLayout(nodes, edges)
+    // Flatten: top-level nodes + block children + internal edges
+    const topNodes = doc.nodes ?? []
+    const topEdges = doc.edges ?? []
+    const allNodes = [...topNodes]
+    const allEdges = [...topEdges]
+    for (const n of topNodes) {
+      if (n.children) {
+        for (const child of n.children) {
+          allNodes.push(child)
+        }
+      }
+      if (n.internalEdges) {
+        for (const ie of n.internalEdges) {
+          allEdges.push(ie)
+        }
+      }
+    }
+    const positions = runLayout(allNodes, allEdges)
 
     // Compute bounding box for centering
     let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity
@@ -137,13 +152,13 @@ export function NetworkCanvas({
     svg.call(zoom.transform as any, d3.zoomIdentity.translate(initTx, initTy).scale(fitScale))
 
     // --- Render edges first (behind nodes) ---
-    for (const edge of edges) {
+    for (const edge of allEdges) {
       const srcPos = positions.get(edge.source)
       const tgtPos = positions.get(edge.target)
       if (!srcPos || !tgtPos) continue
 
-      const srcNode = nodes.find(n => n.id === edge.source)
-      const tgtNode = nodes.find(n => n.id === edge.target)
+      const srcNode = allNodes.find(n => n.id === edge.source)
+      const tgtNode = allNodes.find(n => n.id === edge.target)
       const srcW = srcNode?.kind === 'input' || srcNode?.kind === 'output' ? INPUT_W : NODE_W
       const srcH = srcNode?.kind === 'input' || srcNode?.kind === 'output' ? INPUT_H : NODE_H
       const tgtW = tgtNode?.kind === 'input' || tgtNode?.kind === 'output' ? INPUT_W : NODE_W
@@ -186,7 +201,7 @@ export function NetworkCanvas({
     }
 
     // --- Render nodes ---
-    for (const node of nodes) {
+    for (const node of allNodes) {
       const pos = positions.get(node.id)
       if (!pos) continue
 

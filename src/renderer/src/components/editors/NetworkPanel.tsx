@@ -95,30 +95,43 @@ export function NetworkPanel({
 
         {/* Block settings */}
         {node.kind === 'block' && (
-          <div className="network-panel-params">
-            <div className="network-panel-section-title">Block Settings</div>
-            <div className="network-panel-params-grid">
-              <div className="network-panel-field" style={{ gridColumn: 'span 3' }}>
-                <label className="network-panel-field-label">Name</label>
-                <input
-                  className="network-panel-input"
-                  type="text"
-                  value={node.label}
-                  onChange={(e) => onUpdateNode(node.id, 'label', e.target.value)}
-                />
-              </div>
-              <div className="network-panel-field">
-                <label className="network-panel-field-label">Repeat</label>
-                <input
-                  className="network-panel-input"
-                  type="number"
-                  value={node.repeat ?? 1}
-                  min={1}
-                  onChange={(e) => onUpdateNode(node.id, 'repeat', Math.max(1, Number(e.target.value)))}
-                />
+          <>
+            <div className="network-panel-params">
+              <div className="network-panel-section-title">Block Settings</div>
+              <div className="network-panel-params-grid">
+                <div className="network-panel-field" style={{ gridColumn: 'span 3' }}>
+                  <label className="network-panel-field-label">Name</label>
+                  <input
+                    className="network-panel-input"
+                    type="text"
+                    value={node.label}
+                    onChange={(e) => onUpdateNode(node.id, 'label', e.target.value)}
+                  />
+                </div>
+                <div className="network-panel-field">
+                  <label className="network-panel-field-label">Repeat</label>
+                  <input
+                    className="network-panel-input"
+                    type="number"
+                    value={node.repeat ?? 1}
+                    min={1}
+                    onChange={(e) => onUpdateNode(node.id, 'repeat', Math.max(1, Number(e.target.value)))}
+                  />
+                </div>
               </div>
             </div>
-          </div>
+            {(node.children ?? []).length > 0 && (
+              <div className="network-panel-params">
+                <div className="network-panel-section-title">Layers ({node.children!.length})</div>
+                {node.children!.map(child => (
+                  <div key={child.id} style={{ fontSize: 10, color: '#d4d4d4', padding: '2px 0', display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <span style={{ color: child.layerType ? '#4a90d9' : '#888' }}>{child.layerType ?? child.label}</span>
+                    <span style={{ color: '#888', fontSize: 9 }}>{child.label}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </>
         )}
 
         {/* Input/Output node settings */}

@@ -6,6 +6,7 @@ export interface NetworkAction {
   document?: NetworkDocument
   name?: string
   nodeId?: string
+  parentId?: string
   node?: GraphNode
   kind?: GraphNode['kind']
   layerType?: string
@@ -38,6 +39,17 @@ export function networkReducer(doc: NetworkDocument, action: NetworkAction): Net
         label: action.name ?? action.layerType ?? 'New Node',
         layerType: action.layerType,
         params: {},
+      }
+      // If parentId is set, add as child of that block
+      if (action.parentId) {
+        return {
+          ...cloned,
+          nodes: (cloned.nodes ?? []).map(n =>
+            n.id === action.parentId
+              ? { ...n, children: [...(n.children ?? []), newNode] }
+              : n
+          ),
+        }
       }
       return { ...cloned, nodes: [...(cloned.nodes ?? []), newNode] }
     }
