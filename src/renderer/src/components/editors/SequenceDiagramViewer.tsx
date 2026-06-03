@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import mermaid from 'mermaid'
-import { useCodeNavigation } from '../hooks/useCodeNavigation'
+import { useCodeNavigation } from '../../hooks/useCodeNavigation'
 
 // Initialize mermaid once
 let mermaidInitialized = false

@@ -135,7 +135,7 @@ function EmbedCard({ cacheKey, cached }: {
             <DerivationDagViewer document={cached.content as DerivationDocument} />
           )}
           {cached.noteType === 'seq' && (
-            <SequenceDiagramViewer content={cached.content as string} />
+            <SequenceDiagramViewer content={cached.content as string} notePath={cached.notePath} />
           )}
           {cached.noteType === 'net' && (
             <NetworkEmbedViewer document={cached.content as NetworkDocument} />

@@ -151,7 +151,7 @@ export const MdEditor = forwardRef<MdEditorHandle, MdEditorProps>(
                 <span className="note-embed-path">{notePath}</span>
               </div>
               <div className="note-embed-body seq-embed">
-                <SequenceDiagramViewer content={content as string} />
+                <SequenceDiagramViewer content={content as string} notePath={notePath} />
               </div>
             </div>
           )
