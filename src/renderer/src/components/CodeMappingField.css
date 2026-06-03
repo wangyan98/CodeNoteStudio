@@ -1,0 +1,57 @@
+.code-mapping-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.code-mapping-field-input-row {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+
+.code-mapping-field-input {
+  flex: 1;
+  background: #1e1e1e;
+  border: 1px solid #444;
+  color: #d4d4d4;
+  padding: 4px 8px;
+  border-radius: 3px;
+  font-size: 11px;
+  font-family: monospace;
+  outline: none;
+}
+
+.code-mapping-field-input:focus {
+  border-color: #4a90d9;
+}
+
+.code-mapping-field-picker-btn {
+  background: #333;
+  border: 1px solid #555;
+  color: #d4d4d4;
+  padding: 4px 8px;
+  border-radius: 3px;
+  cursor: pointer;
+  font-size: 11px;
+  flex-shrink: 0;
+}
+
+.code-mapping-field-picker-btn:hover {
+  background: #444;
+}
+
+.code-mapping-field-resolved {
+  font-size: 10px;
+  color: #4a90d9;
+  cursor: pointer;
+  padding: 2px 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.code-mapping-field-resolved:hover {
+  text-decoration: underline;
+  color: #61afef;
+}
