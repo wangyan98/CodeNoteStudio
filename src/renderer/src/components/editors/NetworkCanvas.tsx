@@ -217,7 +217,10 @@ export function NetworkCanvas({
       .scaleExtent([0.3, 3])
       .filter((event) => {
         const target = event.target as Element
-        return !target.classList.contains('net-port-out') && !target.classList.contains('net-port-in')
+        if (target.classList.contains('net-port-out') || target.classList.contains('net-port-in')) return false
+        // Don't start zoom from layer/block nodes (those are draggable)
+        if (!readOnly && target.closest('.net-node')) return false
+        return true
       })
       .on('zoom', (event) => { g.attr('transform', event.transform.toString()) })
     // eslint-disable-next-line @typescript-eslint/no-explicit-any

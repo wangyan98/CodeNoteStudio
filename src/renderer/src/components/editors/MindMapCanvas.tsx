@@ -1019,14 +1019,20 @@ export const MindMapCanvas = forwardRef<MindMapCanvasHandle, MindMapCanvasProps>
         })
         .on('end', function (_event: d3.D3DragEvent<SVGGElement, unknown, unknown>, d: d3.HierarchyNode<MindMapNode>) {
           dragOffset = null
+
+          // Save before clearDragHighlight resets them
+          const savedAction = dragTargetAction
+          const savedTargetId = dragTargetNodeId
+          const savedInsertIndex = dragInsertIndex
+
           clearDragHighlight()
 
           if (dragged) {
             dragged = false
-            if (dragTargetAction === 'reparent' && dragTargetNodeId) {
-              dispatch({ type: 'REPARENT', nodeId: d.data.id, newParentId: dragTargetNodeId })
-            } else if (dragTargetAction === 'reorder' && dragInsertIndex !== null) {
-              dispatch({ type: 'REORDER', nodeId: d.data.id, newIndex: dragInsertIndex })
+            if (savedAction === 'reparent' && savedTargetId) {
+              dispatch({ type: 'REPARENT', nodeId: d.data.id, newParentId: savedTargetId })
+            } else if (savedAction === 'reorder' && savedInsertIndex !== null) {
+              dispatch({ type: 'REORDER', nodeId: d.data.id, newIndex: savedInsertIndex })
             }
             // Always re-render after drag (either action was dispatched or it snaps back)
             render()
