@@ -69,6 +69,23 @@ export function registerIpcHandlers(projectPath: string): void {
     return noteExists(currentProjectPath!, relativePath)
   })
 
+  ipcMain.handle('notes:create-folder', async (_event, relativePath: string): Promise<void> => {
+    const { createFolder } = await import('./services/note-service')
+    return createFolder(currentProjectPath!, relativePath)
+  })
+
+  ipcMain.handle('notes:copy-file', async (_event, sourcePath: string, targetDirRelative: string): Promise<void> => {
+    const { copyFileToNotes } = await import('./services/note-service')
+    return copyFileToNotes(currentProjectPath!, sourcePath, targetDirRelative)
+  })
+
+  ipcMain.handle('notes:delete-folder', async (_event, relativePath: string): Promise<void> => {
+    const { deleteFolder } = await import('./services/note-service')
+    await deleteFolder(currentProjectPath!, relativePath)
+    const { broadcastMessage } = await import('./services/live-server')
+    broadcastMessage('note-deleted', { relativePath })
+  })
+
   // App
   ipcMain.handle('app:get-project-path', (): string | null => {
     return currentProjectPath
