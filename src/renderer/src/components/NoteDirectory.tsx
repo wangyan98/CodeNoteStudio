@@ -273,12 +273,12 @@ export function NoteDirectory() {
       }] : []),
       {
         label: 'Rename',
-        action: () => {
+        action: async () => {
           const newName = prompt('New name:', node.name)
           if (newName && newName !== node.name) {
             const parts = node.path.split('/')
             parts[parts.length - 1] = newName
-            renameNote(node.path, parts.join('/'))
+            await renameNote(node.path, parts.join('/'))
           }
         }
       },
@@ -295,9 +295,9 @@ export function NoteDirectory() {
       {
         label: 'Delete',
         danger: true,
-        action: () => {
+        action: async () => {
           if (confirm(`Delete "${node.name}"?`)) {
-            deleteNote(node.path)
+            await deleteNote(node.path)
           }
         }
       }
@@ -308,21 +308,22 @@ export function NoteDirectory() {
     return [
       {
         label: 'New Note',
-        action: () => {
+        action: async () => {
           const baseName = prompt('Note name:')
           if (!baseName) return
           const ext = '.md'
           const relPath = node.path ? `${node.path}/${baseName}${ext}` : `${baseName}${ext}`
-          createNote(relPath, 'md')
+          await createNote(relPath, 'md')
         }
       },
       {
         label: 'New Folder',
-        action: () => {
+        action: async () => {
           const folderName = prompt('Folder name:')
           if (!folderName) return
           const relPath = node.path ? `${node.path}/${folderName}` : folderName
-          window.electronAPI.createFolder(relPath).then(() => refreshNotes())
+          await window.electronAPI.createFolder(relPath)
+          await refreshNotes()
         }
       },
       { separator: true },
@@ -337,12 +338,12 @@ export function NoteDirectory() {
       }] : []),
       {
         label: 'Rename',
-        action: () => {
+        action: async () => {
           const newName = prompt('New folder name:', node.name)
           if (newName && newName !== node.name) {
             const parts = node.path.split('/')
             parts[parts.length - 1] = newName
-            renameNote(node.path, parts.join('/'))
+            await renameNote(node.path, parts.join('/'))
           }
         }
       },
@@ -364,18 +365,19 @@ export function NoteDirectory() {
     return [
       {
         label: 'New Note',
-        action: () => {
+        action: async () => {
           const baseName = prompt('Note name:')
           if (!baseName) return
-          createNote(baseName + '.md', 'md')
+          await createNote(baseName + '.md', 'md')
         }
       },
       {
         label: 'New Folder',
-        action: () => {
+        action: async () => {
           const folderName = prompt('Folder name:')
           if (!folderName) return
-          window.electronAPI.createFolder(folderName).then(() => refreshNotes())
+          await window.electronAPI.createFolder(folderName)
+          await refreshNotes()
         }
       },
       ...(getClipboardFile() ? [{

@@ -4,7 +4,7 @@ import { createPortal } from 'react-dom'
 export interface MenuItem {
   label: string
   shortcut?: string
-  action: () => void
+  action: () => void | Promise<void>
   danger?: boolean
   separator?: false
 }
@@ -63,8 +63,8 @@ export function NodeContextMenu({ x, y, items, onClose }: NodeContextMenuProps) 
           <div
             key={i}
             className={`node-context-menu-item${entry.danger ? ' node-context-menu-item-danger' : ''}`}
-            onClick={() => {
-              entry.action()
+            onClick={async () => {
+              await entry.action()
               onClose()
             }}
           >
