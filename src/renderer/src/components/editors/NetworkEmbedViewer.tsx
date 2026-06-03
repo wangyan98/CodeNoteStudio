@@ -22,6 +22,50 @@ function formatLayerLabel(type: string, params: Record<string, unknown>): string
 export function NetworkEmbedViewer({ document, onNavigateToCode }: NetworkEmbedViewerProps) {
   const catalog = useMemo(() => resolveLayerCatalog(null), [])
 
+  // v2: render nodes simply in a vertical flow
+  if (document.version === 2 && document.nodes) {
+    return (
+      <div style={{
+        padding: 12, fontFamily: 'monospace', fontSize: 10, lineHeight: 1.4,
+        overflow: 'auto', background: '#1e1e1e', color: '#d4d4d4', borderRadius: 6
+      }}>
+        <div style={{ fontWeight: 'bold', fontSize: 12, marginBottom: 8, color: '#ff9800' }}>
+          {document.name}
+        </div>
+        {document.nodes.map((node, i) => (
+          <div key={node.id} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: 4 }}>
+            {i > 0 && <div style={{ textAlign: 'center', color: '#888', fontSize: 12, width: '100%' }}>↓</div>}
+            <span style={{
+              display: 'inline-block', padding: '4px 12px', borderRadius: 6,
+              border: `2px solid ${
+                node.kind === 'input' || node.kind === 'output' ? '#666' :
+                node.kind === 'block' ? '#ff9800' :
+                node.layerType ? (catalog[node.layerType]?.color ?? '#888') : '#888'
+              }`,
+              background: node.kind === 'input' || node.kind === 'output' ? '#f5f5f5' :
+                node.layerType ? (catalog[node.layerType]?.color ?? '#888') + '22' : 'none',
+              color: node.kind === 'input' || node.kind === 'output' ? '#333' : '#d4d4d4',
+              fontWeight: 'bold', fontSize: 9, minWidth: 60, textAlign: 'center',
+              cursor: node.codeMapping && onNavigateToCode ? 'pointer' : 'default'
+            }}
+              title={node.codeMapping ? `${node.codeMapping.filePath}:${node.codeMapping.startLine}` : node.label}
+              onClick={() => {
+                if (node.codeMapping && onNavigateToCode) {
+                  onNavigateToCode(node.codeMapping.filePath, node.codeMapping.startLine)
+                }
+              }}
+            >
+              <span>{node.label}</span>
+              {node.repeat && node.repeat > 1 && (
+                <span style={{ color: '#ff9800', fontSize: 8, marginLeft: 4 }}>×{node.repeat}</span>
+              )}
+            </span>
+          </div>
+        ))}
+      </div>
+    )
+  }
+
   return (
     <div style={{
       padding: 12, fontFamily: 'monospace', fontSize: 10, lineHeight: 1.4,
@@ -50,7 +94,7 @@ export function NetworkEmbedViewer({ document, onNavigateToCode }: NetworkEmbedV
         </span>
       </div>
 
-      {document.blocks.map((block, bi) => {
+      {(document.blocks ?? []).map((block, bi) => {
         const blockLabel = block.repeat && block.repeat > 1
           ? `${block.name} ×${block.repeat}`
           : block.name
@@ -64,7 +108,7 @@ export function NetworkEmbedViewer({ document, onNavigateToCode }: NetworkEmbedV
 
             {/* Block */}
             <div style={{
-              border: `2px dashed ${block.id === document.blocks[0]?.id ? '#ff9800' : '#4a90d9'}`,
+              border: `2px dashed ${block.id === document.blocks?.[0]?.id ? '#ff9800' : '#4a90d9'}`,
               borderRadius: 8, padding: 8, marginBottom: 0
             }}>
               <div style={{ fontWeight: 'bold', color: '#ff9800', fontSize: 10, marginBottom: 6 }}>
