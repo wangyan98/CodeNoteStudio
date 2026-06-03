@@ -29,6 +29,10 @@ const api = {
   renameNote: (oldPath: string, newPath: string) =>
     ipcRenderer.invoke('notes:rename', oldPath, newPath),
   noteExists: (relativePath: string) => ipcRenderer.invoke('notes:exists', relativePath),
+  createFolder: (relativePath: string) => ipcRenderer.invoke('notes:create-folder', relativePath),
+  copyFile: (sourcePath: string, targetDir: string) =>
+    ipcRenderer.invoke('notes:copy-file', sourcePath, targetDir),
+  deleteFolder: (relativePath: string) => ipcRenderer.invoke('notes:delete-folder', relativePath),
 
   // Code
   listRepoFiles: (repoPath: string) => ipcRenderer.invoke('code:list-repo-files', repoPath),
