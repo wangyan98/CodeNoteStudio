@@ -145,6 +145,9 @@ export function NoteViewport() {
             onEmbedClick={(notePath, noteType) => {
               selectNote(notePath, noteType)
             }}
+            onNavigateToCode={(filePath: string, line: number) => {
+              navigateToCode(filePath, line)
+            }}
           />
         )
 

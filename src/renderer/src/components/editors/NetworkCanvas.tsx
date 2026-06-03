@@ -8,14 +8,15 @@ import './NetworkCanvas.css'
 interface NetworkCanvasProps {
   doc: NetworkDocument
   catalog: Record<string, LayerDef>
-  selectedNodeId: string | null
-  selectedEdgeId: string | null
-  onSelectNode: (nodeId: string | null) => void
-  onSelectEdge: (edgeId: string | null) => void
-  onDropLayer: (layerType: string) => void
-  onDeleteNode: (nodeId: string) => void
-  onAddEdge: (source: string, target: string) => void
+  selectedNodeId?: string | null
+  selectedEdgeId?: string | null
+  onSelectNode?: (nodeId: string | null) => void
+  onSelectEdge?: (edgeId: string | null) => void
+  onDropLayer?: (layerType: string) => void
+  onDeleteNode?: (nodeId: string) => void
+  onAddEdge?: (source: string, target: string) => void
   onNavigateToCode?: (filePath: string, line: number) => void
+  readOnly?: boolean
 }
 
 const NODE_W = 120
@@ -62,7 +63,7 @@ function runLayout(
 export function NetworkCanvas({
   doc, catalog, selectedNodeId, selectedEdgeId,
   onSelectNode, onSelectEdge, onDropLayer, onDeleteNode, onAddEdge,
-  onNavigateToCode
+  onNavigateToCode, readOnly
 }: NetworkCanvasProps) {
 
   const svgRef = useRef<SVGSVGElement>(null)
@@ -273,7 +274,7 @@ export function NetworkCanvas({
 
       edgeG.on('click', (event: MouseEvent) => {
         event.stopPropagation()
-        onSelectEdge(edge.id)
+        onSelectEdge?.(edge.id)
       })
     }
 
@@ -419,29 +420,33 @@ export function NetworkCanvas({
                 })
             }
 
-            childG.on('click', (event: MouseEvent) => {
-              event.stopPropagation()
-              if (clickTimersRef.current.has(child.id)) return
-              const timer = setTimeout(() => {
-                onSelectNode(child.id)
-                clickTimersRef.current.delete(child.id)
-              }, 250)
-              clickTimersRef.current.set(child.id, timer)
-            })
+            if (!readOnly) {
+              childG.on('click', (event: MouseEvent) => {
+                event.stopPropagation()
+                if (clickTimersRef.current.has(child.id)) return
+                const timer = setTimeout(() => {
+                  onSelectNode?.(child.id)
+                  clickTimersRef.current.delete(child.id)
+                }, 250)
+                clickTimersRef.current.set(child.id, timer)
+              })
+            }
 
             childG.on('dblclick', (event: MouseEvent) => {
               event.stopPropagation()
-              const timer = clickTimersRef.current.get(child.id)
-              if (timer) { clearTimeout(timer); clickTimersRef.current.delete(child.id) }
+              if (!readOnly) {
+                const timer = clickTimersRef.current.get(child.id)
+                if (timer) { clearTimeout(timer); clickTimersRef.current.delete(child.id) }
+              }
               if (child.codeMapping && onNavigateToCode && child.codeMapping.filePath) {
                 onNavigateToCode(child.codeMapping.filePath, child.codeMapping.startLine)
-              } else {
-                onSelectNode(child.id)
+              } else if (!readOnly) {
+                onSelectNode?.(child.id)
               }
             })
 
             // Child output port (unless block — block uses its own outer ports)
-            if (child.kind !== 'output') {
+            if (!readOnly && child.kind !== 'output') {
               childG.append('circle')
                 .attr('class', 'net-port-out')
                 .attr('cx', cx + NODE_W / 2)
@@ -455,7 +460,7 @@ export function NetworkCanvas({
                 .on('mouseenter', function () { d3.select(this).attr('opacity', 1).attr('r', 7) })
                 .on('mouseleave', function () { d3.select(this).attr('opacity', 0.5).attr('r', 5) })
             }
-            if (child.kind !== 'input') {
+            if (!readOnly && child.kind !== 'input') {
               childG.append('circle')
                 .attr('class', 'net-port-in')
                 .attr('cx', cx + NODE_W / 2)
@@ -508,29 +513,33 @@ export function NetworkCanvas({
         }
       }
 
-      nodeG.on('click', (event: MouseEvent) => {
-        event.stopPropagation()
-        if (clickTimersRef.current.has(node.id)) return
-        const timer = setTimeout(() => {
-          onSelectNode(node.id)
-          clickTimersRef.current.delete(node.id)
-        }, 250)
-        clickTimersRef.current.set(node.id, timer)
-      })
+      if (!readOnly) {
+        nodeG.on('click', (event: MouseEvent) => {
+          event.stopPropagation()
+          if (clickTimersRef.current.has(node.id)) return
+          const timer = setTimeout(() => {
+            onSelectNode?.(node.id)
+            clickTimersRef.current.delete(node.id)
+          }, 250)
+          clickTimersRef.current.set(node.id, timer)
+        })
+      }
 
       nodeG.on('dblclick', (event: MouseEvent) => {
         event.stopPropagation()
-        const timer = clickTimersRef.current.get(node.id)
-        if (timer) { clearTimeout(timer); clickTimersRef.current.delete(node.id) }
+        if (!readOnly) {
+          const timer = clickTimersRef.current.get(node.id)
+          if (timer) { clearTimeout(timer); clickTimersRef.current.delete(node.id) }
+        }
         if (node.codeMapping && onNavigateToCode && node.codeMapping.filePath) {
           onNavigateToCode(node.codeMapping.filePath, node.codeMapping.startLine)
-        } else {
-          onSelectNode(node.id)
+        } else if (!readOnly) {
+          onSelectNode?.(node.id)
         }
       })
 
       // Output port — bottom center of block (only for non-output nodes)
-      if (node.kind !== 'output') {
+      if (!readOnly && node.kind !== 'output') {
         nodeG.append('circle')
           .attr('class', 'net-port-out')
           .attr('cx', nx + nw / 2)
@@ -546,7 +555,7 @@ export function NetworkCanvas({
       }
 
       // Input port — top center of block (only for non-input nodes)
-      if (node.kind !== 'input') {
+      if (!readOnly && node.kind !== 'input') {
         nodeG.append('circle')
           .attr('class', 'net-port-in')
           .attr('cx', nx + nw / 2)
@@ -563,7 +572,7 @@ export function NetworkCanvas({
     }
 
     // Background click to deselect
-    svg.on('click', () => { onSelectNode(null) })
+    svg.on('click', () => { onSelectNode?.(null) })
 
   }, [doc, catalog, selectedNodeId, selectedEdgeId, onSelectNode, onSelectEdge, onNavigateToCode, dims])
 
@@ -572,6 +581,7 @@ export function NetworkCanvas({
   }, [render])
 
   const handlePortMouseDown = useCallback((event: React.MouseEvent) => {
+    if (readOnly) return
     const target = event.target as Element
     if (!target.classList.contains('net-port-out')) return
 
@@ -617,7 +627,7 @@ export function NetworkCanvas({
           const targetNode = (el as Element).closest('.net-node') as HTMLElement | null
           const targetId = targetNode?.getAttribute('data-node-id')
           if (targetId && targetId !== sourceNodeId) {
-            onAddEdge(sourceNodeId, targetId)
+            onAddEdge?.(sourceNodeId, targetId)
           }
           break
         }
@@ -635,6 +645,7 @@ export function NetworkCanvas({
   }, [onAddEdge])
 
   const handleDragOver = (e: React.DragEvent) => {
+    if (readOnly) return
     if (e.dataTransfer.types.includes('application/x-net-layer')) {
       e.preventDefault()
       e.dataTransfer.dropEffect = 'copy'
@@ -642,9 +653,10 @@ export function NetworkCanvas({
   }
 
   const handleDrop = (e: React.DragEvent) => {
+    if (readOnly) return
     e.preventDefault()
     const layerType = e.dataTransfer.getData('application/x-net-layer')
-    if (layerType) onDropLayer(layerType)
+    if (layerType) onDropLayer?.(layerType)
   }
 
   return (

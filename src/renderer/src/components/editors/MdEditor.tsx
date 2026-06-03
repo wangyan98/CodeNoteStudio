@@ -20,6 +20,7 @@ interface MdEditorProps {
   onSave: (content: string) => Promise<void>
   onRefClick?: (refName: string) => void
   onEmbedClick?: (notePath: string, noteType: 'derive' | 'mind' | 'seq' | 'net') => void
+  onNavigateToCode?: (filePath: string, line: number) => void
   codeMappings?: CodeMapping[]
 }
 
@@ -32,7 +33,7 @@ export interface MdEditorHandle {
 type SaveStatus = 'saved' | 'saving' | 'unsaved' | 'error'
 
 export const MdEditor = forwardRef<MdEditorHandle, MdEditorProps>(
-  function MdEditor({ content, notePath, workspacePath, codeRepoPath, onSave, onRefClick, onEmbedClick, codeMappings }, ref) {
+  function MdEditor({ content, notePath, workspacePath, codeRepoPath, onSave, onRefClick, onEmbedClick, onNavigateToCode, codeMappings }, ref) {
   const [value, setValue] = useState(content)
   const [showPreview, setShowPreview] = useState(true)
   const [saveStatus, setSaveStatus] = useState<SaveStatus>('saved')
@@ -166,7 +167,7 @@ export const MdEditor = forwardRef<MdEditorHandle, MdEditorProps>(
                 <span className="note-embed-path">{notePath}</span>
               </div>
               <div className="note-embed-body net-embed">
-                <NetworkEmbedViewer document={content as NetworkDocument} />
+                <NetworkEmbedViewer document={content as NetworkDocument} onNavigateToCode={onNavigateToCode} />
               </div>
             </div>
           )
@@ -179,7 +180,7 @@ export const MdEditor = forwardRef<MdEditorHandle, MdEditorProps>(
     return () => {
       roots.forEach((unmount) => unmount())
     }
-  }, [showPreview, value, onEmbedClick])
+  }, [showPreview, value, onEmbedClick, onNavigateToCode])
 
   // Reset when opening a different note
   useEffect(() => {

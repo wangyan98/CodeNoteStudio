@@ -13,4 +13,3 @@
 17. 自动校验输入模型layer的input shape和output shape
 18. seq 图 可以使用ref,在渲染时直接跳转代码
 19. layer叠加到另一个layer上时直接连线
-20. layer多输出时分叉不重叠
