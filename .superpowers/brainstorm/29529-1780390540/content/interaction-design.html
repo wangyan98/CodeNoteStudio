@@ -1,0 +1,43 @@
+<h2>Design Section 3 — Connection UI & Interaction</h2>
+<p class="subtitle">两种方式创建连接：端口拖拽 + 编辑面板</p>
+
+<h3>A. 端口拖拽连线</h3>
+<div class="mockup">
+  <div class="mockup-body">
+    <ol style="font-size:11px;margin:0;color:#ccc;line-height:1.8">
+      <li>鼠标悬停节点 → 端口圆点显示（默认半透明，hover 时高亮）</li>
+      <li>从<b>输出端口</b>（节点右侧）按下拖拽 → 出现临时橡皮筋线跟随鼠标</li>
+      <li>拖到目标节点的<b>输入端口</b>（节点左侧）松开 → 创建 edge</li>
+      <li>拖到空白区域松开 → 取消操作</li>
+      <li>已存在的 edge，点击选中后按 Delete 删除</li>
+    </ol>
+    <p style="font-size:10px;color:#888;margin:12px 0 0">实现：SVG &lt;line&gt; 作为 drag ghost，mousemove 更新终点坐标，mouseup 时命中检测目标端口</p>
+  </div>
+</div>
+
+<h3>B. 编辑面板连接管理</h3>
+<div class="mockup">
+  <div class="mockup-body">
+    <p style="font-size:11px;margin:0 0 8px;color:#ccc">选中节点后，底部面板显示：</p>
+    <ul style="font-size:11px;margin:0;color:#aaa;line-height:1.8">
+      <li><b>Input connections</b> — 列表显示所有入边，每项：source 节点名 + 删除按钮</li>
+      <li><b>Add input</b> — 下拉菜单列出所有可作为上游的节点（排除自身和已连接项）</li>
+      <li><b>Output connections</b> — 列表显示所有出边（只读，从 target 面板管理）</li>
+    </ul>
+    <p style="font-size:10px;color:#888;margin:12px 0 0">输入端口对 input 节点不可用；输出端口对 output 节点不可用</p>
+  </div>
+</div>
+
+<h3>C. 节点新增 & 删除</h3>
+<div class="mockup">
+  <div class="mockup-body">
+    <ul style="font-size:11px;margin:0;color:#aaa;line-height:1.8">
+      <li><b>添加 layer</b>：从 palette 拖拽 pill 到 canvas → 创建 node + 自动连接（如已有选中节点，连到它后面）</li>
+      <li><b>添加 input/output</b>：toolbar 按钮 "+ Input" / "+ Output"</li>
+      <li><b>添加 block</b>：已有 "+ Add Block" 按钮，改为创建 kind='block' 的 node</li>
+      <li><b>删除节点</b>：选中 + Delete → 删除 node + 所有相关 edge</li>
+    </ul>
+  </div>
+</div>
+
+<p style="color:#888;margin-top:16px;font-size:12px">连接创建和节点管理的交互方案对吗？</p>

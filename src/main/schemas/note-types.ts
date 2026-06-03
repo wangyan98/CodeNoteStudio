@@ -190,15 +190,19 @@ export function createNetworkBlock(name = 'New Block', repeat?: number): Network
 }
 
 export function createNetworkDocument(name = 'New Network'): NetworkDocument {
+  const inputId = uuidv4()
+  const outputId = uuidv4()
   return {
     type: 'net',
     version: 2,
     name,
     nodes: [
-      { id: uuidv4(), kind: 'input', label: 'Input' },
-      { id: uuidv4(), kind: 'output', label: 'Output' },
+      { id: inputId, kind: 'input', label: 'Input' },
+      { id: outputId, kind: 'output', label: 'Output' },
     ],
-    edges: [],
+    edges: [
+      { id: uuidv4(), source: inputId, target: outputId, style: 'forward' },
+    ],
     inputShape: '',
     blocks: [],
     connections: [],

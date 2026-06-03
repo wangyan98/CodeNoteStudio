@@ -102,9 +102,13 @@ export function NetworkCanvas({
 
     const g = svg.append('g').attr('class', 'canvas-content')
 
-    // Zoom
+    // Zoom (don't start on port dots — those are for drag-connect)
     const zoom = d3.zoom<SVGSVGElement, unknown>()
       .scaleExtent([0.3, 3])
+      .filter((event) => {
+        const target = event.target as Element
+        return !target.classList.contains('net-port-out') && !target.classList.contains('net-port-in')
+      })
       .on('zoom', (event) => { g.attr('transform', event.transform.toString()) })
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     svg.call(zoom as any)

@@ -193,7 +193,7 @@ export function NetworkEditor({ document: initialDoc, notePath, workspacePath, o
           + Output
         </button>
         <span style={{ flex: 1 }} />
-        <button className="network-editor-btn" onClick={() => dispatch({ type: 'ADD_BLOCK', name: 'New Block' })}>
+        <button className="network-editor-btn" onClick={() => dispatch({ type: 'ADD_NODE', kind: 'block', name: 'New Block' })}>
           + Add Block
         </button>
         <span className={`network-editor-save-status ${saveStatusClass}`}>

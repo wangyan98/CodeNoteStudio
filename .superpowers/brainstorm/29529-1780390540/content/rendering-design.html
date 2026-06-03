@@ -1,0 +1,83 @@
+<h2>Design Section 2 — Rendering & Layout</h2>
+<p class="subtitle">Canvas 从垂直线性渲染 → DAG 自动布局 + 自由连线</p>
+
+<h3>Layout Engine: dagre</h3>
+<div class="mockup">
+  <div class="mockup-body">
+    <p style="margin:0 0 8px;font-size:12px"><code>dagre</code> 是最成熟的 JS DAG 布局库（6.5k stars），已有 D3 集成方案：</p>
+    <ul style="font-size:11px;margin:0;color:#aaa">
+      <li>输入：nodes (含尺寸) + edges → 输出：每个 node 的 {x, y} 坐标</li>
+      <li>支持 rankdir: TB (上→下) 或 LR (左→右)</li>
+      <li>自动处理层级分配、边交叉最小化、节点居中对齐</li>
+    </ul>
+  </div>
+</div>
+
+<h3>渲染流程</h3>
+<div class="mockup">
+  <div class="mockup-header">NetworkCanvas render() 新流程</div>
+  <div class="mockup-body">
+<pre style="font-size:10px;line-height:1.6;margin:0;color:#d4d4d4">
+1. 收集所有可视节点（展开的 blocks 内 children 提升到顶层）
+2. 计算节点尺寸（根据 label 文本估算 rect 宽高）
+3. 调用 dagre.layout(g) 计算位置
+4. D3 渲染：
+   a. edges → &lt;path&gt; 曲线（forward: 直线 + 箭头, skip: 贝塞尔虚线 + 箭头）
+   b. nodes → &lt;g&gt; 含 rect + label + 端口圆点
+   c. input/output 节点 → 特殊样式（圆角更小、颜色更浅）
+   d. block 节点 → 虚线边框容器，内含子图
+5. 应用 zoom transform（已有）
+</pre>
+  </div>
+</div>
+
+<h3>Node rendering by kind</h3>
+<table style="width:100%;font-size:11px;border-collapse:collapse;color:#d4d4d4">
+  <tr style="color:#888;text-align:left">
+    <th style="padding:4px 8px;border-bottom:1px solid #333">Kind</th>
+    <th style="padding:4px 8px;border-bottom:1px solid #333">Shape</th>
+    <th style="padding:4px 8px;border-bottom:1px solid #333">Color</th>
+    <th style="padding:4px 8px;border-bottom:1px solid #333">Ports</th>
+  </tr>
+  <tr>
+    <td style="padding:4px 8px;border-bottom:1px solid #222">input</td>
+    <td style="padding:4px 8px;border-bottom:1px solid #222">小圆角矩形</td>
+    <td style="padding:4px 8px;border-bottom:1px solid #222">#f5f5f5 浅灰</td>
+    <td style="padding:4px 8px;border-bottom:1px solid #222">仅右侧输出端口</td>
+  </tr>
+  <tr>
+    <td style="padding:4px 8px;border-bottom:1px solid #222">output</td>
+    <td style="padding:4px 8px;border-bottom:1px solid #222">小圆角矩形</td>
+    <td style="padding:4px 8px;border-bottom:1px solid #222">#f5f5f5 浅灰</td>
+    <td style="padding:4px 8px;border-bottom:1px solid #222">仅左侧输入端口</td>
+  </tr>
+  <tr>
+    <td style="padding:4px 8px;border-bottom:1px solid #222">layer</td>
+    <td style="padding:4px 8px;border-bottom:1px solid #222">圆角矩形</td>
+    <td style="padding:4px 8px;border-bottom:1px solid #222">按 layer catalog 颜色</td>
+    <td style="padding:4px 8px;border-bottom:1px solid #222">左右各一个端口</td>
+  </tr>
+  <tr>
+    <td style="padding:4px 8px;border-bottom:1px solid #222">block</td>
+    <td style="padding:4px 8px;border-bottom:1px solid #222">虚线大矩形容器</td>
+    <td style="padding:4px 8px;border-bottom:1px solid #222">#ff9800 橙色虚线边框</td>
+    <td style="padding:4px 8px;border-bottom:1px solid #222">左右端口（可展开/折叠）</td>
+  </tr>
+</table>
+
+<h3>Edge rendering</h3>
+<div class="mockup">
+  <div class="mockup-body">
+<pre style="font-size:10px;line-height:1.6;margin:0;color:#d4d4d4">
+forward: 直线路径 + 实线描边 + 末端实心三角箭头
+   [nodeA] ═══════════════▶ [nodeB]
+
+skip:    贝塞尔曲线 (d3.curveBasis) + 虚线描边 + 空心三角箭头
+   [enc1] ╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌▶ [dec1]
+              ╲
+               ╲  (曲线绕过中间节点)
+</pre>
+  </div>
+</div>
+
+<p style="color:#888;margin-top:16px;font-size:12px">渲染和布局方案看起来对吗？dagre 做自动布局、4 种 node kind 不同样式、edge forward/skip 两种视觉效果。</p>

@@ -1,0 +1,53 @@
+<h2>Design Section 4 — v1 Migration & Implementation Scope</h2>
+
+<h3>v1 → v2 Migration</h3>
+<div class="mockup">
+  <div class="mockup-body">
+    <p style="font-size:11px;margin:0 0 8px;color:#ccc">打开 v1 <code>.net.json</code> 时自动转换，用户无感：</p>
+<pre style="font-size:10px;line-height:1.5;margin:0;color:#d4d4d4">
+// Pseudo:
+migrateV1toV2(doc):
+  nodes = [
+    { kind:'input', label:'Input', inputShape: doc.inputShape },
+    ...doc.blocks.flatMap(blockToNodes),
+    { kind:'output', label:'Output' },
+  ]
+  edges = [
+    // block内部按layers数组顺序生成forward edges
+    ...block.layers.sliding(2).map([a,b] => forwardEdge(a, b)),
+    // skipConnections → style:'skip' edges
+    ...block.skipConnections.map(c => skipEdge(c.from, c.to)),
+    // doc.connections → forward edges between blocks
+    ...doc.connections.map(c => forwardEdge(c.from, c.to)),
+  ]
+</pre>
+  </div>
+</div>
+
+<h3>Files to change</h3>
+<table style="width:100%;font-size:11px;border-collapse:collapse;color:#d4d4d4">
+  <tr style="color:#888;text-align:left">
+    <th style="padding:4px 8px;border-bottom:1px solid #333">File</th>
+    <th style="padding:4px 8px;border-bottom:1px solid #333">Change</th>
+    <th style="padding:4px 8px;border-bottom:1px solid #333">Effort</th>
+  </tr>
+  <tr><td style="padding:4px 8px;border-bottom:1px solid #222">note-types.ts</td><td style="padding:4px 8px;border-bottom:1px solid #222">GraphNode, GraphEdge, v2 NetworkDocument, migrateV1toV2()</td><td style="padding:4px 8px;border-bottom:1px solid #222">中</td></tr>
+  <tr><td style="padding:4px 8px;border-bottom:1px solid #222">networkReducer.ts</td><td style="padding:4px 8px;border-bottom:1px solid #222">重写为 node/edge 操作: ADD_NODE, DELETE_NODE, UPDATE_NODE, ADD_EDGE, DELETE_EDGE</td><td style="padding:4px 8px;border-bottom:1px solid #222">大</td></tr>
+  <tr><td style="padding:4px 8px;border-bottom:1px solid #222">NetworkCanvas.tsx</td><td style="padding:4px 8px;border-bottom:1px solid #222">集成 dagre 布局 + 端口拖拽连线 + 4种节点渲染</td><td style="padding:4px 8px;border-bottom:1px solid #222">大</td></tr>
+  <tr><td style="padding:4px 8px;border-bottom:1px solid #222">NetworkPanel.tsx</td><td style="padding:4px 8px;border-bottom:1px solid #222">添加 connection 列表 + Add Input 下拉 + edge 删除</td><td style="padding:4px 8px;border-bottom:1px solid #222">中</td></tr>
+  <tr><td style="padding:4px 8px;border-bottom:1px solid #222">NetworkEditor.tsx</td><td style="padding:4px 8px;border-bottom:1px solid #222">+Input / +Output 按钮，适配新 state shape</td><td style="padding:4px 8px;border-bottom:1px solid #222">小</td></tr>
+  <tr><td style="padding:4px 8px;border-bottom:1px solid #222">NetworkEmbedViewer.tsx</td><td style="padding:4px 8px;border-bottom:1px solid #222">适配 v2 数据模型（或复用 migrateV1toV2）</td><td style="padding:4px 8px;border-bottom:1px solid #222">小</td></tr>
+  <tr><td style="padding:4px 8px;border-bottom:1px solid #222">package.json</td><td style="padding:4px 8px;border-bottom:1px solid #222">添加 dagre + @types/dagre 依赖</td><td style="padding:4px 8px;border-bottom:1px solid #222">微小</td></tr>
+</table>
+
+<h3>Out of scope (保持现状或后续)</h3>
+<ul style="font-size:11px;color:#aaa;line-height:1.8">
+  <li>NetworkPalette — 不变，拖拽 pill 仍然工作</li>
+  <li>Layer catalog — 不变，layerDef 仍然查 catalog 获取颜色和参数</li>
+  <li>Code mapping / @ref — 不变，codeMapping 在 GraphNode 上仍然支持</li>
+  <li>Block 嵌套渲染 — collapse/expand block 内部子图（后续迭代）</li>
+  <li>节点手动拖拽定位 — 不在本次范围（选了纯自动布局）</li>
+  <li>Undo/redo — 不在本次范围</li>
+</ul>
+
+<p style="color:#888;margin-top:16px;font-size:12px">迁移方案和文件改动范围对吗？所有设计就这些，确认后我写入 spec 文档。</p>

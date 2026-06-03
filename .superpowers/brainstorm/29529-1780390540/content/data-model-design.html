@@ -1,0 +1,122 @@
+<h2>Design Section 1 — Data Model</h2>
+<p class="subtitle">全图模型：从 block/layer 层级结构变为 nodes + edges 图结构</p>
+
+<h3>Core types (replacing current NetworkDocument)</h3>
+<div class="mockup">
+  <div class="mockup-header">src/main/schemas/note-types.ts — new or heavily modified types</div>
+  <div class="mockup-body">
+<pre style="font-size:10px;line-height:1.5;margin:0;color:#d4d4d4">
+// ---- Node types ----
+
+type NodeKind = 'input' | 'output' | 'layer' | 'block'
+
+interface GraphNode {
+  id: string
+  kind: NodeKind
+  label: string                // display name
+  // kind-specific:
+  layerType?: string           // 'Conv2d', 'ReLU', etc (kind='layer')
+  params?: LayerParams         // (kind='layer')
+  inputShape?: string          // annotated tensor shape
+  outputShape?: string
+  repeat?: number              // block repeat count (kind='block')
+  children?: GraphNode[]       // nested nodes inside this block
+  internalEdges?: GraphEdge[]  // edges inside this block
+  codeMapping?: CodeMapping    // reuses existing type
+  x?: number; y?: number       // optional manual override position
+}
+
+// ---- Edges ----
+
+type EdgeStyle = 'forward' | 'skip'
+
+interface GraphEdge {
+  id: string
+  source: string               // node id
+  target: string               // node id
+  label?: string               // tensor shape annotation on the arrow
+  style: EdgeStyle             // forward=solid straight, skip=dashed curved
+}
+
+// ---- Document ----
+
+interface NetworkDocument {
+  type: 'net'
+  version: 2                   // bumped from v1
+  name: string
+  nodes: GraphNode[]
+  edges: GraphEdge[]
+  inputShape?: string          // migrated: becomes input nodes, kept for backwards compat
+}
+</pre>
+  </div>
+</div>
+
+<h3>Key changes vs current</h3>
+<div class="pros-cons">
+  <div class="pros">
+    <h4>What we gain</h4>
+    <ul>
+      <li><code>nodes[]</code> is one flat list — input, layer, block all in the same space</li>
+      <li><code>edges[]</code> is one flat list — no distinction between "sequential", "connection", "skipConnection"</li>
+      <li>Edge style (<code>forward</code> vs <code>skip</code>) is purely visual, not structural</li>
+      <li>Block stays as a node kind — can contain nested <code>children</code> for hierarchical grouping</li>
+      <li>Every node can have 0-N inputs and 0-N outputs — no restrictions</li>
+    </ul>
+  </div>
+  <div class="cons">
+    <h4>What we lose</h4>
+    <ul>
+      <li>No more implicit sequential connections — users must create every edge</li>
+      <li>v1 <code>.net.json</code> files need a migration path</li>
+      <li>Data model is more verbose for simple linear networks</li>
+    </ul>
+  </div>
+</div>
+
+<h3 style="margin-top:24px">Example: Stable Diffusion in this model</h3>
+<div class="mockup">
+  <div class="mockup-body">
+<pre style="font-size:10px;line-height:1.5;margin:0;color:#d4d4d4">
+nodes: [
+  { id:"in_prompt", kind:"input",  label:"Prompt",  inputShape:"77×768" },
+  { id:"in_image",  kind:"input",  label:"Image",   inputShape:"3×512×512" },
+  { id:"clip",      kind:"layer",  label:"CLIP",    layerType:"CLIPTextEncoder" },
+  { id:"vae_enc",   kind:"layer",  label:"VAE Enc", layerType:"VAEEncoder" },
+  { id:"unet",      kind:"block",  label:"UNet",    children:[...] },
+  { id:"vae_dec",   kind:"layer",  label:"VAE Dec", layerType:"VAEDecoder" },
+  { id:"out",       kind:"output", label:"Output" },
+],
+edges: [
+  { source:"in_prompt", target:"clip",     style:"forward" },
+  { source:"in_image",  target:"vae_enc",  style:"forward" },
+  { source:"clip",      target:"unet",     style:"forward" },
+  { source:"vae_enc",   target:"unet",     style:"forward" },
+  { source:"unet",      target:"vae_dec",  style:"forward" },
+  { source:"vae_dec",   target:"out",      style:"forward" },
+]
+</pre>
+  </div>
+</div>
+
+<h3 style="margin-top:24px">Example: U-Net skip connections</h3>
+<div class="mockup">
+  <div class="mockup-body">
+<pre style="font-size:10px;line-height:1.5;margin:0;color:#d4d4d4">
+edges: [
+  // forward path
+  { source:"input", target:"enc1",  style:"forward" },
+  { source:"enc1",  target:"enc2",  style:"forward" },
+  { source:"enc2",  target:"bottleneck", style:"forward" },
+  { source:"bottleneck", target:"dec2", style:"forward" },
+  { source:"dec2",  target:"dec1",  style:"forward" },
+  { source:"dec1",  target:"output", style:"forward" },
+  // skip connections (backward across blocks) — just edges with different style
+  { source:"enc1",  target:"dec1",  style:"skip", label:"copy" },
+  { source:"enc2",  target:"dec2",  style:"skip", label:"copy" },
+]
+</pre>
+  </div>
+</div>
+
+<p style="color:#888;margin-top:16px;font-size:12px">Does this data model look right? Any concerns before I move on to the rendering/architecture section?</p>
