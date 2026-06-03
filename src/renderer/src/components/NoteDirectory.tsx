@@ -83,7 +83,7 @@ function TreeItem({
   onRenameSubmit: () => void
   onRenameCancel: () => void
   creatingIn: string | null
-  creatingType: 'note' | 'folder'
+  creatingType: NoteType | 'folder'
   creatingValue: string
   onCreatingValueChange: (v: string) => void
   onCreateSubmit: () => void
@@ -117,9 +117,13 @@ function TreeItem({
 
   useEffect(() => {
     if (creatingIn === node.path && createInputRef.current) {
-      createInputRef.current.focus()
+      const input = createInputRef.current
+      input.focus()
+      if (creatingType !== 'folder') {
+        input.setSelectionRange(0, 0)
+      }
     }
-  }, [creatingIn, node.path])
+  }, [creatingIn, node.path, creatingType])
 
   return (
     <>
@@ -212,7 +216,7 @@ function TreeItem({
           ))}
           {creatingIn === node.path && (
             <div className="tree-item tree-item-create" style={{ '--depth': depth + 1 } as React.CSSProperties}>
-              <span className="tree-item-icon">{creatingType === 'folder' ? '📁' : '📝'}</span>
+              <span className="tree-item-icon">{creatingType === 'folder' ? '📁' : icons[creatingType]}</span>
               <input
                 ref={createInputRef}
                 className="tree-item-inline-input"
@@ -246,7 +250,7 @@ export function NoteDirectory() {
 
   // Inline create state
   const [creatingIn, setCreatingIn] = useState<string | null>(null)
-  const [creatingType, setCreatingType] = useState<'note' | 'folder'>('note')
+  const [creatingType, setCreatingType] = useState<NoteType | 'folder'>('md')
   const [creatingValue, setCreatingValue] = useState('')
 
   const filters: { label: string; value: NoteFilter }[] = [
@@ -316,7 +320,7 @@ export function NoteDirectory() {
         await window.electronAPI.createFolder(relPath)
       } else {
         const relPath = parentPath ? `${parentPath}/${name}` : name
-        await createNote(relPath, 'md')
+        await createNote(relPath, creatingType as NoteType)
       }
       await refreshNotes()
     } catch (err) {
@@ -341,6 +345,14 @@ export function NoteDirectory() {
     y: number
     node: TreeNode | null
   } | null>(null)
+
+  const noteTypeIcons: Record<NoteType, string> = {
+    md: '📝',
+    mind: '🧠',
+    derive: '∑',
+    seq: '⚡',
+    net: '🔗'
+  }
 
   const typeOptions: { label: string; value: NoteType; suffix: string }[] = [
     { label: '.md', value: 'md', suffix: '.md' },
@@ -393,6 +405,17 @@ export function NoteDirectory() {
       console.error('Failed to create folder:', err)
     }
   }, [newFolderName, refreshNotes])
+
+  const newNoteMenuEntries = useCallback((parentPath: string): MenuEntry[] => {
+    return typeOptions.map((opt) => ({
+      label: `New ${opt.label}`,
+      action: () => {
+        setCreatingIn(parentPath)
+        setCreatingType(opt.value)
+        setCreatingValue(opt.suffix)
+      }
+    }))
+  }, [])
 
   const buildFileContextMenu = useCallback((node: TreeNode): MenuEntry[] => {
     const parentDir = node.path.includes('/')
@@ -447,14 +470,7 @@ export function NoteDirectory() {
 
   const buildFolderContextMenu = useCallback((node: TreeNode): MenuEntry[] => {
     return [
-      {
-        label: 'New Note',
-        action: () => {
-          setCreatingIn(node.path)
-          setCreatingType('note')
-          setCreatingValue('')
-        }
-      },
+      ...newNoteMenuEntries(node.path),
       {
         label: 'New Folder',
         action: () => {
@@ -496,14 +512,7 @@ export function NoteDirectory() {
 
   const buildRootContextMenu = useCallback((): MenuEntry[] => {
     return [
-      {
-        label: 'New Note',
-        action: () => {
-          setCreatingIn('')
-          setCreatingType('note')
-          setCreatingValue('')
-        }
-      },
+      ...newNoteMenuEntries(''),
       {
         label: 'New Folder',
         action: () => {
@@ -661,7 +670,7 @@ export function NoteDirectory() {
           ))}
           {creatingIn === '' && (
             <div className="tree-item tree-item-create" style={{ '--depth': 0 } as React.CSSProperties}>
-              <span className="tree-item-icon">{creatingType === 'folder' ? '📁' : '📝'}</span>
+              <span className="tree-item-icon">{creatingType === 'folder' ? '📁' : noteTypeIcons[creatingType as NoteType]}</span>
               <input
                 className="tree-item-inline-input"
                 value={creatingValue}
@@ -673,6 +682,11 @@ export function NoteDirectory() {
                 }}
                 onBlur={handleCreateCancel}
                 autoFocus
+                ref={(el) => {
+                  if (el && creatingType !== 'folder') {
+                    el.setSelectionRange(0, 0)
+                  }
+                }}
               />
             </div>
           )}
