@@ -213,6 +213,22 @@ export async function listNotes(
   }
 
   await scanDir(notesRoot, '')
+
+  // Sort: directories first, then by type order, then by name
+  const typeOrder: Record<string, number> = { md: 1, mind: 2, derive: 3, seq: 4, net: 5 }
+  result.sort((a, b) => {
+    const aIsDir = a.isDirectory ? 0 : 1
+    const bIsDir = b.isDirectory ? 0 : 1
+    if (aIsDir !== bIsDir) return aIsDir - bIsDir
+    if (a.isDirectory && b.isDirectory) {
+      return a.name.localeCompare(b.name)
+    }
+    const aType = typeOrder[a.type] ?? 9
+    const bType = typeOrder[b.type] ?? 9
+    if (aType !== bType) return aType - bType
+    return a.name.localeCompare(b.name)
+  })
+
   return result
 }
 

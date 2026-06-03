@@ -354,12 +354,12 @@ export function NoteDirectory() {
     net: '🔗'
   }
 
-  const typeOptions: { label: string; value: NoteType; suffix: string }[] = [
-    { label: '.md', value: 'md', suffix: '.md' },
-    { label: '.mind.json', value: 'mind', suffix: '.mind.json' },
-    { label: '.derive.json', value: 'derive', suffix: '.derive.json' },
-    { label: '.seq.mermaid', value: 'seq', suffix: '.seq.mermaid' },
-    { label: '.net.json', value: 'net', suffix: '.net.json' }
+  const typeOptions: { label: string; value: NoteType; suffix: string; displayName: string }[] = [
+    { label: '.md', value: 'md', suffix: '.md', displayName: 'Markdown' },
+    { label: '.mind.json', value: 'mind', suffix: '.mind.json', displayName: 'Mindmap' },
+    { label: '.derive.json', value: 'derive', suffix: '.derive.json', displayName: 'Derive' },
+    { label: '.seq.mermaid', value: 'seq', suffix: '.seq.mermaid', displayName: 'Sequence' },
+    { label: '.net.json', value: 'net', suffix: '.net.json', displayName: 'Network' }
   ]
 
   const handleNewNote = useCallback(() => {
@@ -408,7 +408,7 @@ export function NoteDirectory() {
 
   const newNoteMenuEntries = useCallback((parentPath: string): MenuEntry[] => {
     return typeOptions.map((opt) => ({
-      label: `New ${opt.label}`,
+      label: `New ${opt.displayName}`,
       action: () => {
         setCreatingIn(parentPath)
         setCreatingType(opt.value)
@@ -594,7 +594,7 @@ export function NoteDirectory() {
                     onChange={(e) => setNewNoteType(e.target.value as NoteType)}
                   >
                     {typeOptions.map((opt) => (
-                      <option key={opt.value} value={opt.value}>{opt.label}</option>
+                      <option key={opt.value} value={opt.value}>{opt.displayName}</option>
                     ))}
                   </select>
                 </div>
