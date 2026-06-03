@@ -1,5 +1,6 @@
 import { useState, useCallback, useEffect, useRef } from 'react'
 import Editor from '@monaco-editor/react'
+import type * as monaco from 'monaco-editor'
 import { SequenceDiagramViewer } from './SequenceDiagramViewer'
 import './SequenceEditor.css'
 
@@ -17,6 +18,7 @@ export function SequenceEditor({ content: initialContent, notePath, onSave }: Se
   const [codePanelHeight, setCodePanelHeight] = useState(45)
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const oldValueRef = useRef(initialContent)
+  const editorRef = useRef<monaco.editor.IStandaloneCodeEditor | null>(null)
 
   // Reset when opening a different file
   useEffect(() => {
@@ -58,7 +60,28 @@ export function SequenceEditor({ content: initialContent, notePath, onSave }: Se
     return () => window.removeEventListener('keydown', handler)
   }, [value, onSave])
 
-  // Cleanup timer on unmount
+  // Listen for symbol-insert events from CodeViewport
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const refText = (e as CustomEvent<string>).detail
+      const editor = editorRef.current
+      if (!editor) return
+      const position = editor.getPosition()
+      if (!position) return
+      editor.executeEdits('symbol-insert', [{
+        range: {
+          startLineNumber: position.lineNumber,
+          startColumn: position.column,
+          endLineNumber: position.lineNumber,
+          endColumn: position.column
+        },
+        text: refText
+      }])
+      editor.focus()
+    }
+    window.addEventListener('symbol-insert', handler)
+    return () => window.removeEventListener('symbol-insert', handler)
+  }, [])
   useEffect(() => {
     return () => {
       if (saveTimerRef.current) clearTimeout(saveTimerRef.current)
@@ -111,6 +134,7 @@ export function SequenceEditor({ content: initialContent, notePath, onSave }: Se
             defaultLanguage="plaintext"
             value={value}
             onChange={handleChange}
+            onMount={(editor) => { editorRef.current = editor }}
             theme="vs-dark"
             options={{
               minimap: { enabled: false },
