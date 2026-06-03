@@ -58,59 +58,68 @@ export function SequenceDiagramViewer({ content, notePath }: SequenceDiagramView
   // Post-process SVG to make @ref clickable
   useEffect(() => {
     if (!svg || !containerRef.current) return
+    let cancelled = false
 
     const timer = setTimeout(() => {
+      if (cancelled) return
       const svgEl = containerRef.current?.querySelector('svg')
       if (!svgEl) return
 
+      const svgns = 'http://www.w3.org/2000/svg'
       const texts = svgEl.querySelectorAll('text')
+
       texts.forEach((textEl) => {
         const original = textEl.textContent || ''
-        const match = original.match(/@ref\(([^)]+?)\)/)
-        if (!match) return
+        const matches = [...original.matchAll(/@ref\(([^)]+)\)/g)]
+        if (matches.length === 0) return
 
-        const beforeIdx = original.indexOf(match[0])
-
-        // Clear and rebuild
+        // Clear existing content
         while (textEl.firstChild) textEl.removeChild(textEl.firstChild)
 
-        const svgns = 'http://www.w3.org/2000/svg'
+        let cursor = 0
+        for (const match of matches) {
+          const matchStart = match.index!
 
-        // Preceding text
-        if (beforeIdx > 0) {
-          const tspan = document.createElementNS(svgns, 'tspan')
-          tspan.textContent = original.slice(0, beforeIdx)
-          textEl.appendChild(tspan)
+          // Text before this match
+          if (matchStart > cursor) {
+            const tspan = document.createElementNS(svgns, 'tspan')
+            tspan.textContent = original.slice(cursor, matchStart)
+            textEl.appendChild(tspan)
+          }
+
+          // Clickable @ref link
+          const linkSpan = document.createElementNS(svgns, 'tspan')
+          linkSpan.textContent = match[0]
+          linkSpan.setAttribute('fill', '#61afef')
+          linkSpan.setAttribute('text-decoration', 'underline')
+          linkSpan.style.cursor = 'pointer'
+          const refText = match[0]
+          linkSpan.addEventListener('click', (e) => {
+            e.stopPropagation()
+            window.electronAPI.resolveRefs(notePath, refText, undefined).then((mappings) => {
+              if (mappings.length > 0) {
+                navigateToCode(mappings[0].filePath, mappings[0].startLine)
+              }
+            }).catch(() => {})
+          })
+          textEl.appendChild(linkSpan)
+
+          cursor = matchStart + match[0].length
         }
 
-        // Clickable @ref link
-        const linkSpan = document.createElementNS(svgns, 'tspan')
-        linkSpan.textContent = match[0]
-        linkSpan.setAttribute('fill', '#61afef')
-        linkSpan.setAttribute('text-decoration', 'underline')
-        linkSpan.style.cursor = 'pointer'
-        linkSpan.addEventListener('click', async (e) => {
-          e.stopPropagation()
-          try {
-            const mappings = await window.electronAPI.resolveRefs(notePath, match[0], undefined)
-            if (mappings.length > 0) {
-              navigateToCode(mappings[0].filePath, mappings[0].startLine)
-            }
-          } catch { /* ignore */ }
-        })
-        textEl.appendChild(linkSpan)
-
-        // Trailing text
-        const afterIdx = beforeIdx + match[0].length
-        if (afterIdx < original.length) {
+        // Remaining text after last match
+        if (cursor < original.length) {
           const tspan = document.createElementNS(svgns, 'tspan')
-          tspan.textContent = original.slice(afterIdx)
+          tspan.textContent = original.slice(cursor)
           textEl.appendChild(tspan)
         }
       })
     }, 100)
 
-    return () => clearTimeout(timer)
+    return () => {
+      cancelled = true
+      clearTimeout(timer)
+    }
   }, [svg, notePath, navigateToCode])
 
   if (error) {
