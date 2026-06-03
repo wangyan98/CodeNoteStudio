@@ -75,15 +75,30 @@ export function networkReducer(doc: NetworkDocument, action: NetworkAction): Net
 
     case 'UPDATE_NODE': {
       const cloned = cloneDoc(doc)
-      return {
-        ...cloned,
-        nodes: (cloned.nodes ?? []).map(n => {
-          if (n.id !== action.nodeId!) return n
+      const updateNode = (n: GraphNode): GraphNode => {
+        if (n.id === action.nodeId!) {
           if (action.field === 'params' && action.paramKey) {
             return { ...n, params: { ...n.params, [action.paramKey]: action.value } } as GraphNode
           }
           return { ...n, [action.field!]: action.value } as GraphNode
-        }),
+        }
+        if (n.children) {
+          const childIdx = n.children.findIndex(c => c.id === action.nodeId!)
+          if (childIdx !== -1) {
+            const child = n.children[childIdx]
+            const updated = action.field === 'params' && action.paramKey
+              ? { ...child, params: { ...child.params, [action.paramKey]: action.value } } as GraphNode
+              : { ...child, [action.field!]: action.value } as GraphNode
+            const newChildren = [...n.children]
+            newChildren[childIdx] = updated
+            return { ...n, children: newChildren }
+          }
+        }
+        return n
+      }
+      return {
+        ...cloned,
+        nodes: (cloned.nodes ?? []).map(updateNode),
       }
     }
 
