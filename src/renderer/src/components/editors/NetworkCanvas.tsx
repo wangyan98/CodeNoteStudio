@@ -109,12 +109,16 @@ export function NetworkCanvas({
       minY = Math.min(minY, p.y - NODE_H)
       maxY = Math.max(maxY, p.y + NODE_H)
     }
-    const contentW = maxX - minX + 80
-    const contentH = maxY - minY + 80
-    const offsetX = (W - contentW) / 2 - minX + 40
-    const offsetY = (H - contentH) / 2 - minY + 40
+    const pad = 40
+    const contentW = maxX - minX + pad * 2
+    const contentH = maxY - minY + pad * 2
+    const offsetX = pad - minX
+    const offsetY = pad - minY
 
     const g = svg.append('g').attr('class', 'canvas-content')
+
+    // Auto-fit: scale content to fit available space
+    const fitScale = Math.min(1, W / contentW, H / contentH)
 
     // Zoom (don't start on port dots — those are for drag-connect)
     const zoom = d3.zoom<SVGSVGElement, unknown>()
@@ -126,6 +130,11 @@ export function NetworkCanvas({
       .on('zoom', (event) => { g.attr('transform', event.transform.toString()) })
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     svg.call(zoom as any)
+
+    // Apply initial fit transform (centered in viewport)
+    const initTx = (W - contentW * fitScale) / 2
+    const initTy = (H - contentH * fitScale) / 2
+    svg.call(zoom.transform as any, d3.zoomIdentity.translate(initTx, initTy).scale(fitScale))
 
     // --- Render edges first (behind nodes) ---
     for (const edge of edges) {

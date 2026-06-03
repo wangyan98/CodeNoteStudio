@@ -23,7 +23,7 @@ type SaveStatus = 'saved' | 'saving' | 'unsaved' | 'error'
 export function NetworkEditor({ document: initialDoc, notePath, workspacePath, onSave, onNavigateToCode }: NetworkEditorProps) {
   const [doc, dispatch] = useReducer(networkReducer, initialDoc.version === 2 ? initialDoc : createNetworkDocument())
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null)
-  const [panelHeight, setPanelHeight] = useState(0.3)
+  const [panelHeight, setPanelHeight] = useState(0.25)
   const [saveStatus, setSaveStatus] = useState<SaveStatus>('saved')
   const [catalogOverrides, setCatalogOverrides] = useState<LayerCatalogOverrides | null>(null)
   const [resolvedMapping, setResolvedMapping] = useState<CodeMapping | null>(null)
