@@ -963,26 +963,31 @@ export const MindMapCanvas = forwardRef<MindMapCanvasHandle, MindMapCanvasProps>
           }
 
           // Check for direct node overlap (reparent)
+          // Use getBoundingClientRect so zoom transform is accounted for, and to
+          // avoid false positives when the dragged node covers siblings from above.
           let foundTarget = false
-          for (const el of elementsUnderCursor) {
-            const nodeEl = (el as Element).closest?.('.mind-node') as HTMLElement | null
-            if (!nodeEl) continue
+          const allMindNodes = svgEl.querySelectorAll<SVGGElement>('.mind-node')
+          for (const nodeEl of allMindNodes) {
             const targetId = nodeEl.getAttribute('data-node-id')
             if (!targetId || targetId === d.data.id || descendantIds.has(targetId)) continue
-            // Prevent dragging onto own ancestor (would create cycle)
-            const ancestors = new Set<string>()
-            let current = d.parent
-            while (current) {
-              ancestors.add(current.data.id)
-              current = current.parent
-            }
-            if (ancestors.has(targetId)) continue
+            const targetRect = nodeEl.getBoundingClientRect()
+            if (clientX >= targetRect.left && clientX <= targetRect.right &&
+                clientY >= targetRect.top && clientY <= targetRect.bottom) {
+              // Prevent dragging onto own ancestor (would create cycle)
+              const ancestors = new Set<string>()
+              let current = d.parent
+              while (current) {
+                ancestors.add(current.data.id)
+                current = current.parent
+              }
+              if (ancestors.has(targetId)) continue
 
-            dragTargetNodeId = targetId
-            dragTargetAction = 'reparent'
-            highlightReparentTarget(targetId)
-            foundTarget = true
-            break
+              dragTargetNodeId = targetId
+              dragTargetAction = 'reparent'
+              highlightReparentTarget(targetId)
+              foundTarget = true
+              break
+            }
           }
 
           // If no direct node hit, check for between-siblings reorder
@@ -996,8 +1001,8 @@ export const MindMapCanvas = forwardRef<MindMapCanvasHandle, MindMapCanvasProps>
               const svgRect = svgEl.getBoundingClientRect()
               let insertIdx = siblings.length
               for (let i = 0; i < siblings.length; i++) {
-                if (siblings[i].id === d.data.id) continue
-                const sibOrig = originalPositions.get(siblings[i].id)
+                if (siblings[i].data.id === d.data.id) continue
+                const sibOrig = originalPositions.get(siblings[i].data.id)
                 if (!sibOrig) continue
                 // Convert sibling SVG position to viewport Y accounting for zoom
                 const sibViewportY = svgRect.top + zoomTransform.applyY(sibOrig.x)
@@ -1007,7 +1012,7 @@ export const MindMapCanvas = forwardRef<MindMapCanvasHandle, MindMapCanvasProps>
                 }
               }
               // Adjust insertIdx to skip the dragged node's original position
-              const draggedOrigIdx = siblings.findIndex(s => s.id === d.data.id)
+              const draggedOrigIdx = siblings.findIndex(s => s.data.id === d.data.id)
               if (draggedOrigIdx >= 0 && insertIdx > draggedOrigIdx) {
                 insertIdx--
               }
