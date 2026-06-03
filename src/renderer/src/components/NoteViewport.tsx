@@ -41,6 +41,7 @@ export function NoteViewport() {
     const handler = async (e: Event) => {
       const { sourcePath, fileName } = (e as CustomEvent<{ sourcePath: string; fileName: string }>).detail
       if (state.activeNoteType !== 'md') {
+        alert('No active Markdown note. Open or select an .md file first.')
         return
       }
       try {
