@@ -1,5 +1,5 @@
 import { useReducer, useEffect, useRef, useState, useCallback, useMemo } from 'react'
-import type { NetworkDocument, GraphNode, GraphEdge, CodeMapping } from '../../../../main/schemas/note-types'
+import type { NetworkDocument, GraphNode, GraphEdge } from '../../../../main/schemas/note-types'
 import { createNetworkDocument } from '../../../../main/schemas/note-types'
 import type { LayerCatalogOverrides } from '../../../../main/schemas/layer-catalog'
 import { resolveLayerCatalog, getLayerDef } from '../../../../main/schemas/layer-catalog'
@@ -27,7 +27,6 @@ export function NetworkEditor({ document: initialDoc, notePath, workspacePath, o
   const [panelHeight, setPanelHeight] = useState(0.25)
   const [saveStatus, setSaveStatus] = useState<SaveStatus>('saved')
   const [catalogOverrides, setCatalogOverrides] = useState<LayerCatalogOverrides | null>(null)
-  const [resolvedMapping, setResolvedMapping] = useState<CodeMapping | null>(null)
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const oldDocRef = useRef(doc)
 
@@ -98,6 +97,24 @@ export function NetworkEditor({ document: initialDoc, notePath, workspacePath, o
     return () => window.removeEventListener('keydown', handler)
   }, [selectedNodeId, selectedEdgeId])
 
+  // Listen for symbol-insert events from CodeViewport
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const refText = (e as CustomEvent<string>).detail
+      const sel = selectedNodeRef.current
+      if (!sel || sel.kind !== 'layer') return
+      window.electronAPI.resolveRefs(notePath, refText, undefined).then((mappings) => {
+        if (mappings.length > 0) {
+          const m = mappings[0]
+          m.raw = refText.replace(/^@ref\(|\)$/g, '')
+          dispatch({ type: 'UPDATE_NODE', nodeId: sel.id, field: 'codeMapping', value: m })
+        }
+      }).catch(() => {})
+    }
+    window.addEventListener('symbol-insert', handler)
+    return () => window.removeEventListener('symbol-insert', handler)
+  }, [notePath])
+
   // Load project-level layer catalog overrides
   useEffect(() => {
     const loadOverrides = async () => {
@@ -132,7 +149,6 @@ export function NetworkEditor({ document: initialDoc, notePath, workspacePath, o
   const handleSelectNode = useCallback((nodeId: string | null) => {
     setSelectedNodeId(nodeId)
     setSelectedEdgeId(null)
-    setResolvedMapping(null)
   }, [])
 
   const handleSelectEdge = useCallback((edgeId: string | null) => {
@@ -163,18 +179,6 @@ export function NetworkEditor({ document: initialDoc, notePath, workspacePath, o
   const handleAddEdge = useCallback((source: string, target: string) => {
     dispatch({ type: 'ADD_EDGE', source, target })
   }, [])
-
-  const handleResolveRef = useCallback(async (raw: string) => {
-    if (!selectedNodeId) return
-    try {
-      const mappings = await window.electronAPI.resolveRefs(notePath, `@ref(${raw})`, undefined)
-      if (mappings.length > 0) {
-        const m = mappings[0]
-        setResolvedMapping(m)
-        dispatch({ type: 'UPDATE_NODE', nodeId: selectedNodeId, field: 'codeMapping', value: m })
-      }
-    } catch { /* ref resolution failed */ }
-  }, [notePath, selectedNodeId])
 
   const handlePanelResize = useCallback((e: React.MouseEvent) => {
     e.preventDefault()
@@ -253,6 +257,7 @@ export function NetworkEditor({ document: initialDoc, notePath, workspacePath, o
             onDropLayer={handleDropLayer}
             onDeleteNode={handleDeleteNode}
             onAddEdge={handleAddEdge}
+            onNavigateToCode={onNavigateToCode}
           />
         </div>
 
@@ -266,8 +271,7 @@ export function NetworkEditor({ document: initialDoc, notePath, workspacePath, o
             nodeDef={selectedNodeDef}
             onUpdateNode={(nodeId, field, value, paramKey?) => dispatch({ type: 'UPDATE_NODE', nodeId, field, paramKey, value })}
             onAddEdge={handleAddEdge}
-            onResolveRef={handleResolveRef}
-            resolvedMapping={resolvedMapping}
+            notePath={notePath}
           />
         </div>
       </div>

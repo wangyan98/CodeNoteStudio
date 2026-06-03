@@ -1,5 +1,6 @@
 import type { LayerDef } from '../../../../main/schemas/layer-catalog'
-import type { GraphNode, CodeMapping } from '../../../../main/schemas/note-types'
+import type { GraphNode } from '../../../../main/schemas/note-types'
+import { CodeMappingField } from '../CodeMappingField'
 import './NetworkPanel.css'
 
 interface NetworkPanelProps {
@@ -7,8 +8,7 @@ interface NetworkPanelProps {
   nodeDef: LayerDef | undefined
   onUpdateNode: (nodeId: string, field: string, value: unknown, paramKey?: string) => void
   onAddEdge: (source: string, target: string) => void
-  onResolveRef: (raw: string) => void
-  resolvedMapping: CodeMapping | null
+  notePath: string
 }
 
 function renderField(node: GraphNode, param: { name: string; type: string; default?: unknown }, onChange: (key: string, value: unknown) => void) {
@@ -48,7 +48,7 @@ function renderField(node: GraphNode, param: { name: string; type: string; defau
 }
 
 export function NetworkPanel({
-  node, nodeDef, onUpdateNode, onAddEdge, onResolveRef, resolvedMapping
+  node, nodeDef, onUpdateNode, onAddEdge, notePath
 }: NetworkPanelProps) {
 
   if (!node) {
@@ -167,24 +167,11 @@ export function NetworkPanel({
       {node.kind === 'layer' && (
         <div className="network-panel-side">
           <div className="network-panel-section-title">Code Mapping</div>
-          <input
-            className="network-panel-input"
-            value={node.codeMapping?.raw ?? ''}
-            onChange={(e) => {
-              const raw = e.target.value
-              if (raw) {
-                onResolveRef(raw)
-              } else {
-                onUpdateNode(node.id, 'codeMapping', null)
-              }
-            }}
-            placeholder="@ref(path:name:line)"
+          <CodeMappingField
+            codeMapping={node.codeMapping}
+            notePath={notePath}
+            onChange={(mapping) => onUpdateNode(node.id, 'codeMapping', mapping)}
           />
-          {resolvedMapping && (
-            <div className="network-panel-resolved-ref">
-              → {resolvedMapping.filePath}:{resolvedMapping.startLine}
-            </div>
-          )}
           <div className="network-panel-section-title" style={{ marginTop: 12 }}>Tensor Shapes</div>
           <div className="network-panel-shapes">
             <input

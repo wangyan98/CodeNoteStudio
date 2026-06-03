@@ -15,6 +15,7 @@ interface NetworkCanvasProps {
   onDropLayer: (layerType: string) => void
   onDeleteNode: (nodeId: string) => void
   onAddEdge: (source: string, target: string) => void
+  onNavigateToCode?: (filePath: string, line: number) => void
 }
 
 const NODE_W = 120
@@ -60,7 +61,8 @@ function runLayout(
 
 export function NetworkCanvas({
   doc, catalog, selectedNodeId, selectedEdgeId,
-  onSelectNode, onSelectEdge, onDropLayer, onDeleteNode, onAddEdge
+  onSelectNode, onSelectEdge, onDropLayer, onDeleteNode, onAddEdge,
+  onNavigateToCode
 }: NetworkCanvasProps) {
 
   const svgRef = useRef<SVGSVGElement>(null)
@@ -403,15 +405,29 @@ export function NetworkCanvas({
               .attr('text-anchor', 'middle').attr('fill', '#d4d4d4')
               .attr('font-size', '10px').attr('font-weight', 'bold')
               .text(child.label)
-            if (child.codeMapping) {
-              childG.append('circle')
-                .attr('cx', cx + NODE_W - 8).attr('cy', cy + 8).attr('r', 3)
-                .attr('fill', '#4a90d9')
+            if (child.codeMapping && onNavigateToCode && child.codeMapping.filePath) {
+              childG.append('text')
+                .attr('x', cx + NODE_W - 14).attr('y', cy + 12)
+                .attr('fill', '#4a90d9').attr('font-size', '12px')
+                .attr('font-weight', 'bold')
+                .style('cursor', 'pointer')
+                .text('→')
+                .on('click', (event: MouseEvent) => {
+                  event.stopPropagation()
+                  onNavigateToCode(child.codeMapping!.filePath, child.codeMapping!.startLine)
+                })
             }
 
             childG.on('click', (event: MouseEvent) => {
               event.stopPropagation()
               onSelectNode(child.id)
+            })
+
+            childG.on('dblclick', (event: MouseEvent) => {
+              event.stopPropagation()
+              if (child.codeMapping && onNavigateToCode && child.codeMapping.filePath) {
+                onNavigateToCode(child.codeMapping.filePath, child.codeMapping.startLine)
+              }
             })
 
             // Child output port (unless block — block uses its own outer ports)
@@ -468,16 +484,30 @@ export function NetworkCanvas({
           .attr('text-anchor', 'middle').attr('fill', '#d4d4d4')
           .attr('font-size', '10px').attr('font-weight', 'bold')
           .text(node.label)
-        if (node.codeMapping) {
-          nodeG.append('circle')
-            .attr('cx', nx + nw - 8).attr('cy', ny + 8).attr('r', 3)
-            .attr('fill', '#4a90d9')
+        if (node.codeMapping && onNavigateToCode && node.codeMapping.filePath) {
+          nodeG.append('text')
+            .attr('x', nx + nw - 14).attr('y', ny + 12)
+            .attr('fill', '#4a90d9').attr('font-size', '12px')
+            .attr('font-weight', 'bold')
+            .style('cursor', 'pointer')
+            .text('→')
+            .on('click', (event: MouseEvent) => {
+              event.stopPropagation()
+              onNavigateToCode(node.codeMapping!.filePath, node.codeMapping!.startLine)
+            })
         }
       }
 
       nodeG.on('click', (event: MouseEvent) => {
         event.stopPropagation()
         onSelectNode(node.id)
+      })
+
+      nodeG.on('dblclick', (event: MouseEvent) => {
+        event.stopPropagation()
+        if (node.codeMapping && onNavigateToCode && node.codeMapping.filePath) {
+          onNavigateToCode(node.codeMapping.filePath, node.codeMapping.startLine)
+        }
       })
 
       // Output port — bottom center of block (only for non-output nodes)
