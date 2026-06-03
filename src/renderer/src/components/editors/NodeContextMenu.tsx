@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
 
-interface MenuItem {
+export interface MenuItem {
   label: string
   shortcut?: string
   action: () => void
@@ -9,11 +9,11 @@ interface MenuItem {
   separator?: false
 }
 
-interface MenuSeparator {
+export interface MenuSeparator {
   separator: true
 }
 
-type MenuEntry = MenuItem | MenuSeparator
+export type MenuEntry = MenuItem | MenuSeparator
 
 interface NodeContextMenuProps {
   x: number

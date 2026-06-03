@@ -2,7 +2,11 @@ import { useEffect, useState, useCallback } from 'react'
 import { useAppContext } from '../contexts/AppContext'
 import { useNotes } from '../hooks/useNotes'
 import type { NoteItem, NoteFilter, NoteType } from '../types'
+import { NodeContextMenu } from './editors/NodeContextMenu'
+import type { MenuEntry } from './editors/NodeContextMenu'
+import { getClipboardFile, setClipboardFile, clearClipboardFile } from '../services/clipboard'
 import './NoteDirectory.css'
+import './ContextMenu.css'
 
 interface TreeNode {
   name: string
@@ -45,7 +49,8 @@ function TreeItem({
   selectedPath,
   onSelect,
   onDelete,
-  onRename
+  onRename,
+  onContextMenu
 }: {
   node: TreeNode
   depth: number
@@ -53,6 +58,7 @@ function TreeItem({
   onSelect: (node: TreeNode) => void
   onDelete: (node: TreeNode) => void
   onRename: (node: TreeNode) => void
+  onContextMenu: (e: React.MouseEvent, node: TreeNode) => void
 }) {
   const [expanded, setExpanded] = useState(true)
   const isFolder = node.type === 'folder'
@@ -90,6 +96,7 @@ function TreeItem({
             onSelect(node)
           }
         }}
+        onContextMenu={(e) => onContextMenu(e, node)}
       >
         <span className="tree-item-icon">{icons[node.type]}</span>
         <span>{node.name}</span>
@@ -127,6 +134,7 @@ function TreeItem({
           onSelect={onSelect}
           onDelete={onDelete}
           onRename={onRename}
+          onContextMenu={onContextMenu}
         />
       ))}
     </>
@@ -183,6 +191,11 @@ export function NoteDirectory() {
   const [newNoteType, setNewNoteType] = useState<NoteType>('md')
   const [showNewFolderInput, setShowNewFolderInput] = useState(false)
   const [newFolderName, setNewFolderName] = useState('')
+  const [contextMenu, setContextMenu] = useState<{
+    x: number
+    y: number
+    node: TreeNode
+  } | null>(null)
 
   const typeOptions: { label: string; value: NoteType; suffix: string }[] = [
     { label: '.md', value: 'md', suffix: '.md' },
@@ -235,6 +248,123 @@ export function NoteDirectory() {
       console.error('Failed to create folder:', err)
     }
   }, [newFolderName, refreshNotes])
+
+  const buildFileContextMenu = useCallback((node: TreeNode): MenuEntry[] => {
+    const parentDir = node.path.includes('/')
+      ? node.path.substring(0, node.path.lastIndexOf('/'))
+      : ''
+    const absolutePath = state.workspacePath
+      ? state.workspacePath.replace(/\/?$/, '/') + node.path
+      : node.path
+
+    return [
+      {
+        label: 'Copy File',
+        action: () => { setClipboardFile(absolutePath) }
+      },
+      ...(getClipboardFile() ? [{
+        label: 'Paste File',
+        action: async () => {
+          const cf = getClipboardFile()!
+          await window.electronAPI.copyFile(cf.sourcePath, parentDir)
+          clearClipboardFile()
+          await refreshNotes()
+        }
+      }] : []),
+      {
+        label: 'Rename',
+        action: () => {
+          const newName = prompt('New name:', node.name)
+          if (newName && newName !== node.name) {
+            const parts = node.path.split('/')
+            parts[parts.length - 1] = newName
+            renameNote(node.path, parts.join('/'))
+          }
+        }
+      },
+      { separator: true },
+      {
+        label: 'Copy Relative Path',
+        action: () => { navigator.clipboard.writeText(node.path) }
+      },
+      {
+        label: 'Copy Absolute Path',
+        action: () => { navigator.clipboard.writeText(absolutePath) }
+      },
+      { separator: true },
+      {
+        label: 'Delete',
+        danger: true,
+        action: () => {
+          if (confirm(`Delete "${node.name}"?`)) {
+            deleteNote(node.path)
+          }
+        }
+      }
+    ]
+  }, [state.workspacePath, renameNote, deleteNote, refreshNotes])
+
+  const buildFolderContextMenu = useCallback((node: TreeNode): MenuEntry[] => {
+    return [
+      {
+        label: 'New Note',
+        action: () => {
+          const baseName = prompt('Note name:')
+          if (!baseName) return
+          const ext = '.md'
+          const relPath = node.path ? `${node.path}/${baseName}${ext}` : `${baseName}${ext}`
+          createNote(relPath, 'md')
+        }
+      },
+      {
+        label: 'New Folder',
+        action: () => {
+          const folderName = prompt('Folder name:')
+          if (!folderName) return
+          const relPath = node.path ? `${node.path}/${folderName}` : folderName
+          window.electronAPI.createFolder(relPath).then(() => refreshNotes())
+        }
+      },
+      { separator: true },
+      ...(getClipboardFile() ? [{
+        label: 'Paste File',
+        action: async () => {
+          const cf = getClipboardFile()!
+          await window.electronAPI.copyFile(cf.sourcePath, node.path)
+          clearClipboardFile()
+          await refreshNotes()
+        }
+      }] : []),
+      {
+        label: 'Rename',
+        action: () => {
+          const newName = prompt('New folder name:', node.name)
+          if (newName && newName !== node.name) {
+            const parts = node.path.split('/')
+            parts[parts.length - 1] = newName
+            renameNote(node.path, parts.join('/'))
+          }
+        }
+      },
+      { separator: true },
+      {
+        label: 'Delete Folder',
+        danger: true,
+        action: async () => {
+          if (confirm(`Delete folder "${node.name}" and all its contents?`)) {
+            await window.electronAPI.deleteFolder(node.path)
+            await refreshNotes()
+          }
+        }
+      }
+    ]
+  }, [createNote, renameNote, refreshNotes])
+
+  const handleContextMenu = useCallback((e: React.MouseEvent, node: TreeNode) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setContextMenu({ x: e.clientX, y: e.clientY, node })
+  }, [])
 
   const filteredTree = searchQuery
     ? tree.filter((node) =>
@@ -345,9 +475,21 @@ export function NoteDirectory() {
               onSelect={handleSelect}
               onDelete={handleDelete}
               onRename={handleRename}
+              onContextMenu={handleContextMenu}
             />
           ))}
         </div>
+        {contextMenu && (
+          <NodeContextMenu
+            x={contextMenu.x}
+            y={contextMenu.y}
+            items={contextMenu.node.type === 'folder'
+              ? buildFolderContextMenu(contextMenu.node)
+              : buildFileContextMenu(contextMenu.node)
+            }
+            onClose={() => setContextMenu(null)}
+          />
+        )}
       </div>
     </div>
   )
