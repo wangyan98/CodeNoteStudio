@@ -36,6 +36,24 @@ export function NoteViewport() {
     return () => window.removeEventListener('symbol-insert', handler)
   }, [])
 
+  // Listen for image-insert events from CodeDirectory context menu
+  useEffect(() => {
+    const handler = async (e: Event) => {
+      const { sourcePath, fileName } = (e as CustomEvent<{ sourcePath: string; fileName: string }>).detail
+      if (state.activeNoteType !== 'md') {
+        return
+      }
+      try {
+        const result = await window.electronAPI.copyFileToAssets(sourcePath)
+        mdEditorRef.current?.insertAtCursor(`![${fileName}](wsfile://${result.absolutePath})`)
+      } catch {
+        mdEditorRef.current?.insertAtCursor(`![${fileName}](wsfile://${sourcePath})`)
+      }
+    }
+    window.addEventListener('image-insert', handler)
+    return () => window.removeEventListener('image-insert', handler)
+  }, [state.activeNoteType])
+
   useEffect(() => {
     if (!activeNoteContent || !selectedNoteId) {
       setCodeMappings([])
