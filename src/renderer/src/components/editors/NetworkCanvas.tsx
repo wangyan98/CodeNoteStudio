@@ -408,8 +408,8 @@ export function NetworkCanvas({
               .text(child.label)
             if (child.codeMapping && onNavigateToCode && child.codeMapping.filePath) {
               childG.append('text')
-                .attr('x', cx + NODE_W - 14).attr('y', cy + 12)
-                .attr('fill', '#4a90d9').attr('font-size', '12px')
+                .attr('x', cx + NODE_W - 14).attr('y', cy + NODE_H / 2 + 4)
+                .attr('fill', '#4a90d9').attr('font-size', '14px')
                 .attr('font-weight', 'bold')
                 .style('cursor', 'pointer')
                 .text('→')
@@ -496,8 +496,8 @@ export function NetworkCanvas({
           .text(node.label)
         if (node.codeMapping && onNavigateToCode && node.codeMapping.filePath) {
           nodeG.append('text')
-            .attr('x', nx + nw - 14).attr('y', ny + 12)
-            .attr('fill', '#4a90d9').attr('font-size', '12px')
+            .attr('x', nx + nw - 14).attr('y', ny + nh / 2 + 4)
+            .attr('fill', '#4a90d9').attr('font-size', '14px')
             .attr('font-weight', 'bold')
             .style('cursor', 'pointer')
             .text('→')
