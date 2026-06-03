@@ -735,6 +735,7 @@ export const MindMapCanvas = forwardRef<MindMapCanvasHandle, MindMapCanvasProps>
       // Drag — move node, descendants, and link lines in sync
       let dragOffset: { x: number; y: number } | null = null
       let dragged = false
+      let significantDrag = false
 
       // Drag target tracking
       let dragTargetNodeId: string | null = null
@@ -826,6 +827,11 @@ export const MindMapCanvas = forwardRef<MindMapCanvasHandle, MindMapCanvasProps>
           const pt = d3.pointer(event, svgRef.current!)
           const dx = pt[0] - dragOffset.x - d.y!
           const dy = pt[1] - dragOffset.y - d.x!
+
+          // Only treat as a real drag if the node has moved more than 5px
+          if (dx * dx + dy * dy > 25) {
+            significantDrag = true
+          }
 
           const svgEl = svgRef.current
           if (!svgEl) return
@@ -1036,10 +1042,13 @@ export const MindMapCanvas = forwardRef<MindMapCanvasHandle, MindMapCanvasProps>
 
           if (dragged) {
             dragged = false
-            if (savedAction === 'reparent' && savedTargetId) {
-              dispatch({ type: 'REPARENT', nodeId: d.data.id, newParentId: savedTargetId })
-            } else if (savedAction === 'reorder' && savedInsertIndex !== null) {
-              dispatch({ type: 'REORDER', nodeId: d.data.id, newIndex: savedInsertIndex })
+            if (significantDrag) {
+              significantDrag = false
+              if (savedAction === 'reparent' && savedTargetId) {
+                dispatch({ type: 'REPARENT', nodeId: d.data.id, newParentId: savedTargetId })
+              } else if (savedAction === 'reorder' && savedInsertIndex !== null) {
+                dispatch({ type: 'REORDER', nodeId: d.data.id, newIndex: savedInsertIndex })
+              }
             }
             // Always re-render after drag (either action was dispatched or it snaps back)
             render()
