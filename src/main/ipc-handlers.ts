@@ -100,24 +100,22 @@ export function registerIpcHandlers(projectPath: string): void {
     return result.canceled ? null : result.filePaths[0]
   })
 
-  ipcMain.handle('workspace:create', async (_event, parentDir: string, name: string): Promise<string> => {
+  ipcMain.handle('workspace:create', async (_event, dirPath: string): Promise<string> => {
     const fs = await import('node:fs/promises')
     const path = await import('node:path')
-    const workspacePath = path.join(parentDir, name)
-    // Check for name conflict
-    try {
-      await fs.access(workspacePath)
-      throw new Error(`Directory already exists: ${workspacePath}`)
-    } catch (err: any) {
-      if (err.code !== 'ENOENT') throw err
+    // Ensure directory is empty
+    const entries = await fs.readdir(dirPath)
+    const nonHidden = entries.filter((e) => e !== '.DS_Store')
+    if (nonHidden.length > 0) {
+      throw new Error('Selected directory is not empty. Please choose an empty folder.')
     }
-    await fs.mkdir(workspacePath, { recursive: true })
     // Initialize notebook.json
-    const configPath = path.join(workspacePath, 'notebook.json')
+    const name = path.basename(dirPath)
+    const configPath = path.join(dirPath, 'notebook.json')
     await fs.writeFile(configPath, JSON.stringify({ name, notesPath: './', codeRepos: [] }, null, 2), 'utf-8')
     // Create notes directory
-    await fs.mkdir(path.join(workspacePath, 'notes'), { recursive: true })
-    return workspacePath
+    await fs.mkdir(path.join(dirPath, 'notes'), { recursive: true })
+    return dirPath
   })
 
   ipcMain.handle('workspace:open', async (_event, newPath: string): Promise<NotebookConfig> => {

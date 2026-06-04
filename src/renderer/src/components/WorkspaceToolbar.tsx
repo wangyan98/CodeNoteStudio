@@ -99,13 +99,11 @@ export function WorkspaceToolbar() {
   }, [dispatch, restoreUiState])
 
   const handleNewWorkspace = useCallback(async () => {
-    const parentDir = await window.electronAPI.selectFolder()
-    if (!parentDir) return
-    const name = window.prompt('Workspace name:')
-    if (!name) return
+    const dirPath = await window.electronAPI.selectFolder()
+    if (!dirPath) return
     try {
-      const newPath = await window.electronAPI.createWorkspace(parentDir, name)
-      await openWorkspaceByPath(newPath)
+      await window.electronAPI.createWorkspace(dirPath)
+      await openWorkspaceByPath(dirPath)
     } catch (err: any) {
       alert(err.message || 'Failed to create workspace')
     }

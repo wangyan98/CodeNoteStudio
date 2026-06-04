@@ -7,7 +7,7 @@ declare global {
       getAppVersion: () => Promise<string>
       getProjectPath: () => Promise<string | null>
       selectFolder: () => Promise<string | null>
-      createWorkspace: (parentDir: string, name: string) => Promise<string>
+      createWorkspace: (dirPath: string) => Promise<string>
       openWorkspace: (newPath: string) => Promise<NotebookConfig>
       getWorkspacePath: () => Promise<string | null>
       getWorkspaceHistory: () => Promise<Array<{ path: string; name: string; lastOpened: number }>>
