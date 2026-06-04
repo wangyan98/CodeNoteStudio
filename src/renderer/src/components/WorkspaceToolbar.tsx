@@ -166,8 +166,9 @@ export function WorkspaceToolbar() {
   // Persist UI state on changes
   useEffect(() => {
     if (!workspacePath || restoringRef.current) return
+    const currentPath = workspacePath
     const timer = setTimeout(() => {
-      window.electronAPI.saveUiState({
+      window.electronAPI.saveUiState(currentPath, {
         selectedNoteId: state.selectedNoteId,
         codeRepoPath: state.codeRepoPath,
         openCodeFiles: state.openCodeFiles,

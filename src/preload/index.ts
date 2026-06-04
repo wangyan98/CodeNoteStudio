@@ -64,7 +64,7 @@ const api = {
 
   // UI state
   loadUiState: () => ipcRenderer.invoke('ui-state:load'),
-  saveUiState: (state: unknown) => ipcRenderer.invoke('ui-state:save', state)
+  saveUiState: (workspacePath: string, state: unknown) => ipcRenderer.invoke('ui-state:save', workspacePath, state)
 }
 
 contextBridge.exposeInMainWorld('electronAPI', api)

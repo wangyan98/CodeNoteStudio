@@ -76,7 +76,7 @@ declare global {
         openCodeFiles: Array<{ path: string; name: string; language: string }>
         activeCodeFileIndex: number
       } | null>
-      saveUiState: (state: {
+      saveUiState: (workspacePath: string, state: {
         selectedNoteId: string | null
         codeRepoPath: string | null
         openCodeFiles: Array<{ path: string; name: string; language: string }>

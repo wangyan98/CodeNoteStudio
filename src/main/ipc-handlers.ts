@@ -262,8 +262,8 @@ export function registerIpcHandlers(projectPath: string): void {
     return loadUiState(currentProjectPath!)
   })
 
-  ipcMain.handle('ui-state:save', async (_event, state: UiState): Promise<void> => {
-    return saveUiState(currentProjectPath!, state)
+  ipcMain.handle('ui-state:save', async (_event, workspacePath: string, state: UiState): Promise<void> => {
+    return saveUiState(workspacePath, state)
   })
 
   // Live server

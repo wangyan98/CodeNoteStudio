@@ -91,6 +91,7 @@ export function appReducer(state: AppState, action: AppAction): AppState {
         activeCodeFileIndex: -1,
         codeRepoPath: null,
         codeFiles: [],
+        codeRepos: [],
         codeMappings: [],
         pendingScroll: null
       }
