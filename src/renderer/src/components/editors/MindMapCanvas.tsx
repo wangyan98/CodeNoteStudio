@@ -206,7 +206,7 @@ export const MindMapCanvas = forwardRef<MindMapCanvasHandle, MindMapCanvasProps>
       if (!svgRef.current) return
       const currentSelected = selectedNodeIdRef.current
       // Remove highlight from previously selected node
-      svgRef.current.querySelectorAll('[data-node-id] rect').forEach((rect) => {
+      svgRef.current.querySelectorAll('[data-node-id] rect.mind-node-main-rect').forEach((rect) => {
         const g = rect.parentElement
         const nodeId = g?.getAttribute('data-node-id')
         if (nodeId === currentSelected) {
@@ -298,13 +298,14 @@ export const MindMapCanvas = forwardRef<MindMapCanvasHandle, MindMapCanvasProps>
       const cacheKey = `${nodeId}::${resolvedPath}`
 
       setExpandedEmbeds(prev => {
-        const next = new Set(prev)
-        if (next.has(cacheKey)) {
+        if (prev.has(cacheKey)) {
+          // Collapse the currently expanded embed
+          const next = new Set(prev)
           next.delete(cacheKey)
           return next
         }
-        next.add(cacheKey)
-        return next
+        // Expand this embed, collapsing any previously expanded one
+        return new Set([cacheKey])
       })
 
       // Trigger resolution outside the setState callback
@@ -577,6 +578,7 @@ export const MindMapCanvas = forwardRef<MindMapCanvasHandle, MindMapCanvasProps>
 
       // Node rects
       nodeGroup.append('rect')
+        .attr('class', 'mind-node-main-rect')
         .attr('x', -70)
         .attr('y', -14)
         .attr('width', 140)
@@ -666,7 +668,7 @@ export const MindMapCanvas = forwardRef<MindMapCanvasHandle, MindMapCanvasProps>
             .attr('font-size', '9px')
             .text(label.length > 28 ? label.slice(0, 26) + '..' : label)
 
-          // Invisible click rect
+          // Invisible click rect — use mousedown so drag handler doesn't consume the event
           g.append('rect')
             .attr('x', -70)
             .attr('y', indicatorY)
@@ -674,7 +676,7 @@ export const MindMapCanvas = forwardRef<MindMapCanvasHandle, MindMapCanvasProps>
             .attr('height', 16)
             .attr('fill', 'transparent')
             .style('cursor', 'pointer')
-            .on('click', (event: MouseEvent) => {
+            .on('mousedown', (event: MouseEvent) => {
               event.stopPropagation()
               handleToggleEmbed(d.data.id, embedRef)
             })
@@ -763,7 +765,7 @@ export const MindMapCanvas = forwardRef<MindMapCanvasHandle, MindMapCanvasProps>
         const svgEl = svgRef.current
         if (!svgEl) return
         // Remove yellow border from all nodes
-        svgEl.querySelectorAll('[data-node-id] rect').forEach((rect) => {
+        svgEl.querySelectorAll('[data-node-id] rect.mind-node-main-rect').forEach((rect) => {
           const g = rect.parentElement
           const nodeId = g?.getAttribute('data-node-id')
           const isSelected = nodeId === selectedNodeIdRef.current
