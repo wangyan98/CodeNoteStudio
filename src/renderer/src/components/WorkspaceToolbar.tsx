@@ -14,6 +14,7 @@ export function WorkspaceToolbar() {
   const { workspacePath, workspaceName, workspaceHistory } = state
   const [codeRepos, setCodeRepos] = useState<Array<{ path: string; commit: string }>>([])
   const restoringRef = useRef(false)
+  const loadingRef = useRef(false)
 
   // Load history on mount
   useEffect(() => {
@@ -69,6 +70,8 @@ export function WorkspaceToolbar() {
   }, [])
 
   const openWorkspaceByPath = useCallback(async (wsPath: string) => {
+    if (loadingRef.current) return
+    loadingRef.current = true
     try {
       const config = await window.electronAPI.openWorkspace(wsPath)
       dispatch({ type: 'SET_WORKSPACE', path: wsPath, name: config.name || wsPath })
@@ -90,6 +93,8 @@ export function WorkspaceToolbar() {
       await window.electronAPI.removeFromWorkspaceHistory(wsPath)
       const history = await window.electronAPI.getWorkspaceHistory()
       dispatch({ type: 'SET_WORKSPACE_HISTORY', history })
+    } finally {
+      loadingRef.current = false
     }
   }, [dispatch, restoreUiState])
 
@@ -100,23 +105,11 @@ export function WorkspaceToolbar() {
     if (!name) return
     try {
       const newPath = await window.electronAPI.createWorkspace(parentDir, name)
-      const config = await window.electronAPI.openWorkspace(newPath)
-      dispatch({ type: 'SET_WORKSPACE', path: newPath, name: config.name || name })
-      setCodeRepos(config.codeRepos || [])
-      const notes = await window.electronAPI.listNotes()
-      dispatch({ type: 'SET_NOTES', notes })
-      for (const repo of config.codeRepos || []) {
-        window.electronAPI.indexSymbols(repo.path).catch((err) => {
-          console.error('Failed to index symbols for repo:', repo.path, err)
-        })
-      }
-      const history = await window.electronAPI.getWorkspaceHistory()
-      dispatch({ type: 'SET_WORKSPACE_HISTORY', history })
-      restoreUiState()
+      await openWorkspaceByPath(newPath)
     } catch (err: any) {
       alert(err.message || 'Failed to create workspace')
     }
-  }, [dispatch, restoreUiState])
+  }, [openWorkspaceByPath])
 
   const handleOpenWorkspace = useCallback(async () => {
     const folderPath = await window.electronAPI.selectFolder()
@@ -136,8 +129,8 @@ export function WorkspaceToolbar() {
   }, [dispatch])
 
   const handleWorkspaceNameClick = useCallback(async () => {
-    dispatch({ type: 'CLEAR_WORKSPACE' })
     await window.electronAPI.clearWorkspace()
+    dispatch({ type: 'CLEAR_WORKSPACE' })
     const history = await window.electronAPI.getWorkspaceHistory()
     dispatch({ type: 'SET_WORKSPACE_HISTORY', history })
   }, [dispatch])
