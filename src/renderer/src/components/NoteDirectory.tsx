@@ -116,14 +116,20 @@ function TreeItem({
   }, [isRenaming])
 
   useEffect(() => {
-    if (creatingIn === node.path && createInputRef.current) {
+    if (creatingIn === node.path) {
+      setExpanded(true)
+    }
+  }, [creatingIn, node.path])
+
+  useEffect(() => {
+    if (creatingIn === node.path && expanded && createInputRef.current) {
       const input = createInputRef.current
       input.focus()
       if (creatingType !== 'folder') {
         input.setSelectionRange(0, 0)
       }
     }
-  }, [creatingIn, node.path, creatingType])
+  }, [creatingIn, node.path, creatingType, expanded])
 
   return (
     <>
