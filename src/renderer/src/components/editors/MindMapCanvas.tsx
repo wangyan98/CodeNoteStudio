@@ -781,6 +781,22 @@ export const MindMapCanvas = forwardRef<MindMapCanvasHandle, MindMapCanvasProps>
             el.setAttribute('transform', `translate(${orig.y},${orig.x})`)
           }
         })
+        // Restore line positions
+        svgEl.querySelectorAll('line[data-orig-x1]').forEach((line) => {
+          line.setAttribute('x1', line.getAttribute('data-orig-x1') || '0')
+          line.setAttribute('y1', line.getAttribute('data-orig-y1') || '0')
+          line.setAttribute('x2', line.getAttribute('data-orig-x2') || '0')
+          line.setAttribute('y2', line.getAttribute('data-orig-y2') || '0')
+        })
+        // Restore collapse button positions
+        svgEl.querySelectorAll('circle[data-orig-cx]').forEach((circle) => {
+          circle.setAttribute('cx', circle.getAttribute('data-orig-cx') || '0')
+          circle.setAttribute('cy', circle.getAttribute('data-orig-cy') || '0')
+        })
+        svgEl.querySelectorAll('text[data-orig-x]').forEach((text) => {
+          text.setAttribute('x', text.getAttribute('data-orig-x') || '0')
+          text.setAttribute('y', text.getAttribute('data-orig-y') || '0')
+        })
         dragTargetNodeId = null
         dragTargetAction = null
         dragInsertIndex = null
@@ -798,10 +814,13 @@ export const MindMapCanvas = forwardRef<MindMapCanvasHandle, MindMapCanvasProps>
         }
       }
 
-      function shiftSiblingsForInsert(parentId: string, insertIndex: number, draggedNodeId: string) {
+      function shiftSiblingsForInsert(parentId: string, insertIndex: number, draggedNodeId: string, draggedDy: number) {
         const svgEl = svgRef.current
         if (!svgEl) return
         const siblings = svgEl.querySelectorAll(`[data-parent-id="${parentId}"]`)
+
+        // First pass: shift node groups and collect shifted IDs
+        const shiftedIds = new Set<string>()
         siblings.forEach((el) => {
           const sid = el.getAttribute('data-node-id')
           if (!sid || sid === draggedNodeId) return
@@ -809,9 +828,70 @@ export const MindMapCanvas = forwardRef<MindMapCanvasHandle, MindMapCanvasProps>
           if (!orig) return
           const parentInfo = findParentAndIndex(doc, sid)
           if (parentInfo && parentInfo.index >= insertIndex) {
+            shiftedIds.add(sid)
             el.setAttribute('transform', `translate(${orig.y},${orig.x + 32})`)
+            // Shift descendant node groups
+            const descIds = getDescendantIds(sid)
+            descIds.forEach(descId => {
+              shiftedIds.add(descId)
+              const descEl = svgEl.querySelector(`[data-node-id="${descId}"]`)
+              const descOrig = originalPositions.get(descId)
+              if (descEl && descOrig) {
+                descEl.setAttribute('transform', `translate(${descOrig.y},${descOrig.x + 32})`)
+              }
+            })
           }
         })
+
+        // Second pass: shift lines and collapse buttons for all shifted nodes
+        shiftedIds.forEach(shiftedId => {
+          // Incoming child lines (from parent elbow to this node)
+          svgEl.querySelectorAll<SVGLineElement>(`[data-child-id="${shiftedId}"]`).forEach(line => {
+            line.setAttribute('y1', String(parseFloat(line.getAttribute('data-orig-y1') || '0') + 32))
+            line.setAttribute('y2', String(parseFloat(line.getAttribute('data-orig-y2') || '0') + 32))
+          })
+          // Lines owned by this node (its own branch connectors)
+          svgEl.querySelectorAll<SVGLineElement>(`[data-owner-id="${shiftedId}"]`).forEach(line => {
+            line.setAttribute('y1', String(parseFloat(line.getAttribute('data-orig-y1') || '0') + 32))
+            line.setAttribute('y2', String(parseFloat(line.getAttribute('data-orig-y2') || '0') + 32))
+          })
+          // Collapse buttons on this node's branch
+          svgEl.querySelectorAll<SVGCircleElement>(
+            `circle[data-collapse-owner-id="${shiftedId}"]`
+          ).forEach(circle => {
+            circle.setAttribute('cy', String(parseFloat(circle.getAttribute('data-orig-cy') || '0') + 32))
+          })
+          svgEl.querySelectorAll<SVGTextElement>(
+            `text[data-collapse-owner-id="${shiftedId}"]`
+          ).forEach(text => {
+            text.setAttribute('y', String(parseFloat(text.getAttribute('data-orig-y') || '0') + 32))
+          })
+        })
+
+        // Update parent's vertical line span to cover shifted positions
+        const vertLine = svgEl.querySelector<SVGLineElement>(
+          `[data-owner-id="${parentId}"][data-line-type="vertical"]`
+        )
+        if (vertLine) {
+          const siblingEls = svgEl.querySelectorAll(`[data-parent-id="${parentId}"]`)
+          let minY = Infinity
+          let maxY = -Infinity
+          siblingEls.forEach(el => {
+            const sibId = el.getAttribute('data-node-id')
+            if (!sibId) return
+            const orig = originalPositions.get(sibId)
+            if (!orig) return
+            const isShifted = shiftedIds.has(sibId)
+            const isDragged = sibId === draggedNodeId
+            const curY = isDragged ? orig.x + draggedDy : orig.x + (isShifted ? 32 : 0)
+            if (curY < minY) minY = curY
+            if (curY > maxY) maxY = curY
+          })
+          if (minY < Infinity) {
+            vertLine.setAttribute('y1', String(minY))
+            vertLine.setAttribute('y2', String(maxY))
+          }
+        }
       }
 
       const dragHandler = d3.drag<SVGGElement, d3.HierarchyNode<MindMapNode>>()
@@ -916,10 +996,51 @@ export const MindMapCanvas = forwardRef<MindMapCanvasHandle, MindMapCanvasProps>
             line.setAttribute('y2', String(parseFloat(line.getAttribute('data-orig-y2') || '0') + dy))
           })
 
-          // Recalculate parent's vertical line span from all siblings'
-          // current positions — not just the dragged child's endpoint.
-          // When the first child moves below the second child, the vertical
-          // line must still span from the (new) topmost to bottommost sibling.
+          // --- Hit detection for drop target ---
+          const clientX = event.sourceEvent.clientX
+          const clientY = event.sourceEvent.clientY
+
+          // Clear previous drag highlight (reparent or reorder)
+          if (dragTargetNodeId || dragTargetAction) {
+            clearDragHighlight()
+            // Re-apply drag movement to dragged node and descendants (clearDragHighlight resets them)
+            d3.select(this).attr('transform', `translate(${pt[0] - dragOffset.x},${pt[1] - dragOffset.y})`)
+            descendantIds.forEach(id => {
+              const el = svgEl.querySelector<SVGGElement>(`[data-node-id="${id}"]`)
+              const orig = originalPositions.get(id)
+              if (el && orig) {
+                el.setAttribute('transform', `translate(${orig.y + dx},${orig.x + dy})`)
+              }
+            })
+            // Re-apply line movement for dragged node and descendants
+            const allMovedIds = [d.data.id, ...descendantIds]
+            allMovedIds.forEach(movedId => {
+              // Owned branch lines
+              svgEl.querySelectorAll<SVGLineElement>(`[data-owner-id="${movedId}"]`).forEach(line => {
+                line.setAttribute('x1', String(parseFloat(line.getAttribute('data-orig-x1') || '0') + dx))
+                line.setAttribute('y1', String(parseFloat(line.getAttribute('data-orig-y1') || '0') + dy))
+                line.setAttribute('x2', String(parseFloat(line.getAttribute('data-orig-x2') || '0') + dx))
+                line.setAttribute('y2', String(parseFloat(line.getAttribute('data-orig-y2') || '0') + dy))
+              })
+              // Incoming child lines
+              svgEl.querySelectorAll<SVGLineElement>(`[data-child-id="${movedId}"]`).forEach(line => {
+                line.setAttribute('y1', String(parseFloat(line.getAttribute('data-orig-y1') || '0') + dy))
+                line.setAttribute('x2', String(parseFloat(line.getAttribute('data-orig-x2') || '0') + dx))
+                line.setAttribute('y2', String(parseFloat(line.getAttribute('data-orig-y2') || '0') + dy))
+              })
+              // Collapse buttons
+              svgEl.querySelectorAll<SVGCircleElement>(`circle[data-collapse-owner-id="${movedId}"]`).forEach(circle => {
+                circle.setAttribute('cx', String(parseFloat(circle.getAttribute('data-orig-cx') || '0') + dx))
+                circle.setAttribute('cy', String(parseFloat(circle.getAttribute('data-orig-cy') || '0') + dy))
+              })
+              svgEl.querySelectorAll<SVGTextElement>(`text[data-collapse-owner-id="${movedId}"]`).forEach(text => {
+                text.setAttribute('x', String(parseFloat(text.getAttribute('data-orig-x') || '0') + dx))
+                text.setAttribute('y', String(parseFloat(text.getAttribute('data-orig-y') || '0') + dy))
+              })
+            })
+          }
+
+          // Recalculate parent's vertical line span after re-apply
           const parentId = d.parent?.data.id
           if (parentId) {
             const vertLine = svgEl.querySelector<SVGLineElement>(
@@ -936,7 +1057,6 @@ export const MindMapCanvas = forwardRef<MindMapCanvasHandle, MindMapCanvasProps>
                 if (!sibId) return
                 const orig = originalPositions.get(sibId)
                 if (!orig) return
-                // Dragged node or descendant moves by dy; other siblings stay at original
                 const isMoved = sibId === d.data.id || descendantIds.has(sibId)
                 const curY = orig.x + (isMoved ? dy : 0)
                 if (curY < minY) minY = curY
@@ -947,25 +1067,6 @@ export const MindMapCanvas = forwardRef<MindMapCanvasHandle, MindMapCanvasProps>
                 vertLine.setAttribute('y2', String(maxY))
               }
             }
-          }
-
-          // --- Hit detection for drop target ---
-          const clientX = event.sourceEvent.clientX
-          const clientY = event.sourceEvent.clientY
-          const elementsUnderCursor = document.elementsFromPoint(clientX, clientY)
-
-          // Clear previous drag highlight
-          if (dragTargetNodeId) {
-            clearDragHighlight()
-            // Re-apply drag movement to dragged node and descendants (clearDragHighlight resets them)
-            d3.select(this).attr('transform', `translate(${pt[0] - dragOffset.x},${pt[1] - dragOffset.y})`)
-            descendantIds.forEach(id => {
-              const el = svgEl.querySelector<SVGGElement>(`[data-node-id="${id}"]`)
-              const orig = originalPositions.get(id)
-              if (el && orig) {
-                el.setAttribute('transform', `translate(${orig.y + dx},${orig.x + dy})`)
-              }
-            })
           }
 
           // Check for direct node overlap (reparent)
@@ -979,15 +1080,6 @@ export const MindMapCanvas = forwardRef<MindMapCanvasHandle, MindMapCanvasProps>
             const targetRect = nodeEl.getBoundingClientRect()
             if (clientX >= targetRect.left && clientX <= targetRect.right &&
                 clientY >= targetRect.top && clientY <= targetRect.bottom) {
-              // Prevent dragging onto own ancestor (would create cycle)
-              const ancestors = new Set<string>()
-              let current = d.parent
-              while (current) {
-                ancestors.add(current.data.id)
-                current = current.parent
-              }
-              if (ancestors.has(targetId)) continue
-
               dragTargetNodeId = targetId
               dragTargetAction = 'reparent'
               highlightReparentTarget(targetId)
@@ -1025,7 +1117,7 @@ export const MindMapCanvas = forwardRef<MindMapCanvasHandle, MindMapCanvasProps>
               if (insertIdx >= 0 && insertIdx !== draggedOrigIdx) {
                 dragTargetAction = 'reorder'
                 dragInsertIndex = insertIdx
-                shiftSiblingsForInsert(parentNodeId, insertIdx, d.data.id)
+                shiftSiblingsForInsert(parentNodeId, insertIdx, d.data.id, dy)
               }
             }
           }
