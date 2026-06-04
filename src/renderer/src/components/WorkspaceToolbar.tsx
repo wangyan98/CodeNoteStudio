@@ -81,11 +81,6 @@ export function WorkspaceToolbar() {
       dispatch({ type: 'SET_CODE_REPOS', repos: config.codeRepos || [] })
       const notes = await window.electronAPI.listNotes()
       dispatch({ type: 'SET_NOTES', notes })
-      for (const repo of config.codeRepos || []) {
-        window.electronAPI.indexSymbols(repo.path).catch((err) => {
-          console.error('Failed to index symbols for repo:', repo.path, err)
-        })
-      }
       // Refresh history after opening
       const history = await window.electronAPI.getWorkspaceHistory()
       dispatch({ type: 'SET_WORKSPACE_HISTORY', history })
