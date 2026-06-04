@@ -63,4 +63,13 @@ describe('appReducer', () => {
     const state = appReducer(initialState, { type: 'SET_PANEL_WIDTHS', widths })
     expect(state.panelWidths).toEqual(widths)
   })
+
+  it('SET_WORKSPACE_HISTORY updates workspace history', () => {
+    const entries = [
+      { path: '/a', name: 'A', lastOpened: 1000 },
+      { path: '/b', name: 'B', lastOpened: 2000 },
+    ]
+    const state = appReducer(initialState, { type: 'SET_WORKSPACE_HISTORY', history: entries })
+    expect(state.workspaceHistory).toEqual(entries)
+  })
 })

@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen } from '@testing-library/react'
-import { AppProvider } from '../../src/renderer/src/contexts/AppContext'
+import { AppProvider, initialState } from '../../src/renderer/src/contexts/AppContext'
 import { WorkspaceToolbar } from '../../src/renderer/src/components/WorkspaceToolbar'
 
 beforeEach(() => {
@@ -31,7 +31,11 @@ beforeEach(() => {
     resolveRefs: vi.fn(),
     startServer: vi.fn(),
     stopServer: vi.fn(),
-    getServerStatus: vi.fn().mockResolvedValue({ running: false, port: 0, url: '' })
+    getServerStatus: vi.fn().mockResolvedValue({ running: false, port: 0, url: '' }),
+    getWorkspaceHistory: vi.fn().mockResolvedValue([]),
+    removeFromWorkspaceHistory: vi.fn().mockResolvedValue(undefined),
+    clearWorkspace: vi.fn().mockResolvedValue(undefined),
+    createWorkspace: vi.fn().mockResolvedValue('/test/new-workspace'),
   } as unknown as typeof window.electronAPI
 })
 
@@ -39,33 +43,58 @@ describe('WorkspaceToolbar', () => {
   it('renders landing page when no workspace is open', () => {
     render(
       <AppProvider initialStateOverride={{
-        notes: [], selectedNoteId: null, noteFilter: 'all', noteSearchQuery: '',
-        activeNoteContent: null, activeNoteType: null, openCodeFiles: [],
-        activeCodeFileIndex: -1, codeRepoPath: null, codeFiles: [],
-        panelWidths: { panel1: 18, panel2: 32, panel3: 32, panel4: 18 },
+        ...initialState,
         workspacePath: null, workspaceName: '',
-        codeMappings: [], pendingScroll: null, codeRepos: []
       }}>
         <WorkspaceToolbar />
       </AppProvider>
     )
     expect(screen.getByText('Code Note Studio')).toBeDefined()
-    expect(screen.getByText('Open Folder')).toBeDefined()
+    expect(screen.getByText('Open Workspace')).toBeDefined()
   })
 
   it('renders toolbar when workspace is open', () => {
     render(
       <AppProvider initialStateOverride={{
-        notes: [], selectedNoteId: null, noteFilter: 'all', noteSearchQuery: '',
-        activeNoteContent: null, activeNoteType: null, openCodeFiles: [],
-        activeCodeFileIndex: -1, codeRepoPath: null, codeFiles: [],
-        panelWidths: { panel1: 18, panel2: 32, panel3: 32, panel4: 18 },
+        ...initialState,
         workspacePath: '/test/path', workspaceName: 'My Notes',
-        codeMappings: [], pendingScroll: null, codeRepos: []
       }}>
         <WorkspaceToolbar />
       </AppProvider>
     )
     expect(screen.getByText(/My Notes/)).toBeDefined()
+  })
+
+  it('renders history list when history is available', async () => {
+    window.electronAPI.getWorkspaceHistory = vi.fn().mockResolvedValue([
+      { path: '/path/a', name: 'Project A', lastOpened: 2000 },
+      { path: '/path/b', name: 'Project B', lastOpened: 1000 },
+    ])
+    render(
+      <AppProvider initialStateOverride={{
+        ...initialState,
+        workspaceHistory: [
+          { path: '/path/a', name: 'Project A', lastOpened: 2000 },
+          { path: '/path/b', name: 'Project B', lastOpened: 1000 },
+        ],
+      }}>
+        <WorkspaceToolbar />
+      </AppProvider>
+    )
+    expect(screen.getByText('Recent Workspaces')).toBeDefined()
+    expect(screen.getByText('Project A')).toBeDefined()
+    expect(screen.getByText('Project B')).toBeDefined()
+  })
+
+  it('hides recent workspaces section when history is empty', () => {
+    render(
+      <AppProvider initialStateOverride={{
+        ...initialState,
+        workspaceHistory: [],
+      }}>
+        <WorkspaceToolbar />
+      </AppProvider>
+    )
+    expect(screen.queryByText('Recent Workspaces')).toBeNull()
   })
 })
