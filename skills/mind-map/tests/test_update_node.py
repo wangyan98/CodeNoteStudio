@@ -65,3 +65,35 @@ def test_rejects_unknown_node():
         _make_doc(path)
         code, out, err = run_script(path, "nonexistent", "--title", "X")
         assert code == 1
+
+
+def test_rejects_malformed_code_mapping():
+    with tempfile.TemporaryDirectory() as tmp:
+        path = os.path.join(tmp, "test.mind.json")
+        doc = _make_doc(path)
+        child_id = doc.root.children[0].id
+        code, out, err = run_script(path, child_id, "--code-mapping", "{bad json}")
+        assert code == 1
+        assert "Invalid JSON" in out
+
+
+def test_rejects_missing_fields_in_code_mapping():
+    with tempfile.TemporaryDirectory() as tmp:
+        path = os.path.join(tmp, "test.mind.json")
+        doc = _make_doc(path)
+        child_id = doc.root.children[0].id
+        code, out, err = run_script(path, child_id, "--code-mapping", '{"raw":"x"}')
+        assert code == 1
+        assert "missing required fields" in out
+
+
+def test_code_mapping_coerces_string_lines():
+    with tempfile.TemporaryDirectory() as tmp:
+        path = os.path.join(tmp, "test.mind.json")
+        doc = _make_doc(path)
+        child_id = doc.root.children[0].id
+        cm = '{"raw":"x","functionName":"f","filePath":"a.py","startLine":"42","endLine":"99"}'
+        code, out, err = run_script(path, child_id, "--code-mapping", cm)
+        assert code == 0
+        loaded = load_mindmap(path)
+        assert loaded.root.children[0].codeMapping.startLine == 42

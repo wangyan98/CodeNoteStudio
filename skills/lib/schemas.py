@@ -1,4 +1,5 @@
 import uuid
+import json
 from dataclasses import dataclass, field
 from typing import Literal, Any
 
@@ -10,6 +11,57 @@ class CodeMapping:
     filePath: str
     startLine: int
     endLine: int
+
+
+REQUIRED_CODE_MAPPING_FIELDS = {"raw", "functionName", "filePath", "startLine", "endLine"}
+
+
+def parse_code_mapping(raw_json: str) -> CodeMapping:
+    """Parse a --code-mapping JSON string with robust error handling.
+
+    Gracefully handles common LLM-agent mistakes:
+    - Malformed JSON → clear error with the JSON parse message
+    - Missing required fields → clear error listing which fields are absent
+    - startLine/endLine as strings → auto-coerced to int
+    - Extra/unknown fields → silently stripped
+    """
+    if not raw_json or not raw_json.strip():
+        raise ValueError("code-mapping JSON must not be empty")
+
+    try:
+        data = json.loads(raw_json)
+    except json.JSONDecodeError as e:
+        raise ValueError(f"Invalid JSON in code-mapping: {e}") from e
+
+    if not isinstance(data, dict):
+        raise ValueError(f"code-mapping must be a JSON object, got {type(data).__name__}")
+
+    # Check missing required fields
+    missing = REQUIRED_CODE_MAPPING_FIELDS - set(data.keys())
+    if missing:
+        raise ValueError(f"code-mapping missing required fields: {', '.join(sorted(missing))}")
+
+    # Coerce startLine/endLine from string to int
+    for field_name in ("startLine", "endLine"):
+        if isinstance(data.get(field_name), str):
+            try:
+                data[field_name] = int(data[field_name])
+            except ValueError:
+                raise ValueError(f"code-mapping.{field_name} must be a number, got: {data[field_name]!r}")
+
+    # Validate types
+    for field_name in ("startLine", "endLine"):
+        if not isinstance(data.get(field_name), int):
+            raise ValueError(f"code-mapping.{field_name} must be an integer, got {type(data[field_name]).__name__}")
+    for field_name in ("raw", "functionName", "filePath"):
+        val = data.get(field_name)
+        if not isinstance(val, str):
+            raise ValueError(f"code-mapping.{field_name} must be a string, got {type(val).__name__}")
+
+    # Strip extra fields the dataclass doesn't expect
+    clean = {k: v for k, v in data.items() if k in REQUIRED_CODE_MAPPING_FIELDS}
+
+    return CodeMapping(**clean)
 
 
 # --- Mind Map ---

@@ -42,3 +42,23 @@ def test_rejects_unknown_step():
         _make_doc(path)
         code, out = run_script(path, "nonexistent", "--title", "X")
         assert code == 1
+
+
+def test_rejects_malformed_code_mapping():
+    with tempfile.TemporaryDirectory() as tmp:
+        path = os.path.join(tmp, "test.derive.json")
+        _make_doc(path)
+        code, out = run_script(path, "s1", "--code-mapping", "not json")
+        assert code == 1
+        assert "Invalid JSON" in out
+
+
+def test_sets_code_mapping():
+    with tempfile.TemporaryDirectory() as tmp:
+        path = os.path.join(tmp, "test.derive.json")
+        _make_doc(path)
+        cm = '{"raw":"def foo():","functionName":"foo","filePath":"a.py","startLine":1,"endLine":3}'
+        code, out = run_script(path, "s1", "--code-mapping", cm)
+        assert code == 0
+        loaded = load_derive(path)
+        assert loaded.nodes[0].codeMapping.functionName == "foo"

@@ -5,7 +5,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from lib.file_utils import load_mindmap, save_mindmap
-from lib.schemas import MindMapNode, CodeMapping
+from lib.schemas import MindMapNode, parse_code_mapping
 
 
 def find_node(node: MindMapNode, node_id: str) -> MindMapNode | None:
@@ -38,8 +38,11 @@ def main():
     if args.content is not None:
         node.content = args.content
     if args.code_mapping is not None:
-        data = json.loads(args.code_mapping)
-        node.codeMapping = CodeMapping(**data)
+        try:
+            node.codeMapping = parse_code_mapping(args.code_mapping)
+        except ValueError as e:
+            print(json.dumps({"ok": False, "error": str(e)}))
+            sys.exit(1)
 
     save_mindmap(args.path, doc)
     print(json.dumps({"ok": True}))

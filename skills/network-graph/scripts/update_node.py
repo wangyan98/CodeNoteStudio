@@ -5,7 +5,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from lib.file_utils import load_network, save_network
-from lib.schemas import CodeMapping
+from lib.schemas import parse_code_mapping
 
 def main():
     parser = argparse.ArgumentParser(description="Update a network graph node")
@@ -27,8 +27,11 @@ def main():
     if args.params is not None:
         node.params = json.loads(args.params)
     if args.code_mapping is not None:
-        data = json.loads(args.code_mapping)
-        node.codeMapping = CodeMapping(**data)
+        try:
+            node.codeMapping = parse_code_mapping(args.code_mapping)
+        except ValueError as e:
+            print(json.dumps({"ok": False, "error": str(e)}))
+            sys.exit(1)
 
     save_network(args.path, doc)
     print(json.dumps({"ok": True}))
