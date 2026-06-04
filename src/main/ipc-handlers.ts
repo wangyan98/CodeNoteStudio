@@ -109,8 +109,7 @@ export function registerIpcHandlers(projectPath: string): void {
       await fs.access(workspacePath)
       throw new Error(`Directory already exists: ${workspacePath}`)
     } catch (err: any) {
-      if (err.message && err.message.startsWith('Directory already exists')) throw err
-      // ENOENT is expected — directory doesn't exist yet
+      if (err.code !== 'ENOENT') throw err
     }
     await fs.mkdir(workspacePath, { recursive: true })
     // Initialize notebook.json
@@ -162,6 +161,7 @@ export function registerIpcHandlers(projectPath: string): void {
   })
 
   ipcMain.handle('workspace:clear', async () => {
+    closeDatabase()
     currentProjectPath = null
   })
 
