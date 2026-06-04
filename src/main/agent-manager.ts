@@ -1,7 +1,6 @@
 import { spawn, ChildProcess } from 'child_process'
 import net from 'net'
 import path from 'path'
-import { app } from 'electron'
 
 let agentProcess: ChildProcess | null = null
 let agentPort: number | null = null
@@ -50,7 +49,7 @@ export async function startAgent(): Promise<{ port: number }> {
   }
 
   const port = await getRandomPort()
-  const serverScript = path.join(app.getAppPath(), 'agent', 'server.py')
+  const serverScript = path.join(__dirname, '..', '..', 'agent', 'server.py')
 
   agentProcess = spawn('python3', [serverScript, '--port', String(port), '--host', '127.0.0.1'], {
     stdio: ['ignore', 'pipe', 'pipe'],
