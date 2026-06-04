@@ -30,9 +30,12 @@ function readWorkspaceData(): WorkspaceData {
     const data = JSON.parse(raw)
     // Migration: old format { lastPath: "..." }
     if (data.lastPath && !data.history) {
-      return {
+      const migrated: WorkspaceData = {
         history: [{ path: data.lastPath, name: path.basename(data.lastPath), lastOpened: Date.now() }]
       }
+      // Persist migration immediately so timestamp is stable
+      writeWorkspaceData(migrated)
+      return migrated
     }
     if (Array.isArray(data.history)) {
       return { history: data.history }
