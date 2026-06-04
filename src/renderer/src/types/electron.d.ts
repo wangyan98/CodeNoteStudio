@@ -10,6 +10,9 @@ declare global {
       createWorkspace: (parentDir: string, name: string) => Promise<string>
       openWorkspace: (newPath: string) => Promise<NotebookConfig>
       getWorkspacePath: () => Promise<string | null>
+      getWorkspaceHistory: () => Promise<Array<{ path: string; name: string; lastOpened: number }>>
+      removeFromWorkspaceHistory: (workspacePath: string) => Promise<void>
+      clearWorkspace: () => Promise<void>
       loadConfig: () => Promise<NotebookConfig>
       saveConfig: (config: NotebookConfig) => Promise<void>
       listNotes: (filterType?: NoteType) => Promise<NoteItem[]>

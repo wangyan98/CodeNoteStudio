@@ -13,6 +13,12 @@ const api = {
     ipcRenderer.invoke('workspace:create', parentDir, name),
   openWorkspace: (newPath: string) => ipcRenderer.invoke('workspace:open', newPath),
   getWorkspacePath: (): Promise<string | null> => ipcRenderer.invoke('workspace:get-current'),
+  getWorkspaceHistory: (): Promise<Array<{ path: string; name: string; lastOpened: number }>> =>
+    ipcRenderer.invoke('workspace:get-history'),
+  removeFromWorkspaceHistory: (workspacePath: string): Promise<void> =>
+    ipcRenderer.invoke('workspace:remove-from-history', workspacePath),
+  clearWorkspace: (): Promise<void> =>
+    ipcRenderer.invoke('workspace:clear'),
 
   // Config
   loadConfig: () => ipcRenderer.invoke('config:load'),

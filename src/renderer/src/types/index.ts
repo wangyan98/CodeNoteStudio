@@ -42,6 +42,12 @@ export interface NotebookConfig {
   codeRepos: CodeRepo[]
 }
 
+export interface WorkspaceHistoryEntry {
+  path: string
+  name: string
+  lastOpened: number
+}
+
 export interface PanelWidths {
   panel1: number
   panel2: number
@@ -63,6 +69,7 @@ export type AppAction =
   | { type: 'SET_PANEL_WIDTHS'; widths: PanelWidths }
   | { type: 'SET_WORKSPACE'; path: string; name: string }
   | { type: 'CLEAR_WORKSPACE' }
+  | { type: 'SET_WORKSPACE_HISTORY'; history: WorkspaceHistoryEntry[] }
   | { type: 'SET_CODE_MAPPINGS'; mappings: CodeMapping[] }
   | { type: 'SET_PENDING_SCROLL'; filePath: string; line: number }
   | { type: 'SET_CODE_REPOS'; repos: CodeRepo[] }
@@ -82,6 +89,7 @@ export interface AppState {
   panelWidths: PanelWidths
   workspacePath: string | null
   workspaceName: string
+  workspaceHistory: WorkspaceHistoryEntry[]
   codeMappings: CodeMapping[]
   pendingScroll: { filePath: string; line: number } | null
   codeRepos: CodeRepo[]

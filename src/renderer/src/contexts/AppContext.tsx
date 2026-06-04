@@ -1,5 +1,5 @@
 import { createContext, useContext, useReducer, type Dispatch, type ReactNode } from 'react'
-import type { AppState, AppAction, NoteItem, CodeFile, PanelWidths } from '../types'
+import type { AppState, AppAction, NoteItem, CodeFile, PanelWidths, WorkspaceHistoryEntry } from '../types'
 
 export const initialState: AppState = {
   notes: [],
@@ -17,7 +17,8 @@ export const initialState: AppState = {
   workspaceName: '',
   codeMappings: [],
   pendingScroll: null,
-  codeRepos: []
+  codeRepos: [],
+  workspaceHistory: [],
 }
 
 export function appReducer(state: AppState, action: AppAction): AppState {
@@ -78,6 +79,9 @@ export function appReducer(state: AppState, action: AppAction): AppState {
 
     case 'CLEAR_WORKSPACE':
       return { ...state, workspacePath: null, workspaceName: '' }
+
+    case 'SET_WORKSPACE_HISTORY':
+      return { ...state, workspaceHistory: action.history }
 
     case 'SET_CODE_MAPPINGS':
       return { ...state, codeMappings: action.mappings }
