@@ -7,4 +7,7 @@
 17. 自动校验输入模型layer的input shape和output shape
 18. 文件和文件夹重命名时同步到所有引用的文件中
 19. mermaid能在md中渲染，却不能在编辑mermaid时渲染
-20. md skill  md文件中引用文件时，需要相对workspace路径
+
+21. 各个编辑文件的渲染页面可以全屏
+22. 思维导图全局定位
+23. mermaid编辑没有横向滚动条
