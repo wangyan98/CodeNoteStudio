@@ -32,9 +32,8 @@ Supported embed targets: `.seq.mermaid`, `.derive.json`, `.mind.json`. The embed
 Link to specific code locations with `#`-separated segments (all optional):
 
 ```
-@ref(backend#src/utils.cpp#42#parse)
-@ref(project-name#src/main.cpp#15)
-@ref(server#lib/tokenizer.py#tokenize)
+@ref(Nilou-main#Engine/Source/Runtime/Core/Public/Containers/Array.h#287#alignas)
+@ref(Nilou-main#Engine/Source/Runtime/Core/Public/Math/Vector.h#32#FVector)
 @ref(MyClass.getValue)
 ```
 

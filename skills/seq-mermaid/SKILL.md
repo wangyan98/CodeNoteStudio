@@ -28,19 +28,35 @@ sequenceDiagram
 
 Participants are declared with `participant NAME [as ALIAS]`. Messages use arrow syntax: `->>` (solid), `-->>` (dashed), `->>` (open), `--x` (dashed with X).
 
-### Code References in Messages
+### Code References
 
-Append `#@ref(repo#file#line#name)` to any message to create a clickable link that navigates to the corresponding code:
+`@ref(repo#file#line#name)` links diagram elements to source code. Two placement conventions:
+
+**Participant refs — class/type references.** Use `@ref()` in participant declarations to link a participant to its class definition:
 
 ```
 sequenceDiagram
-    participant Client
-    participant AuthServer
-    Client->>AuthServer: POST /login#@ref(backend#src/auth/handler.go#42#HandleLogin)
-    AuthServer-->>Client: token response#@ref(backend#src/auth/handler.go#58#IssueToken)
+    participant @ref(Nilou-main#Engine/Source/Runtime/Core/Public/Containers/Array.h#287#alignas) as Array
+    participant @ref(Nilou-main#Engine/Source/Runtime/Core/Public/Math/Vector.h#32#FVector) as Vector
 ```
 
-The `#` separates segments — `#` is used instead of `:` to avoid conflicts with `:` in file paths. When rendered, the `@ref(...)` text becomes a clickable blue link that jumps to the code location.
+**Message refs — function/method references.** After the `:` in a message, use `@ref()` to link to the specific function being called:
+
+```
+sequenceDiagram
+    participant App
+    participant Array
+    App->>Array: Emplace@ref(Nilou-main#Engine/Source/Runtime/Core/Public/Containers/Array.h#48#Emplace)
+    Array-->>App: return@ref(Nilou-main#Engine/Source/Runtime/Core/Public/Containers/Array.h#139#rbegin)
+```
+
+A message can also inline the participant as an `@ref()` for compact single-call diagrams:
+
+```
+*->>@ref(Nilou-main#Engine/Source/Runtime/Core/Public/Containers/Array.h#48#Emplace): Back@ref(Nilou-main#Engine/Source/Runtime/Core/Public/Containers/Array.h#139#rbegin)
+```
+
+The `#` delimiter avoids conflicts with `:` in file paths. When rendered, `@ref(...)` text becomes a clickable blue link that jumps to the code location.
 
 ## Scripts
 
