@@ -104,24 +104,65 @@ export function registerIpcHandlers(projectPath: string): void {
     const fs = await import('node:fs/promises')
     const path = await import('node:path')
     const workspacePath = path.join(parentDir, name)
+    // Check for name conflict
+    try {
+      await fs.access(workspacePath)
+      throw new Error(`Directory already exists: ${workspacePath}`)
+    } catch (err: any) {
+      if (err.message && err.message.startsWith('Directory already exists')) throw err
+      // ENOENT is expected — directory doesn't exist yet
+    }
     await fs.mkdir(workspacePath, { recursive: true })
+    // Initialize notebook.json
+    const configPath = path.join(workspacePath, 'notebook.json')
+    await fs.writeFile(configPath, JSON.stringify({ name, notesPath: './', codeRepos: [] }, null, 2), 'utf-8')
+    // Create notes directory
+    await fs.mkdir(path.join(workspacePath, 'notes'), { recursive: true })
     return workspacePath
   })
 
   ipcMain.handle('workspace:open', async (_event, newPath: string): Promise<NotebookConfig> => {
-    const { saveLastWorkspacePath, validateWorkspacePath } = await import('./services/workspace')
+    const { validateWorkspacePath, addToHistory } = await import('./services/workspace')
+    const path = await import('node:path')
+    const fs = await import('node:fs/promises')
+
     if (!validateWorkspacePath(newPath)) {
       throw new Error(`Invalid workspace path: ${newPath}`)
     }
+
+    // Validate it's a real workspace (has notebook.json)
+    const configPath = path.join(newPath, 'notebook.json')
+    try {
+      await fs.access(configPath)
+    } catch {
+      throw new Error('Selected folder is not a valid workspace')
+    }
+
     currentProjectPath = newPath
     closeDatabase()
     initDatabase(newPath)
-    await saveLastWorkspacePath(newPath)
-    return loadConfig(newPath)
+    const config = await loadConfig(newPath)
+    await addToHistory(newPath, config.name || path.basename(newPath))
+    return config
   })
 
   ipcMain.handle('workspace:get-current', (): string | null => {
     return currentProjectPath
+  })
+
+  // Workspace history
+  ipcMain.handle('workspace:get-history', async () => {
+    const { getHistory } = await import('./services/workspace')
+    return getHistory()
+  })
+
+  ipcMain.handle('workspace:remove-from-history', async (_event, workspacePath: string) => {
+    const { removeFromHistory } = await import('./services/workspace')
+    return removeFromHistory(workspacePath)
+  })
+
+  ipcMain.handle('workspace:clear', async () => {
+    currentProjectPath = null
   })
 
   // Code repo
