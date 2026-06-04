@@ -64,7 +64,12 @@ const api = {
 
   // UI state
   loadUiState: () => ipcRenderer.invoke('ui-state:load'),
-  saveUiState: (workspacePath: string, state: unknown) => ipcRenderer.invoke('ui-state:save', workspacePath, state)
+  saveUiState: (workspacePath: string, state: unknown) => ipcRenderer.invoke('ui-state:save', workspacePath, state),
+
+  // Agent
+  startAgent: () => ipcRenderer.invoke('agent:start'),
+  stopAgent: () => ipcRenderer.invoke('agent:stop'),
+  getAgentPort: () => ipcRenderer.invoke('agent:get-port'),
 }
 
 contextBridge.exposeInMainWorld('electronAPI', api)

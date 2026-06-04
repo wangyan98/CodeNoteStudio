@@ -82,6 +82,9 @@ declare global {
         openCodeFiles: Array<{ path: string; name: string; language: string }>
         activeCodeFileIndex: number
       }) => Promise<void>
+      startAgent: () => Promise<{ port: number }>
+      stopAgent: () => Promise<void>
+      getAgentPort: () => Promise<number>
     }
   }
 }

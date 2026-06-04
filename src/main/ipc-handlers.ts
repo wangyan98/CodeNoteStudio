@@ -281,6 +281,27 @@ export function registerIpcHandlers(projectPath: string): void {
     const { getServerStatus } = await import('./services/live-server')
     return getServerStatus()
   })
+
+  // Agent
+  ipcMain.handle('agent:start', async () => {
+    const { startAgent } = await import('./agent-manager')
+    return startAgent()
+  })
+
+  ipcMain.handle('agent:stop', async () => {
+    const { stopAgent } = await import('./agent-manager')
+    return stopAgent()
+  })
+
+  ipcMain.handle('agent:get-port', async () => {
+    const { getAgentPort, startAgent } = await import('./agent-manager')
+    let port = getAgentPort()
+    if (!port) {
+      const result = await startAgent()
+      port = result.port
+    }
+    return port
+  })
 }
 
 export function unregisterIpcHandlers(): void {
