@@ -1,6 +1,6 @@
 ---
 name: derive-tree
-description: Create and edit .derive.json derivation tree files. Use when: (1) Creating new derivation documents, (2) Adding derivation steps, (3) Linking steps with derivesFrom relationships, (4) Updating step content/code mappings, (5) Deleting steps. Triggers on .derive.json file operations.
+description: Create and edit .derive.json derivation files — a notebook-specific format for breaking down mathematical formulas step by step, with LaTeX content and derivesFrom parent-child links. Use when: (1) Creating new derivation documents, (2) Adding derivation steps with LaTeX formulas, (3) Linking steps with derivesFrom relationships, (4) Updating step content/code mappings, (5) Deleting steps. Triggers on .derive.json file operations.
 ---
 
 # Derive Tree Skill
