@@ -49,7 +49,7 @@ interface WorkspaceHistoryEntry {
 | `workspace:get-history` | **New.** Returns `getHistory()` |
 | `workspace:remove-from-history` | **New.** Calls `removeFromHistory(path)` |
 | `workspace:open` | **Modified.** Validates `notebook.json` exists before opening; calls `addToHistory` on success; throws if not a valid workspace |
-| `workspace:create` | **Modified.** Receives `{ parentDir, name }`, creates `parentDir/name/`, initializes `notebook.json` + `notes/` |
+| `workspace:create` | **Modified.** Receives `dirPath`, validates directory is empty (ignoring `.DS_Store`), initializes `notebook.json` + `notes/` |
 | `workspace:get-current` | **Modified.** When workspace is cleared, returns `null` |
 
 ### Workspace Validation
@@ -94,10 +94,11 @@ States:
 **c) Create Workspace flow**
 
 1. User clicks "New Workspace"
-2. Folder picker opens (select parent directory)
-3. Prompt for workspace name
-4. Main process creates `parentDir/name/` with `notebook.json` + `notes/`
-5. Auto-opens the new workspace
+2. Folder picker opens — user selects an empty directory
+3. Main process validates the directory is empty (ignoring `.DS_Store`)
+4. If not empty, throws error "Selected directory is not empty"
+5. Main process initializes `notebook.json` + `notes/` in the selected directory
+6. Auto-opens the new workspace
 
 **d) Open Workspace validation**
 
@@ -132,7 +133,7 @@ New API methods exposed:
 |---|---|
 | History item path deleted/moved | `alert()` "Workspace no longer exists", auto-remove from list |
 | Open Workspace on non-project dir | `alert()` "Selected folder is not a valid workspace" |
-| Create Workspace name conflict | `alert()` prompt, user can re-enter a different name |
+| Create Workspace on non-empty directory | `alert()` "Selected directory is not empty. Please choose an empty folder." |
 | Old `workspace.json` format (only `lastPath`) | Auto-migrate to new history array format on first read |
 | Empty history | Hide "Recent Workspaces" section entirely |
 

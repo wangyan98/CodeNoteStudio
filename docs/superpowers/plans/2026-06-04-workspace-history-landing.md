@@ -295,25 +295,22 @@ ipcMain.handle('workspace:remove-from-history', async (_event, workspacePath: st
 **Replace the `workspace:create` handler (line ~103-109) with:**
 
 ```ts
-ipcMain.handle('workspace:create', async (_event, parentDir: string, name: string): Promise<string> => {
+ipcMain.handle('workspace:create', async (_event, dirPath: string): Promise<string> => {
   const fs = await import('node:fs/promises')
   const path = await import('node:path')
-  const workspacePath = path.join(parentDir, name)
-  // Check for name conflict
-  try {
-    await fs.access(workspacePath)
-    throw new Error(`Directory already exists: ${workspacePath}`)
-  } catch (err: any) {
-    if (err.message && err.message.startsWith('Directory already exists')) throw err
-    // ENOENT is expected — directory doesn't exist yet
+  // Ensure directory is empty
+  const entries = await fs.readdir(dirPath)
+  const nonHidden = entries.filter((e) => e !== '.DS_Store')
+  if (nonHidden.length > 0) {
+    throw new Error('Selected directory is not empty. Please choose an empty folder.')
   }
-  await fs.mkdir(workspacePath, { recursive: true })
   // Initialize notebook.json
-  const configPath = path.join(workspacePath, 'notebook.json')
+  const name = path.basename(dirPath)
+  const configPath = path.join(dirPath, 'notebook.json')
   await fs.writeFile(configPath, JSON.stringify({ name, notesPath: './', codeRepos: [] }, null, 2), 'utf-8')
   // Create notes directory
-  await fs.mkdir(path.join(workspacePath, 'notes'), { recursive: true })
-  return workspacePath
+  await fs.mkdir(path.join(dirPath, 'notes'), { recursive: true })
+  return dirPath
 })
 ```
 
@@ -666,29 +663,15 @@ export function WorkspaceToolbar() {
   }, [dispatch, restoreUiState])
 
   const handleNewWorkspace = useCallback(async () => {
-    const parentDir = await window.electronAPI.selectFolder()
-    if (!parentDir) return
-    const name = window.prompt('Workspace name:')
-    if (!name) return
+    const dirPath = await window.electronAPI.selectFolder()
+    if (!dirPath) return
     try {
-      const newPath = await window.electronAPI.createWorkspace(parentDir, name)
-      const config = await window.electronAPI.openWorkspace(newPath)
-      dispatch({ type: 'SET_WORKSPACE', path: newPath, name: config.name || name })
-      setCodeRepos(config.codeRepos || [])
-      const notes = await window.electronAPI.listNotes()
-      dispatch({ type: 'SET_NOTES', notes })
-      for (const repo of config.codeRepos || []) {
-        window.electronAPI.indexSymbols(repo.path).catch((err) => {
-          console.error('Failed to index symbols for repo:', repo.path, err)
-        })
-      }
-      const history = await window.electronAPI.getWorkspaceHistory()
-      dispatch({ type: 'SET_WORKSPACE_HISTORY', history })
-      restoreUiState()
+      await window.electronAPI.createWorkspace(dirPath)
+      await openWorkspaceByPath(dirPath)
     } catch (err: any) {
       alert(err.message || 'Failed to create workspace')
     }
-  }, [dispatch, restoreUiState])
+  }, [openWorkspaceByPath])
 
   const handleOpenWorkspace = useCallback(async () => {
     const folderPath = await window.electronAPI.selectFolder()
