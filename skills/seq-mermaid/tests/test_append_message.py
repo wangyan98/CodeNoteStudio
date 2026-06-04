@@ -1,0 +1,87 @@
+"""Tests for append_message.py"""
+import json
+import os
+import subprocess
+import sys
+import tempfile
+
+
+def _setup(tmpdir, name="test.seq.mermaid"):
+    path = os.path.join(tmpdir, name)
+    subprocess.run(
+        [sys.executable, "skills/seq-mermaid/scripts/create_seq.py", path],
+        capture_output=True
+    )
+    return path
+
+
+def _run(*args):
+    result = subprocess.run(
+        [sys.executable, "skills/seq-mermaid/scripts/append_message.py"] + list(args),
+        capture_output=True, text=True
+    )
+    return json.loads(result.stdout), result.returncode
+
+
+def test_appends_simple_message():
+    with tempfile.TemporaryDirectory() as tmpdir:
+        path = _setup(tmpdir)
+        result, code = _run(path, "A", "B", "hello world")
+        assert code == 0
+        assert result["ok"] is True
+        content = open(path).read()
+        assert "A->>B: hello world" in content
+
+
+def test_appends_dashed_arrow():
+    with tempfile.TemporaryDirectory() as tmpdir:
+        path = _setup(tmpdir)
+        result, code = _run(path, "Client", "Server", "response", "--type", "dashed")
+        assert code == 0
+        content = open(path).read()
+        assert "Client-->>Server: response" in content
+
+
+def test_appends_async_arrow():
+    with tempfile.TemporaryDirectory() as tmpdir:
+        path = _setup(tmpdir)
+        result, code = _run(path, "A", "B", "event", "--type", "async")
+        assert code == 0
+        content = open(path).read()
+        assert "A-)B: event" in content
+
+
+def test_appends_x_arrow():
+    with tempfile.TemporaryDirectory() as tmpdir:
+        path = _setup(tmpdir)
+        result, code = _run(path, "A", "B", "timeout", "--type", "x")
+        assert code == 0
+        content = open(path).read()
+        assert "A--xB: timeout" in content
+
+
+def test_rejects_missing_file():
+    with tempfile.TemporaryDirectory() as tmpdir:
+        result, code = _run(os.path.join(tmpdir, "nope.seq.mermaid"), "A", "B", "msg")
+        assert code == 1
+        assert result["ok"] is False
+
+
+def test_rejects_invalid_diagram():
+    with tempfile.TemporaryDirectory() as tmpdir:
+        path = os.path.join(tmpdir, "bad.seq.mermaid")
+        with open(path, 'w') as f:
+            f.write("not a diagram\n")
+        result, code = _run(path, "A", "B", "msg")
+        assert code == 1
+        assert "Not a valid" in result["error"]
+
+
+def test_multiple_messages_accumulate():
+    with tempfile.TemporaryDirectory() as tmpdir:
+        path = _setup(tmpdir)
+        _run(path, "A", "B", "first")
+        _run(path, "B", "C", "second")
+        content = open(path).read()
+        assert "A->>B: first" in content
+        assert "B->>C: second" in content

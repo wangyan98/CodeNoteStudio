@@ -11,6 +11,35 @@ Operates on `.md` files — plain text markdown documents with `##` heading sect
 
 `.md` files in the notebook serve as structured project documentation — architecture write-ups, training logs, model cards, and experiment notes. The heading-based section model (`## heading`) enables programmatic section management: append new sections with duplicate detection, and replace existing sections without touching the rest of the document.
 
+## Cross-References
+
+`.md` files in the notebook support two cross-reference syntaxes for linking to other notes and code.
+
+### Note Embedding: `![[path]]`
+
+Embed other notebook notes inline using wiki-link syntax on its own line:
+
+```
+![[relative/path/to/diagram.seq.mermaid]]
+![[math/proof.derive.json]]
+![[architecture/overview.mind.json]]
+```
+
+Supported embed targets: `.seq.mermaid`, `.derive.json`, `.mind.json`. The embedded content renders as a read-only preview within the markdown. Use embeds to compose documents that weave together diagrams, derivations, and mind maps.
+
+### Code References: `@ref(repo:file:line:name)`
+
+Link to specific code locations. The first segment is the repo (project directory basename), followed by file path, line number, and symbol name — all colon-separated and optional:
+
+```
+@ref(backend:src/utils.cpp:42:parse)
+@ref(project-name:src/main.cpp:15)
+@ref(server:lib/tokenizer.py:tokenize)
+@ref(MyClass.getValue)
+```
+
+Resolution priority: repo+file+line+name → file+line+name → file+line → file+name → Class.method → name only. Without a repo prefix, scoped to the currently active repo. Unmatched refs render as plain text. Use `@ref()` to connect documentation to the actual implementation.
+
 ## Scripts
 
 | Script | Purpose |
