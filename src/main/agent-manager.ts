@@ -42,7 +42,6 @@ export async function startAgent(): Promise<{ port: number }> {
       const resp = await fetch(`http://127.0.0.1:${agentPort}/health`)
       if (resp.ok) return { port: agentPort }
     } catch {
-      // Process died, restart
       agentProcess = null
       agentPort = null
     }
@@ -51,16 +50,28 @@ export async function startAgent(): Promise<{ port: number }> {
   const port = await getRandomPort()
   const serverScript = path.join(__dirname, '..', '..', 'agent', 'server.py')
 
-  agentProcess = spawn('python3', [serverScript, '--port', String(port), '--host', '127.0.0.1'], {
-    stdio: ['ignore', 'pipe', 'pipe'],
-  })
+  let stderrLog = ''
+  try {
+    agentProcess = spawn('python3', [serverScript, '--port', String(port), '--host', '127.0.0.1'], {
+      stdio: ['ignore', 'pipe', 'pipe'],
+    })
+  } catch (e: any) {
+    throw new Error(`Failed to spawn python3: ${e.message}. Is python3 installed?`)
+  }
 
   agentProcess.stdout?.on('data', (data: Buffer) => {
     console.log(`[agent] ${data.toString().trim()}`)
   })
 
   agentProcess.stderr?.on('data', (data: Buffer) => {
-    console.error(`[agent:err] ${data.toString().trim()}`)
+    const text = data.toString().trim()
+    stderrLog += text + '\n'
+    console.error(`[agent:err] ${text}`)
+  })
+
+  agentProcess.on('error', (err) => {
+    console.error(`[agent] Spawn error: ${err.message}`)
+    stderrLog += err.message + '\n'
   })
 
   agentProcess.on('exit', (code, signal) => {
@@ -77,9 +88,12 @@ export async function startAgent(): Promise<{ port: number }> {
 
   const healthy = await waitForHealth(port, 5000)
   if (!healthy) {
-    agentProcess.kill()
-    agentProcess = null
-    throw new Error('Agent server failed to start within timeout')
+    if (agentProcess) {
+      agentProcess.kill()
+      agentProcess = null
+    }
+    const detail = stderrLog.trim()
+    throw new Error(`Agent server failed to start within timeout.${detail ? ' stderr: ' + detail : ''}`)
   }
 
   restartAttempts = 0
@@ -92,7 +106,7 @@ export function stopAgent(): void {
     agentProcess.kill()
     agentProcess = null
     agentPort = null
-    restartAttempts = MAX_RESTART_ATTEMPTS // prevent auto-restart
+    restartAttempts = MAX_RESTART_ATTEMPTS
   }
 }
 
