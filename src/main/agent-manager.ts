@@ -48,7 +48,7 @@ export async function startAgent(): Promise<{ port: number }> {
   }
 
   const port = await getRandomPort()
-  const serverScript = path.join(__dirname, '..', '..', 'agent', 'server.py')
+  const serverScript = path.join(__dirname, '..', '..', '..', 'agent', 'server.py')
 
   let stderrLog = ''
   try {
