@@ -1,0 +1,37 @@
+#!/usr/bin/env python3
+"""Update a network node's label, params, or codeMapping."""
+import argparse, json, sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+from lib.file_utils import load_network, save_network
+from lib.schemas import CodeMapping
+
+def main():
+    parser = argparse.ArgumentParser(description="Update a network graph node")
+    parser.add_argument("path", help="Path to the .net.json file")
+    parser.add_argument("node_id", help="ID of the node to update")
+    parser.add_argument("--label")
+    parser.add_argument("--params", help="JSON params object")
+    parser.add_argument("--code-mapping", help="JSON code mapping object")
+    args = parser.parse_args()
+
+    doc = load_network(args.path)
+    node = next((n for n in doc.nodes if n.id == args.node_id), None)
+    if node is None:
+        print(json.dumps({"ok": False, "error": f"Node not found: {args.node_id}"}))
+        sys.exit(1)
+
+    if args.label is not None:
+        node.label = args.label
+    if args.params is not None:
+        node.params = json.loads(args.params)
+    if args.code_mapping is not None:
+        data = json.loads(args.code_mapping)
+        node.codeMapping = CodeMapping(**data)
+
+    save_network(args.path, doc)
+    print(json.dumps({"ok": True}))
+
+if __name__ == "__main__":
+    main()
