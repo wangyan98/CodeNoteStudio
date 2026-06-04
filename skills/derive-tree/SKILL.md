@@ -7,6 +7,15 @@ description: Create and edit .derive.json derivation tree files. Use when: (1) C
 
 Operates on `.derive.json` files — flat list of steps with parent-child links via `derivesFrom` / `derivesTo`.
 
+## Purpose
+
+`.derive.json` is a notebook-specific file format for **mathematical formula derivation**. Each step contains a LaTeX formula (`content`), and steps are linked via `derivesFrom` to show how one formula is derived from another. The resulting tree represents the logical chain of reasoning — starting from assumptions/definitions and building up to the final result.
+
+Typical use cases:
+- Breaking down a complex equation derivation into intermediate steps
+- Showing how a theorem follows from axioms and prior results
+- Tracing the gradient computation graph through chain-rule applications
+
 ## Node Structure
 
 ```json
