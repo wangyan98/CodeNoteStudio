@@ -914,6 +914,10 @@ export const MindMapCanvas = forwardRef<MindMapCanvasHandle, MindMapCanvasProps>
 
       const dragHandler = d3.drag<SVGGElement, d3.HierarchyNode<MindMapNode>>()
         .on('start', function (event: d3.D3DragEvent<SVGGElement, unknown, unknown>, d: d3.HierarchyNode<MindMapNode>) {
+          // Select the node on any interaction (click or drag)
+          if (d.data.id !== selectedNodeIdRef.current) {
+            dispatch({ type: 'SELECT_NODE', nodeId: d.data.id })
+          }
           d3.select(this).raise()
           d3.select(this).select('rect').attr('stroke', '#ff0').attr('stroke-width', 2)
           const pt = d3.pointer(event, svgRef.current!)
