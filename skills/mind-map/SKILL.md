@@ -1,11 +1,20 @@
 ---
 name: mind-map
-description: Create and edit .mind.json mind map files in the notebook app. Use when: (1) Creating new mind maps, (2) Adding nodes to a mind map tree, (3) Updating node titles/content/code mappings, (4) Deleting nodes. Triggers on .mind.json file operations.
+description: Create and edit .mind.json mind map files — a notebook-specific format for visualizing project code structure as a tree of nodes with optional codeMapping links to source files. Use when: (1) Creating new mind maps, (2) Adding nodes to a mind map tree, (3) Updating node titles/content/code mappings, (4) Deleting nodes. Triggers on .mind.json file operations.
 ---
 
 # Mind Map Skill
 
 Operates on `.mind.json` files — tree-structured documents with a root node and recursive children.
+
+## Purpose
+
+`.mind.json` is a notebook-specific format for **project code structure visualization**. Each node in the tree represents a code component (module, class, function, etc.) with an optional `codeMapping` that links directly to the source file location. The tree structure mirrors the logical organization of a codebase — from high-level modules down to individual functions.
+
+Typical use cases:
+- Mapping a new codebase to understand its architecture
+- Creating a navigable outline of project modules and their relationships
+- Linking documentation nodes to actual code via codeMapping
 
 ## Node Structure
 

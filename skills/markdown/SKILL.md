@@ -1,11 +1,15 @@
 ---
 name: markdown
-description: Create and edit .md markdown files with heading-based section manipulation. Use when: (1) Creating new markdown documents, (2) Appending new sections with deduplication, (3) Replacing section content. Triggers on .md file operations in the notebook.
+description: Create and edit .md markdown files with heading-based section manipulation — used in the notebook app for structured project documentation. Use when: (1) Creating new markdown documents, (2) Appending new sections with deduplication, (3) Replacing section content. Triggers on .md file operations in the notebook.
 ---
 
 # Markdown Skill
 
 Operates on `.md` files — plain text markdown documents with `##` heading sections.
+
+## Purpose
+
+`.md` files in the notebook serve as structured project documentation — architecture write-ups, training logs, model cards, and experiment notes. The heading-based section model (`## heading`) enables programmatic section management: append new sections with duplicate detection, and replace existing sections without touching the rest of the document.
 
 ## Scripts
 

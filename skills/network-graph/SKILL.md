@@ -1,11 +1,20 @@
 ---
 name: network-graph
-description: Create and edit .net.json network graph files for visualizing neural network architectures. Use when: (1) Creating new network graphs, (2) Adding layers/blocks/connections, (3) Updating node labels/params/code mappings, (4) Deleting nodes or connections. Triggers on .net.json file operations.
+description: Create and edit .net.json network graph files — a notebook-specific format for visualizing neural network architectures as directed graphs with nodes (input/output/layer/block) and edges (forward/skip). Use when: (1) Creating new network graphs, (2) Adding layers/blocks/connections, (3) Updating node labels/params/code mappings, (4) Deleting nodes or connections. Triggers on .net.json file operations.
 ---
 
 # Network Graph Skill
 
 Operates on `.net.json` files — graph-based neural network visualizations with nodes and edges.
+
+## Purpose
+
+`.net.json` is a notebook-specific format for **neural network architecture diagrams**. Each node represents a network component (input, output, layer, or block), and edges define data flow between them. Nodes carry typed parameters (layer type, shapes, hyperparameters) and optional `codeMapping` links to implementation code.
+
+Typical use cases:
+- Documenting model architectures (ResNet, Transformer, etc.)
+- Auto-generating architecture diagrams from PyTorch/TensorFlow code
+- Tracing forward/backward data flow through skip connections and blocks
 
 ## Document Structure (v2)
 
