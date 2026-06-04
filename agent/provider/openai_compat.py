@@ -1,0 +1,90 @@
+import json
+import httpx
+from typing import AsyncIterator
+from .base import BaseProvider
+
+
+class OpenAICompatProvider(BaseProvider):
+    def __init__(self, base_url: str, api_key: str, model: str):
+        self.base_url = base_url.rstrip("/")
+        self.api_key = api_key
+        self.model = model
+
+    async def chat_stream(
+        self,
+        messages: list[dict],
+        tools: list[dict],
+    ) -> AsyncIterator[dict]:
+        url = f"{self.base_url}/chat/completions"
+        headers = {
+            "Authorization": f"Bearer {self.api_key}",
+            "Content-Type": "application/json",
+        }
+        body = {
+            "model": self.model,
+            "messages": messages,
+            "tools": tools,
+            "stream": True,
+        }
+
+        async with httpx.AsyncClient(timeout=120.0) as client:
+            async with client.stream("POST", url, headers=headers, json=body) as response:
+                response.raise_for_status()
+
+                tool_call_buffers: dict[int, dict] = {}
+
+                async for line in response.aiter_lines():
+                    if not line.startswith("data: "):
+                        continue
+                    data_str = line[6:]
+                    if data_str == "[DONE]":
+                        for tc in tool_call_buffers.values():
+                            if "arguments_str" in tc["function"]:
+                                try:
+                                    tc["function"]["arguments"] = json.loads(
+                                        tc["function"]["arguments_str"]
+                                    )
+                                except json.JSONDecodeError:
+                                    tc["function"]["arguments"] = {}
+                                del tc["function"]["arguments_str"]
+                            yield {"type": "tool_call", "tool_call": tc}
+                        yield {"type": "done"}
+                        return
+
+                    chunk = json.loads(data_str)
+                    delta = chunk["choices"][0]["delta"]
+                    finish = chunk["choices"][0].get("finish_reason")
+
+                    if "content" in delta and delta["content"]:
+                        yield {"type": "text", "content": delta["content"]}
+
+                    if "tool_calls" in delta:
+                        for tc_delta in delta["tool_calls"]:
+                            idx = tc_delta["index"]
+                            if idx not in tool_call_buffers:
+                                tool_call_buffers[idx] = {
+                                    "id": tc_delta.get("id", ""),
+                                    "type": "function",
+                                    "function": {
+                                        "name": "",
+                                        "arguments_str": "",
+                                    },
+                                }
+                            buf = tool_call_buffers[idx]
+                            if "id" in tc_delta:
+                                buf["id"] = tc_delta["id"]
+                            if tc_delta.get("function", {}).get("name"):
+                                buf["function"]["name"] = tc_delta["function"]["name"]
+                            if tc_delta.get("function", {}).get("arguments"):
+                                buf["function"]["arguments_str"] += tc_delta["function"]["arguments"]
+
+                            # If this chunk ended with tool_calls and we have a complete tool call, emit it
+                            if finish == "tool_calls" and buf["function"]["name"]:
+                                try:
+                                    buf["function"]["arguments"] = json.loads(
+                                        buf["function"]["arguments_str"]
+                                    )
+                                except json.JSONDecodeError:
+                                    buf["function"]["arguments"] = {}
+                                del buf["function"]["arguments_str"]
+                                yield {"type": "tool_call", "tool_call": buf}
