@@ -826,8 +826,9 @@ export const MindMapCanvas = forwardRef<MindMapCanvasHandle, MindMapCanvasProps>
         const draggedParentInfo = findParentAndIndex(doc, draggedNodeId)
         const draggedOrigIdx = draggedParentInfo?.index ?? -1
 
-        // First pass: shift node groups and collect shifted IDs
-        const shiftedIds = new Set<string>()
+        // Collect per-node shift offsets (negative = up/fill-gap, positive = down/make-room)
+        const shiftOffsets = new Map<string, number>()
+
         siblings.forEach((el) => {
           const sid = el.getAttribute('data-node-id')
           if (!sid || sid === draggedNodeId) return
@@ -835,48 +836,53 @@ export const MindMapCanvas = forwardRef<MindMapCanvasHandle, MindMapCanvasProps>
           if (!orig) return
           const parentInfo = findParentAndIndex(doc, sid)
           const modelIdx = parentInfo?.index
-          if (modelIdx !== undefined && modelIdx !== null) {
-            // Convert to new-array index (after removing dragged node)
-            const newIdx = modelIdx > draggedOrigIdx ? modelIdx - 1 : modelIdx
-            if (newIdx >= insertIndex) {
-            shiftedIds.add(sid)
-            el.setAttribute('transform', `translate(${orig.y},${orig.x + 32})`)
-            // Shift descendant node groups
+          if (modelIdx === undefined || modelIdx === null) return
+          const newIdx = modelIdx > draggedOrigIdx ? modelIdx - 1 : modelIdx
+
+          let offset = 0
+          if (newIdx >= insertIndex) {
+            // Nodes at or after the insertion point shift down to make room
+            offset = 32
+          } else if (newIdx >= draggedOrigIdx && insertIndex > draggedOrigIdx) {
+            // Nodes between the gap and the insertion point shift up to fill the gap
+            offset = -32
+          }
+
+          if (offset !== 0) {
+            shiftOffsets.set(sid, offset)
+            el.setAttribute('transform', `translate(${orig.y},${orig.x + offset})`)
+            // Shift descendant node groups by the same offset
             const descIds = getDescendantIds(sid)
             descIds.forEach(descId => {
-              shiftedIds.add(descId)
+              shiftOffsets.set(descId, offset)
               const descEl = svgEl.querySelector(`[data-node-id="${descId}"]`)
               const descOrig = originalPositions.get(descId)
               if (descEl && descOrig) {
-                descEl.setAttribute('transform', `translate(${descOrig.y},${descOrig.x + 32})`)
+                descEl.setAttribute('transform', `translate(${descOrig.y},${descOrig.x + offset})`)
               }
             })
           }
-          }
         })
 
-        // Second pass: shift lines and collapse buttons for all shifted nodes
-        shiftedIds.forEach(shiftedId => {
-          // Incoming child lines (from parent elbow to this node)
+        // Shift lines and collapse buttons for all shifted nodes
+        shiftOffsets.forEach((offset, shiftedId) => {
           svgEl.querySelectorAll<SVGLineElement>(`[data-child-id="${shiftedId}"]`).forEach(line => {
-            line.setAttribute('y1', String(parseFloat(line.getAttribute('data-orig-y1') || '0') + 32))
-            line.setAttribute('y2', String(parseFloat(line.getAttribute('data-orig-y2') || '0') + 32))
+            line.setAttribute('y1', String(parseFloat(line.getAttribute('data-orig-y1') || '0') + offset))
+            line.setAttribute('y2', String(parseFloat(line.getAttribute('data-orig-y2') || '0') + offset))
           })
-          // Lines owned by this node (its own branch connectors)
           svgEl.querySelectorAll<SVGLineElement>(`[data-owner-id="${shiftedId}"]`).forEach(line => {
-            line.setAttribute('y1', String(parseFloat(line.getAttribute('data-orig-y1') || '0') + 32))
-            line.setAttribute('y2', String(parseFloat(line.getAttribute('data-orig-y2') || '0') + 32))
+            line.setAttribute('y1', String(parseFloat(line.getAttribute('data-orig-y1') || '0') + offset))
+            line.setAttribute('y2', String(parseFloat(line.getAttribute('data-orig-y2') || '0') + offset))
           })
-          // Collapse buttons on this node's branch
           svgEl.querySelectorAll<SVGCircleElement>(
             `circle[data-collapse-owner-id="${shiftedId}"]`
           ).forEach(circle => {
-            circle.setAttribute('cy', String(parseFloat(circle.getAttribute('data-orig-cy') || '0') + 32))
+            circle.setAttribute('cy', String(parseFloat(circle.getAttribute('data-orig-cy') || '0') + offset))
           })
           svgEl.querySelectorAll<SVGTextElement>(
             `text[data-collapse-owner-id="${shiftedId}"]`
           ).forEach(text => {
-            text.setAttribute('y', String(parseFloat(text.getAttribute('data-orig-y') || '0') + 32))
+            text.setAttribute('y', String(parseFloat(text.getAttribute('data-orig-y') || '0') + offset))
           })
         })
 
@@ -893,9 +899,9 @@ export const MindMapCanvas = forwardRef<MindMapCanvasHandle, MindMapCanvasProps>
             if (!sibId) return
             const orig = originalPositions.get(sibId)
             if (!orig) return
-            const isShifted = shiftedIds.has(sibId)
+            const offset = shiftOffsets.get(sibId) || 0
             const isDragged = sibId === draggedNodeId
-            const curY = isDragged ? orig.x + draggedDy : orig.x + (isShifted ? 32 : 0)
+            const curY = isDragged ? orig.x + draggedDy : orig.x + offset
             if (curY < minY) minY = curY
             if (curY > maxY) maxY = curY
           })
