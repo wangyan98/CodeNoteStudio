@@ -61,3 +61,23 @@
   color: white;
   border-color: #d93025;
 }
+
+.agent-btn {
+  padding: 2px 8px;
+  border: 1px solid var(--border-color);
+  border-radius: 3px;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  cursor: pointer;
+  font-size: 11px;
+}
+
+.agent-btn:hover {
+  background: var(--bg-hover);
+}
+
+.agent-btn-active {
+  background: #1a73e8;
+  color: white;
+  border-color: #1a73e8;
+}

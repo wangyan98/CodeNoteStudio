@@ -1,5 +1,7 @@
+import { useState } from 'react'
 import { useLiveServer } from '../hooks/useLiveServer'
 import { useAppContext } from '../contexts/AppContext'
+import { AgentDialog } from './AgentDialog'
 import './ServerStatus.css'
 
 export function ServerStatus() {
@@ -12,8 +14,11 @@ export function ServerStatus() {
     navigator.clipboard.writeText(url)
   }
 
+  const [agentVisible, setAgentVisible] = useState(false)
+
   return (
-    <div className="server-status-bar">
+    <>
+      <div className="server-status-bar">
       {running ? (
         <>
           <span className="server-status-indicator server-running"></span>
@@ -40,6 +45,14 @@ export function ServerStatus() {
           </button>
         </>
       )}
-    </div>
+        <button
+          className={`agent-btn${agentVisible ? ' agent-btn-active' : ''}`}
+          onClick={() => setAgentVisible(!agentVisible)}
+        >
+          Agent
+        </button>
+      </div>
+      <AgentDialog visible={agentVisible} onClose={() => setAgentVisible(false)} />
+    </>
   )
 }
