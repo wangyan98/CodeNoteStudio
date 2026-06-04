@@ -17,15 +17,15 @@ Operates on `.md` files — plain text markdown documents with `##` heading sect
 
 ### Note Embedding: `![[path]]`
 
-Embed other notebook notes inline using wiki-link syntax on its own line:
+Embed other notebook notes inline using wiki-link syntax on its own line. Paths are **relative to the workspace root** (the notes directory), not relative to the current `.md` file:
 
 ```
-![[relative/path/to/diagram.seq.mermaid]]
+![[diagrams/flow.seq.mermaid]]
 ![[math/proof.derive.json]]
 ![[architecture/overview.mind.json]]
 ```
 
-Supported embed targets: `.seq.mermaid`, `.derive.json`, `.mind.json`. The embedded content renders as a read-only preview within the markdown. Use embeds to compose documents that weave together diagrams, derivations, and mind maps.
+Supported embed targets: `.seq.mermaid`, `.derive.json`, `.mind.json`, `.net.json`, `.md`. The embedded content renders as a read-only preview within the markdown. Use embeds to compose documents that weave together diagrams, derivations, and mind maps.
 
 ### Code References: `@ref(repo#file#line#name)`
 
