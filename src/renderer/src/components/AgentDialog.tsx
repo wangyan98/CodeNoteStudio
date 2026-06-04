@@ -49,9 +49,14 @@ export function AgentDialog({ visible, onClose }: AgentDialogProps) {
         if (data.providers?.length > 0 && !selectedProvider) {
           setSelectedProvider(data.providers[0].id)
         }
-      } catch (e) {
-        console.error('Failed to load providers:', e)
-      }
+      } catch (e: any) {
+      console.error('Failed to load providers:', e, 'port:', p)
+      setMessages(prev => [...prev, {
+        id: Math.random().toString(36),
+        role: 'error',
+        content: `Failed to connect to agent at port ${p}. Is the server running?`,
+      }])
+    }
 
       try {
         const resp = await fetch(`http://127.0.0.1:${p}/history`)
@@ -168,10 +173,11 @@ export function AgentDialog({ visible, onClose }: AgentDialogProps) {
         }
       }
     } catch (e: any) {
+      console.error('Chat fetch failed. Port:', port, 'Error:', e)
       setMessages(prev => [...prev, {
         id: Math.random().toString(36),
         role: 'error',
-        content: `Error: ${e.message}`,
+        content: `Error fetching http://127.0.0.1:${port}/chat: ${e.message}`,
       }])
     } finally {
       setLoading(false)
