@@ -1,11 +1,8 @@
-2. 子节点无法通过拖拽插入位置
 6. 思维导图,md文档skill
 7. 源码总结agent
 10. drawio
-11. 思维导图嵌入文档卡片内容消失
-12. 双击点击事件有问题
 13. 嵌入卡片被下一个同级节点遮挡
 15. 将derive转为skills，方便agentcrud
 16. repos设置页，防止代码库移动位置忘记了是什么仓库，读取git存储git地址，crud，必须明确删除才会删除代码库
 17. 自动校验输入模型layer的input shape和output shape
-19. layer叠加到另一个layer上时直接连线
+18. 文件和文件夹重命名时同步到所有引用的文件中
