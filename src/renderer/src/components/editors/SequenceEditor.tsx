@@ -89,7 +89,9 @@ export function SequenceEditor({ content: initialContent, notePath, onSave }: Se
   }, [])
 
   const handleChange = useCallback((val: string | undefined) => {
-    setValue(val || '')
+    if (val !== undefined) {
+      setValue(val)
+    }
   }, [])
 
   const handleResize = useCallback((e: React.MouseEvent) => {
