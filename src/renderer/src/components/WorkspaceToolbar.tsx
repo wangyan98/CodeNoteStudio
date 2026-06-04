@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useAppContext } from '../contexts/AppContext'
+import type { WorkspaceHistoryEntry } from '../types'
 import './WorkspaceToolbar.css'
 
 const REPO_COLORS = ['#e06c75', '#61afef', '#98c379', '#d19a66', '#c678dd', '#56b6c2', '#e5c07b', '#abb2bf']
@@ -10,9 +11,16 @@ function getRepoColor(index: number): string {
 
 export function WorkspaceToolbar() {
   const { state, dispatch } = useAppContext()
-  const { workspacePath, workspaceName } = state
+  const { workspacePath, workspaceName, workspaceHistory } = state
   const [codeRepos, setCodeRepos] = useState<Array<{ path: string; commit: string }>>([])
   const restoringRef = useRef(false)
+
+  // Load history on mount
+  useEffect(() => {
+    window.electronAPI.getWorkspaceHistory().then((history) => {
+      dispatch({ type: 'SET_WORKSPACE_HISTORY', history })
+    })
+  }, [dispatch])
 
   const restoreUiState = useCallback(async () => {
     const saved = await window.electronAPI.loadUiState()
@@ -20,7 +28,6 @@ export function WorkspaceToolbar() {
 
     restoringRef.current = true
 
-    // Restore selected note
     if (saved.selectedNoteId) {
       const notes = await window.electronAPI.listNotes()
       dispatch({ type: 'SET_NOTES', notes })
@@ -32,12 +39,10 @@ export function WorkspaceToolbar() {
       }
     }
 
-    // Restore code repo
     if (saved.codeRepoPath) {
       dispatch({ type: 'SET_CODE_REPO', path: saved.codeRepoPath })
     }
 
-    // Restore open code files
     if (saved.openCodeFiles && saved.openCodeFiles.length > 0) {
       for (const file of saved.openCodeFiles) {
         dispatch({ type: 'OPEN_CODE_FILE', file })
@@ -63,6 +68,31 @@ export function WorkspaceToolbar() {
     })
   }, [])
 
+  const openWorkspaceByPath = useCallback(async (wsPath: string) => {
+    try {
+      const config = await window.electronAPI.openWorkspace(wsPath)
+      dispatch({ type: 'SET_WORKSPACE', path: wsPath, name: config.name || wsPath })
+      setCodeRepos(config.codeRepos || [])
+      const notes = await window.electronAPI.listNotes()
+      dispatch({ type: 'SET_NOTES', notes })
+      for (const repo of config.codeRepos || []) {
+        window.electronAPI.indexSymbols(repo.path).catch((err) => {
+          console.error('Failed to index symbols for repo:', repo.path, err)
+        })
+      }
+      // Refresh history after opening
+      const history = await window.electronAPI.getWorkspaceHistory()
+      dispatch({ type: 'SET_WORKSPACE_HISTORY', history })
+      restoreUiState()
+    } catch (err: any) {
+      alert(err.message || 'Failed to open workspace')
+      // Remove invalid entry from history
+      await window.electronAPI.removeFromWorkspaceHistory(wsPath)
+      const history = await window.electronAPI.getWorkspaceHistory()
+      dispatch({ type: 'SET_WORKSPACE_HISTORY', history })
+    }
+  }, [dispatch, restoreUiState])
+
   const handleNewWorkspace = useCallback(async () => {
     const parentDir = await window.electronAPI.selectFolder()
     if (!parentDir) return
@@ -80,31 +110,37 @@ export function WorkspaceToolbar() {
           console.error('Failed to index symbols for repo:', repo.path, err)
         })
       }
+      const history = await window.electronAPI.getWorkspaceHistory()
+      dispatch({ type: 'SET_WORKSPACE_HISTORY', history })
       restoreUiState()
-    } catch (err) {
-      console.error('Failed to create workspace:', err)
+    } catch (err: any) {
+      alert(err.message || 'Failed to create workspace')
     }
   }, [dispatch, restoreUiState])
 
-  const handleOpenFolder = useCallback(async () => {
+  const handleOpenWorkspace = useCallback(async () => {
     const folderPath = await window.electronAPI.selectFolder()
     if (!folderPath) return
-    try {
-      const config = await window.electronAPI.openWorkspace(folderPath)
-      dispatch({ type: 'SET_WORKSPACE', path: folderPath, name: config.name || folderPath })
-      setCodeRepos(config.codeRepos || [])
-      const notes = await window.electronAPI.listNotes()
-      dispatch({ type: 'SET_NOTES', notes })
-      for (const repo of config.codeRepos || []) {
-        window.electronAPI.indexSymbols(repo.path).catch((err) => {
-          console.error('Failed to index symbols for repo:', repo.path, err)
-        })
-      }
-      restoreUiState()
-    } catch (err) {
-      console.error('Failed to open workspace:', err)
-    }
-  }, [dispatch, restoreUiState])
+    await openWorkspaceByPath(folderPath)
+  }, [openWorkspaceByPath])
+
+  const handleHistoryItemClick = useCallback(async (entry: WorkspaceHistoryEntry) => {
+    await openWorkspaceByPath(entry.path)
+  }, [openWorkspaceByPath])
+
+  const handleRemoveHistory = useCallback(async (e: React.MouseEvent, entryPath: string) => {
+    e.stopPropagation()
+    await window.electronAPI.removeFromWorkspaceHistory(entryPath)
+    const history = await window.electronAPI.getWorkspaceHistory()
+    dispatch({ type: 'SET_WORKSPACE_HISTORY', history })
+  }, [dispatch])
+
+  const handleWorkspaceNameClick = useCallback(async () => {
+    dispatch({ type: 'CLEAR_WORKSPACE' })
+    await window.electronAPI.clearWorkspace()
+    const history = await window.electronAPI.getWorkspaceHistory()
+    dispatch({ type: 'SET_WORKSPACE_HISTORY', history })
+  }, [dispatch])
 
   const handleAddRepo = useCallback(async () => {
     const repoPath = await window.electronAPI.selectFolder()
@@ -160,10 +196,42 @@ export function WorkspaceToolbar() {
           <button className="workspace-landing-btn primary" onClick={handleNewWorkspace}>
             New Workspace
           </button>
-          <button className="workspace-landing-btn" onClick={handleOpenFolder}>
-            Open Folder
+          <button className="workspace-landing-btn" onClick={handleOpenWorkspace}>
+            Open Workspace
           </button>
         </div>
+
+        {workspaceHistory.length > 0 && (
+          <>
+            <div className="workspace-history-divider">
+              <span className="workspace-history-divider-line" />
+              <span className="workspace-history-divider-label">Recent Workspaces</span>
+              <span className="workspace-history-divider-line" />
+            </div>
+            <div className="workspace-history-list">
+              {workspaceHistory.map((entry) => (
+                <div
+                  key={entry.path}
+                  className="workspace-history-item"
+                  onClick={() => handleHistoryItemClick(entry)}
+                >
+                  <span className="workspace-history-item-icon">📁</span>
+                  <div className="workspace-history-item-info">
+                    <span className="workspace-history-item-name">{entry.name}</span>
+                    <span className="workspace-history-item-path">{entry.path}</span>
+                  </div>
+                  <button
+                    className="workspace-history-item-remove"
+                    onClick={(e) => handleRemoveHistory(e, entry.path)}
+                    title="Remove from history"
+                  >
+                    ×
+                  </button>
+                </div>
+              ))}
+            </div>
+          </>
+        )}
       </div>
     )
   }
@@ -171,10 +239,16 @@ export function WorkspaceToolbar() {
   // Normal toolbar
   return (
     <div className="workspace-toolbar">
-      <span className="workspace-toolbar-name">📁 {workspaceName}</span>
+      <span
+        className="workspace-toolbar-name workspace-toolbar-name-clickable"
+        onClick={handleWorkspaceNameClick}
+        title="Back to home"
+      >
+        📁 {workspaceName}
+      </span>
       <span className="workspace-toolbar-separator">|</span>
-      <button className="workspace-toolbar-btn" onClick={handleOpenFolder}>
-        Open Folder
+      <button className="workspace-toolbar-btn" onClick={handleOpenWorkspace}>
+        Open Workspace
       </button>
       <div className="workspace-toolbar-spacer" />
       <span className="workspace-toolbar-label">Repos:</span>

@@ -166,3 +166,106 @@
 .repo-chip-reindex:hover {
   opacity: 1;
 }
+
+/* Clickable workspace name in toolbar */
+.workspace-toolbar-name-clickable {
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.workspace-toolbar-name-clickable:hover {
+  color: var(--accent-color);
+}
+
+/* History section on landing page */
+.workspace-history-divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  max-width: 400px;
+  margin-top: 36px;
+  margin-bottom: 16px;
+}
+
+.workspace-history-divider-line {
+  flex: 1;
+  height: 1px;
+  background: var(--border-color);
+}
+
+.workspace-history-divider-label {
+  font-size: 11px;
+  color: var(--placeholder-color);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  white-space: nowrap;
+}
+
+.workspace-history-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 100%;
+  max-width: 400px;
+}
+
+.workspace-history-item {
+  display: flex;
+  align-items: center;
+  padding: 10px 14px;
+  border-radius: 6px;
+  border: 1px solid var(--border-color);
+  cursor: pointer;
+  transition: border-color 0.15s;
+}
+
+.workspace-history-item:hover {
+  border-color: var(--accent-color);
+}
+
+.workspace-history-item-icon {
+  font-size: 18px;
+  margin-right: 12px;
+  flex-shrink: 0;
+}
+
+.workspace-history-item-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.workspace-history-item-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-color);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: block;
+}
+
+.workspace-history-item-path {
+  font-size: 11px;
+  color: var(--placeholder-color);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: block;
+}
+
+.workspace-history-item-remove {
+  font-size: 16px;
+  color: var(--placeholder-color);
+  cursor: pointer;
+  padding: 4px;
+  background: none;
+  border: none;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.workspace-history-item-remove:hover {
+  color: #e06c75;
+}
