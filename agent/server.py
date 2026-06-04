@@ -34,13 +34,14 @@ def build_registry() -> ToolRegistry:
     # File ops
     registry.register(
         name="read_file",
-        description="Read a file from disk. Returns file contents with line numbers.",
+        description="Read a file from disk. Returns up to max_lines (default 500). Use start_line/end_line to read specific ranges.",
         parameters={
             "type": "object",
             "properties": {
                 "path": {"type": "string", "description": "Absolute path to the file"},
                 "start_line": {"type": "integer", "description": "Start line (1-based, default 1)"},
-                "end_line": {"type": "integer", "description": "End line (inclusive, default -1 for end of file)"},
+                "end_line": {"type": "integer", "description": "End line (inclusive, default auto-capped at start_line+max_lines)"},
+                "max_lines": {"type": "integer", "description": "Max lines to return (default 500)"},
             },
             "required": ["path"],
         },
@@ -49,12 +50,13 @@ def build_registry() -> ToolRegistry:
 
     registry.register(
         name="list_files",
-        description="List files in a directory recursively",
+        description="List files in a directory recursively. Limited to max_results (default 200).",
         parameters={
             "type": "object",
             "properties": {
                 "directory": {"type": "string", "description": "Directory path to list"},
                 "pattern": {"type": "string", "description": "Filename glob pattern (default *)"},
+                "max_results": {"type": "integer", "description": "Max entries to return (default 200)"},
             },
             "required": ["directory"],
         },
@@ -63,13 +65,14 @@ def build_registry() -> ToolRegistry:
 
     registry.register(
         name="search_in_files",
-        description="Search for a string pattern in files under a directory (case-insensitive)",
+        description="Search for a string pattern in files under a directory (case-insensitive). Limited to max_results (default 50).",
         parameters={
             "type": "object",
             "properties": {
                 "directory": {"type": "string", "description": "Directory to search in"},
                 "query": {"type": "string", "description": "Search query string"},
                 "file_pattern": {"type": "string", "description": "File glob pattern (default *.py)"},
+                "max_results": {"type": "integer", "description": "Max matches to return (default 50)"},
             },
             "required": ["directory", "query"],
         },
