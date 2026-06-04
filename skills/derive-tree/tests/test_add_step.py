@@ -25,7 +25,7 @@ def test_adds_first_step():
     with tempfile.TemporaryDirectory() as tmp:
         path = os.path.join(tmp, "test.derive.json")
         _make_doc(path)
-        code, out = run_script(path, "--title", "Step 1", "--content", "First step")
+        code, out = run_script(path, "--title", "Step 1", "--content", "\\frac{d}{dx}x^2 = 2x")
         assert code == 0
         result = json.loads(out)
         assert result["ok"] is True

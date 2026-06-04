@@ -13,7 +13,7 @@ Operates on `.derive.json` files — flat list of steps with parent-child links 
 {
   "id": "uuid",
   "title": "Step title",
-  "content": "Step content (markdown)",
+  "content": "Step content (LaTeX formula)",
   "stepNumber": 1,
   "derivesFrom": "parent-id or null",
   "derivesTo": ["child-id-1", "child-id-2"],
@@ -44,8 +44,8 @@ python scripts/create_derive.py /path/to/file.derive.json
 ### add_step.py
 
 ```bash
-python scripts/add_step.py file.derive.json --title "Step 1" --content "## Heading"
-python scripts/add_step.py file.derive.json --after-step 2 --derives-from <parent-id> --title "Child Step"
+python scripts/add_step.py file.derive.json --title "Chain Rule" --content "\frac{d}{dx}f(g(x)) = f'(g(x)) \cdot g'(x)"
+python scripts/add_step.py file.derive.json --after-step 2 --derives-from <parent-id> --title "Apply Power Rule" --content "\frac{d}{dx}x^n = nx^{n-1}"
 # => {"ok": true, "id": "uuid", "stepNumber": 3}
 ```
 

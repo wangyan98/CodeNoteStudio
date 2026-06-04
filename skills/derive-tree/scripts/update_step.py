@@ -13,7 +13,7 @@ def main():
     parser.add_argument("path", help="Path to the .derive.json file")
     parser.add_argument("step_id", help="ID of the step to update")
     parser.add_argument("--title")
-    parser.add_argument("--content")
+    parser.add_argument("--content", help="LaTeX formula content for this step")
     parser.add_argument("--code-mapping", help='JSON code mapping object')
     args = parser.parse_args()
 

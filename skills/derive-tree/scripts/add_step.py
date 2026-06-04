@@ -24,7 +24,7 @@ def main():
     parser.add_argument("--after-step", type=int, default=None, help="Insert after step number N (0 = beginning)")
     parser.add_argument("--derives-from", default=None, help="ID of parent step")
     parser.add_argument("--title", default="New Step")
-    parser.add_argument("--content", default="")
+    parser.add_argument("--content", default="", help="LaTeX formula content for this step")
     args = parser.parse_args()
 
     doc = load_derive(args.path)

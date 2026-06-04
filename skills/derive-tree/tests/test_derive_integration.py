@@ -40,8 +40,8 @@ def test_full_workflow():
         deriv_node = next(n for n in loaded.nodes if n.title == "Derivation")
         assert result_node.derivesFrom == deriv_node.id
 
-        # Update content
-        run("update_step.py", path, s_ids["Derivation"], "--content", "## Proof\n\n...")
+        # Update content (LaTeX formula)
+        run("update_step.py", path, s_ids["Derivation"], "--content", "\\begin{align}\nf'(x) &= \\frac{d}{dx}x^2 \\\\\n&= 2x\n\\end{align}")
 
         # Delete middle step
         run("delete_step.py", path, s_ids["Problem Setup"])
