@@ -30,17 +30,17 @@ Participants are declared with `participant NAME [as ALIAS]`. Messages use arrow
 
 ### Code References in Messages
 
-Append `#@ref(repo:file:line:name)` to any message to create a clickable link that navigates to the corresponding code:
+Append `#@ref(repo#file#line#name)` to any message to create a clickable link that navigates to the corresponding code:
 
 ```
 sequenceDiagram
     participant Client
     participant AuthServer
-    Client->>AuthServer: POST /login#@ref(backend:src/auth/handler.go:42:HandleLogin)
-    AuthServer-->>Client: token response#@ref(backend:src/auth/handler.go:58:IssueToken)
+    Client->>AuthServer: POST /login#@ref(backend#src/auth/handler.go#42#HandleLogin)
+    AuthServer-->>Client: token response#@ref(backend#src/auth/handler.go#58#IssueToken)
 ```
 
-The `#` separates the message label from the `@ref()`. When rendered, the `@ref(...)` text becomes a clickable blue link that jumps to the code location.
+The `#` separates segments — `#` is used instead of `:` to avoid conflicts with `:` in file paths. When rendered, the `@ref(...)` text becomes a clickable blue link that jumps to the code location.
 
 ## Scripts
 
