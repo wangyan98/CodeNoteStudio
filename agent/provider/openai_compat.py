@@ -10,6 +10,17 @@ class OpenAICompatProvider(BaseProvider):
         self.api_key = api_key
         self.model = model
 
+    @staticmethod
+    def _finalize_tool_call_arguments(tc: dict) -> None:
+        """Parse accumulated arguments_str into arguments dict. Mutates tc in place."""
+        if "arguments_str" not in tc["function"]:
+            return
+        try:
+            tc["function"]["arguments"] = json.loads(tc["function"]["arguments_str"])
+        except json.JSONDecodeError:
+            tc["function"]["arguments"] = {}
+        del tc["function"]["arguments_str"]
+
     async def chat_stream(
         self,
         messages: list[dict],
@@ -39,21 +50,21 @@ class OpenAICompatProvider(BaseProvider):
                     data_str = line[6:]
                     if data_str == "[DONE]":
                         for tc in tool_call_buffers.values():
-                            if "arguments_str" in tc["function"]:
-                                try:
-                                    tc["function"]["arguments"] = json.loads(
-                                        tc["function"]["arguments_str"]
-                                    )
-                                except json.JSONDecodeError:
-                                    tc["function"]["arguments"] = {}
-                                del tc["function"]["arguments_str"]
+                            OpenAICompatProvider._finalize_tool_call_arguments(tc)
                             yield {"type": "tool_call", "tool_call": tc}
                         yield {"type": "done"}
                         return
 
-                    chunk = json.loads(data_str)
-                    delta = chunk["choices"][0]["delta"]
-                    finish = chunk["choices"][0].get("finish_reason")
+                    try:
+                        chunk = json.loads(data_str)
+                    except json.JSONDecodeError:
+                        continue
+
+                    choices = chunk.get("choices", [])
+                    if not choices:
+                        continue
+                    delta = choices[0].get("delta", {})
+                    finish = choices[0].get("finish_reason")
 
                     if "content" in delta and delta["content"]:
                         yield {"type": "text", "content": delta["content"]}
@@ -80,11 +91,5 @@ class OpenAICompatProvider(BaseProvider):
 
                             # If this chunk ended with tool_calls and we have a complete tool call, emit it
                             if finish == "tool_calls" and buf["function"]["name"]:
-                                try:
-                                    buf["function"]["arguments"] = json.loads(
-                                        buf["function"]["arguments_str"]
-                                    )
-                                except json.JSONDecodeError:
-                                    buf["function"]["arguments"] = {}
-                                del buf["function"]["arguments_str"]
+                                OpenAICompatProvider._finalize_tool_call_arguments(buf)
                                 yield {"type": "tool_call", "tool_call": buf}

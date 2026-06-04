@@ -70,6 +70,7 @@ class TestOpenAICompatProvider:
         types = [e["type"] for e in events]
         assert "text" in types
         assert "done" in types
+        assert events[0]["content"] == "Hello world"
 
     @pytest.mark.asyncio
     async def test_chat_stream_with_tool_call(self, provider):
@@ -118,3 +119,7 @@ class TestOpenAICompatProvider:
 
         tool_calls = [e for e in events if e["type"] == "tool_call"]
         assert len(tool_calls) > 0
+        tc = tool_calls[0]["tool_call"]
+        assert tc["id"] == "call_abc"
+        assert tc["function"]["name"] == "search_code"
+        assert tc["function"]["arguments"] == {"query": "sky"}
