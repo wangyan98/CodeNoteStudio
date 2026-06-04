@@ -80,6 +80,21 @@ export function appReducer(state: AppState, action: AppAction): AppState {
     case 'CLEAR_WORKSPACE':
       return { ...state, workspacePath: null, workspaceName: '' }
 
+    case 'RESET_WORKSPACE_STATE':
+      return {
+        ...state,
+        notes: [],
+        selectedNoteId: null,
+        activeNoteContent: null,
+        activeNoteType: null,
+        openCodeFiles: [],
+        activeCodeFileIndex: -1,
+        codeRepoPath: null,
+        codeFiles: [],
+        codeMappings: [],
+        pendingScroll: null
+      }
+
     case 'SET_WORKSPACE_HISTORY':
       return { ...state, workspaceHistory: action.history }
 

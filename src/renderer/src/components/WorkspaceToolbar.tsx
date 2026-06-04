@@ -72,10 +72,13 @@ export function WorkspaceToolbar() {
   const openWorkspaceByPath = useCallback(async (wsPath: string) => {
     if (loadingRef.current) return
     loadingRef.current = true
+    // Clear all state from previous workspace
+    dispatch({ type: 'RESET_WORKSPACE_STATE' })
     try {
       const config = await window.electronAPI.openWorkspace(wsPath)
       dispatch({ type: 'SET_WORKSPACE', path: wsPath, name: config.name || wsPath })
       setCodeRepos(config.codeRepos || [])
+      dispatch({ type: 'SET_CODE_REPOS', repos: config.codeRepos || [] })
       const notes = await window.electronAPI.listNotes()
       dispatch({ type: 'SET_NOTES', notes })
       for (const repo of config.codeRepos || []) {

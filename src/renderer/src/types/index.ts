@@ -69,6 +69,7 @@ export type AppAction =
   | { type: 'SET_PANEL_WIDTHS'; widths: PanelWidths }
   | { type: 'SET_WORKSPACE'; path: string; name: string }
   | { type: 'CLEAR_WORKSPACE' }
+  | { type: 'RESET_WORKSPACE_STATE' }
   | { type: 'SET_WORKSPACE_HISTORY'; history: WorkspaceHistoryEntry[] }
   | { type: 'SET_CODE_MAPPINGS'; mappings: CodeMapping[] }
   | { type: 'SET_PENDING_SCROLL'; filePath: string; line: number }
