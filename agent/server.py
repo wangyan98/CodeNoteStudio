@@ -7,6 +7,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from fastapi import FastAPI, Request
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from memory import ConversationMemory
 from tools.registry import ToolRegistry
@@ -86,6 +87,13 @@ def build_registry() -> ToolRegistry:
 
 def create_app(agent_factory=None, memory=None):
     app = FastAPI(title="Code Note Agent")
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=["*"],
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
     registry = build_registry()
     providers = load_providers()
 
