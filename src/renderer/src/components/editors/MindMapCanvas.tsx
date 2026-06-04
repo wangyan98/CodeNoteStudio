@@ -819,6 +819,13 @@ export const MindMapCanvas = forwardRef<MindMapCanvasHandle, MindMapCanvasProps>
         if (!svgEl) return
         const siblings = svgEl.querySelectorAll(`[data-parent-id="${parentId}"]`)
 
+        // insertIndex is in "new array without dragged node" space.
+        // findParentAndIndex returns indices in the current data model (which still
+        // includes the dragged node). Convert each sibling's data-model index to
+        // new-array index before comparing against insertIndex.
+        const draggedParentInfo = findParentAndIndex(doc, draggedNodeId)
+        const draggedOrigIdx = draggedParentInfo?.index ?? -1
+
         // First pass: shift node groups and collect shifted IDs
         const shiftedIds = new Set<string>()
         siblings.forEach((el) => {
@@ -827,7 +834,11 @@ export const MindMapCanvas = forwardRef<MindMapCanvasHandle, MindMapCanvasProps>
           const orig = originalPositions.get(sid)
           if (!orig) return
           const parentInfo = findParentAndIndex(doc, sid)
-          if (parentInfo && parentInfo.index >= insertIndex) {
+          const modelIdx = parentInfo?.index
+          if (modelIdx !== undefined && modelIdx !== null) {
+            // Convert to new-array index (after removing dragged node)
+            const newIdx = modelIdx > draggedOrigIdx ? modelIdx - 1 : modelIdx
+            if (newIdx >= insertIndex) {
             shiftedIds.add(sid)
             el.setAttribute('transform', `translate(${orig.y},${orig.x + 32})`)
             // Shift descendant node groups
@@ -840,6 +851,7 @@ export const MindMapCanvas = forwardRef<MindMapCanvasHandle, MindMapCanvasProps>
                 descEl.setAttribute('transform', `translate(${descOrig.y},${descOrig.x + 32})`)
               }
             })
+          }
           }
         })
 
