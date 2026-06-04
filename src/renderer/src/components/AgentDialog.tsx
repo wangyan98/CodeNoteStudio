@@ -168,6 +168,14 @@ export function AgentDialog({ visible, onClose }: AgentDialogProps) {
                   toolName: event.name,
                 }])
                 break
+
+              case 'error':
+                setMessages(prev => [...prev, {
+                  id: Math.random().toString(36),
+                  role: 'error',
+                  content: event.content,
+                }])
+                break
             }
           } catch {}
         }

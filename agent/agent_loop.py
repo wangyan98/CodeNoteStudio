@@ -26,74 +26,90 @@ class AgentLoop:
         self.max_steps = max_steps
 
     async def run(self, user_message: str) -> AsyncIterator[dict]:
-        existing = self.memory.get_messages()
-        if len(existing) == 0:
-            system_msg = build_system_message(
-                workspace=self.workspace,
-                repos=self.repos,
-                output_dir=self.output_dir,
-            )
-            self.memory.add_message("system", system_msg)
+        try:
+            existing = self.memory.get_messages()
+            if len(existing) == 0:
+                system_msg = build_system_message(
+                    workspace=self.workspace,
+                    repos=self.repos,
+                    output_dir=self.output_dir,
+                )
+                self.memory.add_message("system", system_msg)
 
-        self.memory.add_message("user", user_message)
-        yield {"type": "user", "content": user_message}
+            self.memory.add_message("user", user_message)
+            yield {"type": "user", "content": user_message}
 
-        tools = self.registry.get_openai_schemas()
-        step = 0
+            tools = self.registry.get_openai_schemas()
+            step = 0
 
-        while step < self.max_steps:
-            step += 1
-            messages = self.memory.get_openai_messages()
+            while step < self.max_steps:
+                step += 1
+                messages = self.memory.get_openai_messages()
 
-            tool_calls_in_turn: list[dict] = []
-            assistant_text_parts: list[str] = []
+                tool_calls_in_turn: list[dict] = []
+                assistant_text_parts: list[str] = []
 
-            async for event in self.provider.chat_stream(messages, tools):
-                if event["type"] == "text":
-                    assistant_text_parts.append(event["content"])
-                    yield event
+                try:
+                    async for event in self.provider.chat_stream(messages, tools):
+                        if event["type"] == "text":
+                            assistant_text_parts.append(event["content"])
+                            yield event
 
-                elif event["type"] == "tool_call":
-                    tc = event["tool_call"]
-                    tool_calls_in_turn.append(tc)
+                        elif event["type"] == "tool_call":
+                            tc = event["tool_call"]
+                            tool_calls_in_turn.append(tc)
+                            yield {
+                                "type": "tool_call",
+                                "name": tc["function"]["name"],
+                                "arguments": tc["function"]["arguments"],
+                            }
+
+                        elif event["type"] == "done":
+                            pass
+                except Exception as e:
                     yield {
-                        "type": "tool_call",
-                        "name": tc["function"]["name"],
-                        "arguments": tc["function"]["arguments"],
+                        "type": "error",
+                        "content": f"LLM call failed: {e}",
                     }
+                    yield {"type": "done"}
+                    return
 
-                elif event["type"] == "done":
-                    pass
+                # Execute tool calls
+                if tool_calls_in_turn:
+                    if assistant_text_parts:
+                        self.memory.add_message("assistant", "".join(assistant_text_parts))
 
-            # Execute tool calls
-            if tool_calls_in_turn:
-                if assistant_text_parts:
-                    self.memory.add_message("assistant", "".join(assistant_text_parts))
+                    for tc in tool_calls_in_turn:
+                        name = tc["function"]["name"]
+                        args = tc["function"]["arguments"]
+                        try:
+                            result = self.registry.execute(name, args)
+                        except Exception as e:
+                            result = {"ok": False, "error": str(e)}
 
-                for tc in tool_calls_in_turn:
-                    name = tc["function"]["name"]
-                    args = tc["function"]["arguments"]
-                    try:
-                        result = self.registry.execute(name, args)
-                    except Exception as e:
-                        result = {"ok": False, "error": str(e)}
+                        result_str = json.dumps(result, ensure_ascii=False)
+                        self.memory.add_message("tool", result_str, tool_name=tc["id"])
+                        yield {
+                            "type": "tool_result",
+                            "tool_call_id": tc["id"],
+                            "name": name,
+                            "result": result,
+                        }
+                    continue
 
-                    result_str = json.dumps(result, ensure_ascii=False)
-                    self.memory.add_message("tool", result_str, tool_name=tc["id"])
-                    yield {
-                        "type": "tool_result",
-                        "tool_call_id": tc["id"],
-                        "name": name,
-                        "result": result,
-                    }
-                continue
+                # No tool calls — conversation complete
+                full_text = "".join(assistant_text_parts)
+                if full_text:
+                    self.memory.add_message("assistant", full_text)
+                yield {"type": "done"}
+                return
 
-            # No tool calls — conversation complete
-            full_text = "".join(assistant_text_parts)
-            if full_text:
-                self.memory.add_message("assistant", full_text)
+            yield {"type": "text", "content": "\n\n[Max steps reached. Stopping.]"}
             yield {"type": "done"}
-            return
 
-        yield {"type": "text", "content": "\n\n[Max steps reached. Stopping.]"}
-        yield {"type": "done"}
+        except Exception as e:
+            yield {
+                "type": "error",
+                "content": f"Agent error: {e}",
+            }
+            yield {"type": "done"}
