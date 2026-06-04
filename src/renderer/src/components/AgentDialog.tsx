@@ -28,6 +28,7 @@ export function AgentDialog({ visible, onClose }: AgentDialogProps) {
   const [providers, setProviders] = useState<Provider[]>([])
   const [selectedProvider, setSelectedProvider] = useState('')
   const [port, setPort] = useState<number | null>(null)
+  const [connecting, setConnecting] = useState(true)
   const [minimized, setMinimized] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
@@ -37,8 +38,10 @@ export function AgentDialog({ visible, onClose }: AgentDialogProps) {
 
   useEffect(() => {
     if (!visible) return
+    setConnecting(true)
     window.electronAPI.getAgentPort().then(async (p) => {
       setPort(p)
+      setConnecting(false)
       try {
         const resp = await fetch(`http://127.0.0.1:${p}/providers`)
         const data = await resp.json()
@@ -62,11 +65,27 @@ export function AgentDialog({ visible, onClose }: AgentDialogProps) {
           })))
         }
       } catch {}
+    }).catch((e) => {
+      console.error('Failed to start agent:', e)
+      setConnecting(false)
+      setMessages(prev => [...prev, {
+        id: Math.random().toString(36),
+        role: 'error',
+        content: `Agent server failed to start: ${e.message}. Check that python3 and dependencies are installed.`,
+      }])
     })
   }, [visible])
 
   const handleSend = useCallback(async () => {
-    if (!input.trim() || !port || loading) return
+    if (!input.trim() || loading) return
+    if (!port) {
+      setMessages(prev => [...prev, {
+        id: Math.random().toString(36),
+        role: 'error',
+        content: 'Agent is not connected yet. Please wait...',
+      }])
+      return
+    }
 
     const userMsg: Message = {
       id: Math.random().toString(36),
@@ -236,8 +255,8 @@ export function AgentDialog({ visible, onClose }: AgentDialogProps) {
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={handleKeyDown}
-                placeholder="Type a message..."
-                disabled={loading}
+                placeholder={connecting ? 'Connecting to agent...' : 'Type a message...'}
+                disabled={loading || connecting}
               />
               <button onClick={handleSend} disabled={loading || !input.trim()}>
                 {loading ? '...' : 'Send'}

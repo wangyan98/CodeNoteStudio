@@ -8,10 +8,12 @@
 .agent-dialog {
   width: 420px;
   height: 520px;
-  background: var(--bg-primary);
-  border: 1px solid var(--border-color);
+  background: #1e1e1e;
+  background: var(--bg-primary, #1e1e1e);
+  border: 1px solid #3c3c3c;
+  border: 1px solid var(--border-color, #3c3c3c);
   border-radius: 8px;
-  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.5);
   display: flex;
   flex-direction: column;
   resize: both;
@@ -30,8 +32,10 @@
   align-items: center;
   justify-content: space-between;
   padding: 8px 12px;
-  background: var(--bg-secondary);
-  border-bottom: 1px solid var(--border-color);
+  background: #252526;
+  background: var(--bg-secondary, #252526);
+  border-bottom: 1px solid #3c3c3c;
+  border-bottom: 1px solid var(--border-color, #3c3c3c);
   cursor: move;
   user-select: none;
 }
@@ -39,7 +43,8 @@
 .agent-dialog-title {
   font-size: 13px;
   font-weight: 600;
-  color: var(--text-primary);
+  color: #d4d4d4;
+  color: var(--text-primary, #d4d4d4);
 }
 
 .agent-dialog-header-actions {
@@ -50,7 +55,8 @@
 .agent-dialog-header-btn {
   background: none;
   border: none;
-  color: var(--text-muted);
+  color: #999;
+  color: var(--text-muted, #999);
   cursor: pointer;
   font-size: 14px;
   padding: 2px 6px;
@@ -58,8 +64,10 @@
 }
 
 .agent-dialog-header-btn:hover {
-  background: var(--bg-hover);
-  color: var(--text-primary);
+  background: #3c3c3c;
+  background: var(--bg-hover, #3c3c3c);
+  color: #d4d4d4;
+  color: var(--text-primary, #d4d4d4);
 }
 
 .agent-dialog-context {
@@ -67,19 +75,25 @@
   align-items: center;
   gap: 8px;
   padding: 6px 12px;
-  background: var(--bg-secondary);
-  border-bottom: 1px solid var(--border-color);
+  background: #252526;
+  background: var(--bg-secondary, #252526);
+  border-bottom: 1px solid #3c3c3c;
+  border-bottom: 1px solid var(--border-color, #3c3c3c);
   font-size: 11px;
-  color: var(--text-muted);
+  color: #999;
+  color: var(--text-muted, #999);
 }
 
 .agent-dialog-context select {
   font-size: 11px;
   padding: 2px 4px;
-  border: 1px solid var(--border-color);
+  border: 1px solid #3c3c3c;
+  border: 1px solid var(--border-color, #3c3c3c);
   border-radius: 3px;
-  background: var(--bg-primary);
-  color: var(--text-primary);
+  background: #1e1e1e;
+  background: var(--bg-primary, #1e1e1e);
+  color: #d4d4d4;
+  color: var(--text-primary, #d4d4d4);
 }
 
 .agent-dialog-messages {
@@ -108,25 +122,31 @@
 
 .agent-message.assistant {
   align-self: flex-start;
-  background: var(--bg-secondary);
-  color: var(--text-primary);
+  background: #2d2d2d;
+  background: var(--bg-secondary, #2d2d2d);
+  color: #d4d4d4;
+  color: var(--text-primary, #d4d4d4);
   white-space: pre-wrap;
 }
 
 .agent-message.tool_call {
   align-self: flex-start;
-  background: var(--bg-secondary);
+  background: #2d2d2d;
+  background: var(--bg-secondary, #2d2d2d);
   border-left: 3px solid #f0ad4e;
-  color: var(--text-muted);
+  color: #999;
+  color: var(--text-muted, #999);
   font-size: 12px;
   font-family: monospace;
 }
 
 .agent-message.tool_result {
   align-self: flex-start;
-  background: var(--bg-secondary);
+  background: #2d2d2d;
+  background: var(--bg-secondary, #2d2d2d);
   border-left: 3px solid #5cb85c;
-  color: var(--text-muted);
+  color: #999;
+  color: var(--text-muted, #999);
   font-size: 12px;
 }
 
@@ -151,18 +171,23 @@
   display: flex;
   gap: 8px;
   padding: 8px 12px;
-  border-top: 1px solid var(--border-color);
-  background: var(--bg-secondary);
+  border-top: 1px solid #3c3c3c;
+  border-top: 1px solid var(--border-color, #3c3c3c);
+  background: #252526;
+  background: var(--bg-secondary, #252526);
 }
 
 .agent-dialog-input input {
   flex: 1;
   padding: 6px 10px;
-  border: 1px solid var(--border-color);
+  border: 1px solid #3c3c3c;
+  border: 1px solid var(--border-color, #3c3c3c);
   border-radius: 4px;
   font-size: 13px;
-  background: var(--bg-primary);
-  color: var(--text-primary);
+  background: #1e1e1e;
+  background: var(--bg-primary, #1e1e1e);
+  color: #d4d4d4;
+  color: var(--text-primary, #d4d4d4);
   outline: none;
 }
 
