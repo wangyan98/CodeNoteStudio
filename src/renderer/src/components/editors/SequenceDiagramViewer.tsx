@@ -207,7 +207,7 @@ export function SequenceDiagramViewer({ content, notePath }: SequenceDiagramView
     }
     zoomRef.current = 1
 
-    container.scrollTo({ left: 0, behavior: 'smooth' })
+    container.scrollTo({ left: 0, top: 0, behavior: 'smooth' })
   }, [])
 
   if (error) {
