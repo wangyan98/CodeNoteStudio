@@ -144,9 +144,8 @@ export function SequenceDiagramViewer({ content, notePath }: SequenceDiagramView
       })
 
       // Measure SVG natural size for zoom
-      const svgElForSize = scrollContainerRef.current?.querySelector('svg')
-      if (svgElForSize) {
-        const rect = svgElForSize.getBoundingClientRect()
+      if (svgEl) {
+        const rect = svgEl.getBoundingClientRect()
         if (rect.width > 0 && rect.height > 0) {
           svgNaturalSizeRef.current = { width: rect.width, height: rect.height }
         }
