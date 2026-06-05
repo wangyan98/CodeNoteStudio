@@ -30,11 +30,13 @@ interface SequenceDiagramViewerProps {
 }
 
 export function SequenceDiagramViewer({ content, notePath }: SequenceDiagramViewerProps) {
-  const containerRef = useRef<HTMLDivElement>(null)
+  const scrollContainerRef = useRef<HTMLDivElement>(null)
   const [error, setError] = useState<string | null>(null)
   const [svg, setSvg] = useState<string | null>(null)
   const { navigateToCode } = useCodeNavigation()
   const refMapRef = useRef<Map<string, { displayName: string; refText: string }>>(new Map())
+  const zoomRef = useRef(1)
+  const svgNaturalSizeRef = useRef({ width: 0, height: 0 })
 
   useEffect(() => {
     initMermaid()
@@ -74,12 +76,12 @@ export function SequenceDiagramViewer({ content, notePath }: SequenceDiagramView
 
   // Post-process SVG: replace placeholders with clickable display names
   useEffect(() => {
-    if (!svg || !containerRef.current) return
+    if (!svg || !scrollContainerRef.current) return
     let cancelled = false
 
     const timer = setTimeout(() => {
       if (cancelled) return
-      const svgEl = containerRef.current?.querySelector('svg')
+      const svgEl = scrollContainerRef.current?.querySelector('svg')
       if (!svgEl) return
 
       const svgns = 'http://www.w3.org/2000/svg'
@@ -140,6 +142,15 @@ export function SequenceDiagramViewer({ content, notePath }: SequenceDiagramView
           textEl.appendChild(tspan)
         }
       })
+
+      // Measure SVG natural size for zoom
+      const svgElForSize = scrollContainerRef.current?.querySelector('svg')
+      if (svgElForSize) {
+        const rect = svgElForSize.getBoundingClientRect()
+        if (rect.width > 0 && rect.height > 0) {
+          svgNaturalSizeRef.current = { width: rect.width, height: rect.height }
+        }
+      }
     }, 100)
 
     return () => {
@@ -149,8 +160,8 @@ export function SequenceDiagramViewer({ content, notePath }: SequenceDiagramView
   }, [svg, notePath, navigateToCode])
 
   const handleLocate = useCallback(() => {
-    if (containerRef.current) {
-      containerRef.current.scrollTo({ left: 0, behavior: 'smooth' })
+    if (scrollContainerRef.current) {
+      scrollContainerRef.current.scrollTo({ left: 0, behavior: 'smooth' })
     }
   }, [])
 
@@ -173,7 +184,7 @@ export function SequenceDiagramViewer({ content, notePath }: SequenceDiagramView
   return (
     <div style={{ position: 'relative', height: '100%', width: '100%', overflow: 'hidden' }}>
       <div
-        ref={containerRef}
+        ref={scrollContainerRef}
         className="sequence-diagram-viewer"
         style={{ overflow: 'auto', padding: 8, height: '100%' }}
         dangerouslySetInnerHTML={{ __html: svg }}
