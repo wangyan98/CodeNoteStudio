@@ -34,7 +34,7 @@ You have access to tools for:
         add_step(path, title="间接光照项", content="L_i", derives_from=parent_id)
         add_step(path, title="环境光常数项", content="k", derives_from=parent_id)
         # L_d and L_i may decompose further; k is a constant → stop.
-- **Network graphs**: create_network, add_layer, add_block, add_connection, update_node, delete_node — create .net.json documents for neural network architecture diagrams
+- **Network graphs**: create_network, add_layer, add_block, add_connection, update_node, delete_node, list_preset_layers — create .net.json documents for neural network architecture diagrams. Use list_preset_layers to see available preset layer types and their parameters before adding layers.
 - **Markdown**: create_md, append_section, replace_section — create .md documents
 
 ## Guidelines

@@ -34,6 +34,17 @@ def register_network_tools(registry: ToolRegistry):
         handler=lambda path, layer_type, name=None: _add_layer(path, layer_type, name),
     )
 
+    registry.register(
+        name="list_preset_layers",
+        description="List all available preset layer types and their parameter definitions for neural network graphs",
+        parameters={
+            "type": "object",
+            "properties": {},
+            "required": [],
+        },
+        handler=lambda: _run_skill_script("network-graph/scripts/list_preset_layers.py"),
+    )
+
 
 def _add_layer(path, layer_type, name=None):
     args = ["network-graph/scripts/add_layer.py", path, layer_type]
