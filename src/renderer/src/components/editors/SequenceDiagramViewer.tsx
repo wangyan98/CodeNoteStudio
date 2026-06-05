@@ -1,6 +1,7 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import mermaid from 'mermaid'
 import { useCodeNavigation } from '../../hooks/useCodeNavigation'
+import { LocateButton } from './LocateButton'
 
 // Initialize mermaid once
 let mermaidInitialized = false
@@ -146,6 +147,12 @@ export function SequenceDiagramViewer({ content, notePath }: SequenceDiagramView
     }
   }, [svg, notePath, navigateToCode])
 
+  const handleLocate = useCallback(() => {
+    if (containerRef.current) {
+      containerRef.current.scrollTo({ left: 0, behavior: 'smooth' })
+    }
+  }, [])
+
   if (error) {
     return (
       <div className="sequence-diagram-error" style={{ color: '#e06c75', padding: 8, fontSize: 13 }}>
@@ -163,11 +170,14 @@ export function SequenceDiagramViewer({ content, notePath }: SequenceDiagramView
   }
 
   return (
-    <div
-      ref={containerRef}
-      className="sequence-diagram-viewer"
-      style={{ overflowX: 'auto', padding: 8 }}
-      dangerouslySetInnerHTML={{ __html: svg }}
-    />
+    <div style={{ position: 'relative' }}>
+      <div
+        ref={containerRef}
+        className="sequence-diagram-viewer"
+        style={{ overflowX: 'auto', padding: 8, display: 'flex', justifyContent: 'center' }}
+        dangerouslySetInnerHTML={{ __html: svg }}
+      />
+      <LocateButton onLocate={handleLocate} />
+    </div>
   )
 }
