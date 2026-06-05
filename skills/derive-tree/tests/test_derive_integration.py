@@ -16,10 +16,12 @@ def run(cmd, *args):
 
 def test_full_workflow():
     with tempfile.TemporaryDirectory() as tmp:
-        path = os.path.join(tmp, "test.derive.json")
+        name = os.path.join(tmp, "test")
 
         # Create
-        run("create_derive.py", path)
+        code, out = run("create_derive.py", name)
+        result = json.loads(out)
+        path = result["path"]
 
         # Add steps
         run("add_step.py", path, "--title", "Problem Setup")

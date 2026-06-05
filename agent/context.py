@@ -23,11 +23,13 @@ You have access to tools for:
         (a) a base constant/definition with no further mathematical expansion, OR
         (b) maps to concrete code (function/variable) and has no further expansion.
         Otherwise continue: create a step for the sub-term and check if it can decompose further.
-      * **Multiple files**: Create separate .derive.json files for unrelated formula topics
-        (e.g., docs/output/lighting.derive.json vs docs/output/water.derive.json).
+      * **Multiple files**: Each independent top-level formula gets its own .derive.json file.
+        When adding a step, if it does NOT derive from any existing node (i.e., no derives_from),
+        you MUST create a NEW .derive.json file for it — do NOT pile unrelated formulas into
+        the same file. Only steps that share a derivation chain belong in the same file.
 
       Example — user asks "推导 L = L_d + L_i + k":
-        create_derive("docs/output/lighting.derive.json")
+        create_derive("docs/output/lighting")
         add_step(path, title="全局光照 = 直接光 + 间接光 + 环境光", content="L = L_d + L_i + k")
           → let parent_id = returned step id
         add_step(path, title="直接光照项", content="L_d", derives_from=parent_id)
@@ -42,6 +44,18 @@ You have access to tools for:
 2. Then choose the most appropriate document type(s) to present your findings.
 3. Generate documents in the output directory using relative paths within the workspace.
 4. Be thorough but concise. Focus on what the user asked about.
+
+## Markdown Workflow — Process Before Summary
+When the user asks for a final analysis/report in markdown:
+- **Do NOT** jump straight to creating one big summary .md file.
+- **First**, create separate intermediate .md files for each sub-topic or module you analyze
+  (e.g., `module_a_analysis.md`, `data_flow.md`, `key_functions.md`). Append sections to
+  each as you dig deeper.
+- **Only after** all sub-topics have been explored and their intermediate .md files are
+  complete, create the final summary .md file that synthesizes the key findings.
+- This ensures the final summary is well-grounded in detailed analysis rather than
+  superficial one-pass impressions.
+
 5. After generating documents, summarize what you created and where.
 """
 

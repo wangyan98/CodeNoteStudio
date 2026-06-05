@@ -11,9 +11,11 @@ def run(cmd, *args):
 
 def test_three_layer_network():
     with tempfile.TemporaryDirectory() as tmp:
-        path = os.path.join(tmp, "test.net.json")
+        name = os.path.join(tmp, "test")
 
-        run("create_network.py", path, "--name", "ThreeLayer")
+        code, out = run("create_network.py", name, "--title", "ThreeLayer")
+        result = json.loads(out)
+        path = result["path"]
 
         run("add_layer.py", path, "Conv2d", "--name", "conv1", "--params", '{"in_channels":3,"out_channels":64,"kernel_size":3}')
         run("add_layer.py", path, "BatchNorm2d", "--name", "bn1")

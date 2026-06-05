@@ -16,11 +16,12 @@ def run_script(*args):
 
 def test_creates_empty_derive():
     with tempfile.TemporaryDirectory() as tmp:
-        path = os.path.join(tmp, "test.derive.json")
-        code, out = run_script(path)
+        name = os.path.join(tmp, "test")
+        code, out = run_script(name)
         assert code == 0
         result = json.loads(out)
         assert result["ok"] is True
+        path = result["path"]
         data = read_json(path)
         assert data["type"] == "derive"
         assert data["version"] == 1
@@ -29,7 +30,8 @@ def test_creates_empty_derive():
 
 def test_creates_parent_directory():
     with tempfile.TemporaryDirectory() as tmp:
-        path = os.path.join(tmp, "a", "b", "test.derive.json")
-        code, out = run_script(path)
+        name = os.path.join(tmp, "a", "b", "test")
+        code, out = run_script(name)
         assert code == 0
-        assert os.path.isfile(path)
+        result = json.loads(out)
+        assert os.path.isfile(result["path"])

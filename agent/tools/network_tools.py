@@ -9,14 +9,12 @@ def register_network_tools(registry: ToolRegistry):
         parameters={
             "type": "object",
             "properties": {
-                "path": {"type": "string", "description": "Path to the .net.json file to create"},
-                "name": {"type": "string", "description": "Name of the network (optional)"},
+                "name": {"type": "string", "description": "Name for the file (without extension, e.g. 'my_network' or 'subdir/my_network')"},
+                "title": {"type": "string", "description": "Display title of the network (optional)"},
             },
-            "required": ["path"],
+            "required": ["name"],
         },
-        handler=lambda path, name="New Network": _run_skill_script(
-            "network-graph/scripts/create_network.py", path, "--name", name
-        ),
+        handler=lambda name, title=None: _create_network(name, title),
     )
 
     registry.register(
@@ -50,4 +48,11 @@ def _add_layer(path, layer_type, name=None):
     args = ["network-graph/scripts/add_layer.py", path, layer_type]
     if name:
         args.extend(["--name", name])
+    return _run_skill_script(*args)
+
+
+def _create_network(name, title=None):
+    args = ["network-graph/scripts/create_network.py", name]
+    if title:
+        args.extend(["--title", title])
     return _run_skill_script(*args)

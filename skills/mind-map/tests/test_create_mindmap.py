@@ -20,12 +20,13 @@ def run_script(*args):
 
 def test_creates_valid_mindmap():
     with tempfile.TemporaryDirectory() as tmp:
-        path = os.path.join(tmp, "test.mind.json")
-        code, out, err = run_script(path)
+        name = os.path.join(tmp, "test")
+        code, out, err = run_script(name)
         assert code == 0, f"stderr: {err}"
         result = json.loads(out)
         assert result["ok"] is True
         assert "id" in result
+        path = result["path"]
         data = read_json(path)
         assert data["type"] == "mind"
         assert data["version"] == 1
@@ -34,9 +35,9 @@ def test_creates_valid_mindmap():
 
 def test_idempotent_on_existing():
     with tempfile.TemporaryDirectory() as tmp:
-        path = os.path.join(tmp, "test.mind.json")
-        run_script(path)
-        code, out, err = run_script(path)
+        name = os.path.join(tmp, "test")
+        run_script(name)
+        code, out, err = run_script(name)
         assert code == 0
         result = json.loads(out)
         assert result["ok"] is True
@@ -44,7 +45,8 @@ def test_idempotent_on_existing():
 
 def test_creates_parent_directory():
     with tempfile.TemporaryDirectory() as tmp:
-        path = os.path.join(tmp, "sub", "nested", "test.mind.json")
-        code, out, err = run_script(path)
+        name = os.path.join(tmp, "sub", "nested", "test")
+        code, out, err = run_script(name)
         assert code == 0
-        assert os.path.isfile(path)
+        result = json.loads(out)
+        assert os.path.isfile(result["path"])

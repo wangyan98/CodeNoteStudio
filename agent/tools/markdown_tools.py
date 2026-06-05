@@ -9,12 +9,12 @@ def register_markdown_tools(registry: ToolRegistry):
         parameters={
             "type": "object",
             "properties": {
-                "path": {"type": "string", "description": "Path to the .md file to create"},
+                "name": {"type": "string", "description": "Name for the file (without extension, e.g. 'readme' or 'subdir/readme')"},
                 "title": {"type": "string", "description": "Title for the document (optional)"},
             },
-            "required": ["path"],
+            "required": ["name"],
         },
-        handler=lambda path, title=None: _create_md(path, title),
+        handler=lambda name, title=None: _create_md(name, title),
     )
 
     registry.register(
@@ -52,8 +52,8 @@ def register_markdown_tools(registry: ToolRegistry):
     )
 
 
-def _create_md(path, title=None):
-    args = ["markdown/scripts/create_md.py", path]
+def _create_md(name, title=None):
+    args = ["markdown/scripts/create_md.py", name]
     if title:
         args.extend(["--title", title])
     return _run_skill_script(*args)

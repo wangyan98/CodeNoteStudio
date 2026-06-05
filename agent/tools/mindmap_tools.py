@@ -14,11 +14,11 @@ def register_mindmap_tools(registry: ToolRegistry):
         parameters={
             "type": "object",
             "properties": {
-                "path": {"type": "string", "description": "Path to the .mind.json file to create"},
+                "name": {"type": "string", "description": "Name for the file (without extension, e.g. 'concepts' or 'subdir/concepts')"},
             },
-            "required": ["path"],
+            "required": ["name"],
         },
-        handler=lambda path: _run_skill_script("mind-map/scripts/create_mindmap.py", path),
+        handler=lambda name: _run_skill_script("mind-map/scripts/create_mindmap.py", name),
     )
 
     registry.register(

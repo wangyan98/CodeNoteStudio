@@ -16,12 +16,13 @@ def run(cmd, *args):
 
 def test_full_workflow():
     with tempfile.TemporaryDirectory() as tmp:
-        path = os.path.join(tmp, "test.mind.json")
+        name = os.path.join(tmp, "test")
 
         # Create
-        code, out = run("create_mindmap.py", path)
+        code, out = run("create_mindmap.py", name)
         assert code == 0
         result = json.loads(out)
+        path = result["path"]
         root_id = result["id"]
 
         # Add children

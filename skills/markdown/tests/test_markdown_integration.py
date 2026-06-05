@@ -9,9 +9,11 @@ def run(cmd, *args):
 
 def test_full_workflow():
     with tempfile.TemporaryDirectory() as tmp:
-        path = os.path.join(tmp, "test.md")
+        name = os.path.join(tmp, "test")
 
-        run("create_md.py", path, "--title", "Network Architecture")
+        code, out = run("create_md.py", name, "--title", "Network Architecture")
+        result = json.loads(out)
+        path = result["path"]
 
         run("append_section.py", path, "Layers", "- Conv2d: 3x64x7x7\n- BatchNorm\n- ReLU")
         run("append_section.py", path, "Training", "- Optimizer: Adam\n- LR: 0.001")

@@ -106,7 +106,7 @@ def volumetric_clouds():
                         "function": {
                             "name": "create_md",
                             "arguments": {
-                                "path": os.path.join(docs_dir, "atmosphere_analysis.md"),
+                                "name": os.path.join(docs_dir, "atmosphere_analysis"),
                                 "title": "Sky Atmosphere Analysis",
                             },
                         },

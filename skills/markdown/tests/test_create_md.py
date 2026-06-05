@@ -9,17 +9,21 @@ def run_script(*args):
 
 def test_creates_with_title():
     with tempfile.TemporaryDirectory() as tmp:
-        path = os.path.join(tmp, "test.md")
-        code, out = run_script(path, "--title", "My Doc")
+        name = os.path.join(tmp, "test")
+        code, out = run_script(name, "--title", "My Doc")
         assert code == 0
-        assert json.loads(out)["ok"] is True
+        result = json.loads(out)
+        assert result["ok"] is True
+        path = result["path"]
         content = open(path).read()
         assert content == "# My Doc\n\n"
 
 def test_creates_without_title():
     with tempfile.TemporaryDirectory() as tmp:
-        path = os.path.join(tmp, "test.md")
-        code, out = run_script(path)
+        name = os.path.join(tmp, "test")
+        code, out = run_script(name)
         assert code == 0
+        result = json.loads(out)
+        path = result["path"]
         content = open(path).read()
         assert content.startswith("# Untitled\n")

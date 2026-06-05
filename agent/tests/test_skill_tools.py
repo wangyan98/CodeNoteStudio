@@ -15,16 +15,18 @@ class TestMindmapTools:
 
     def test_create_mindmap(self, registry):
         with tempfile.TemporaryDirectory() as tmpdir:
-            path = os.path.join(tmpdir, "test.mind.json")
-            result = registry.execute("create_mindmap", {"path": path})
+            name = os.path.join(tmpdir, "test")
+            result = registry.execute("create_mindmap", {"name": name})
             assert result["ok"] is True
             assert "id" in result
+            path = result["path"]
             assert os.path.exists(path)
 
     def test_add_node(self, registry):
         with tempfile.TemporaryDirectory() as tmpdir:
-            path = os.path.join(tmpdir, "test.mind.json")
-            create_result = registry.execute("create_mindmap", {"path": path})
+            name = os.path.join(tmpdir, "test")
+            create_result = registry.execute("create_mindmap", {"name": name})
+            path = create_result["path"]
             parent_id = create_result["id"]
 
             result = registry.execute("add_node", {
@@ -46,12 +48,13 @@ class TestMarkdownTools:
 
     def test_create_md(self, registry):
         with tempfile.TemporaryDirectory() as tmpdir:
-            path = os.path.join(tmpdir, "test.md")
+            name = os.path.join(tmpdir, "test")
             result = registry.execute("create_md", {
-                "path": path,
+                "name": name,
                 "title": "My Doc",
             })
             assert result["ok"] is True
+            path = result["path"]
             assert os.path.exists(path)
             with open(path) as f:
                 content = f.read()
@@ -59,8 +62,9 @@ class TestMarkdownTools:
 
     def test_append_section(self, registry):
         with tempfile.TemporaryDirectory() as tmpdir:
-            path = os.path.join(tmpdir, "test.md")
-            registry.execute("create_md", {"path": path, "title": "Doc"})
+            name = os.path.join(tmpdir, "test")
+            create_result = registry.execute("create_md", {"name": name, "title": "Doc"})
+            path = create_result["path"]
             result = registry.execute("append_section", {
                 "path": path,
                 "heading": "Analysis",
