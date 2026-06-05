@@ -232,3 +232,8 @@
   max-height: 400px;
   overflow-y: auto;
 }
+
+.note-embed-body.seq-embed {
+  height: 300px;
+  overflow: hidden;
+}

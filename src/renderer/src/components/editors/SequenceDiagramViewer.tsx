@@ -170,11 +170,11 @@ export function SequenceDiagramViewer({ content, notePath }: SequenceDiagramView
   }
 
   return (
-    <div style={{ position: 'relative' }}>
+    <div style={{ position: 'relative', height: '100%', width: '100%', overflow: 'hidden' }}>
       <div
         ref={containerRef}
         className="sequence-diagram-viewer"
-        style={{ overflowX: 'auto', padding: 8, display: 'flex', justifyContent: 'center' }}
+        style={{ overflowX: 'auto', overflowY: 'auto', padding: 8, display: 'flex', justifyContent: 'center', height: '100%' }}
         dangerouslySetInnerHTML={{ __html: svg }}
       />
       <LocateButton onLocate={handleLocate} />

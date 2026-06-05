@@ -61,7 +61,7 @@
 .seq-editor-preview {
   flex: 1;
   min-height: 100px;
-  overflow: auto;
+  overflow: hidden;
   padding: 16px;
   background: #1e1e2e;
 }
