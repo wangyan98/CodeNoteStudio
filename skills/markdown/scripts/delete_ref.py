@@ -23,7 +23,7 @@ def main():
     with open(args.path, 'r', encoding='utf-8') as f:
         lines = f.readlines()
 
-    new_lines = [line for line in lines if ref_pattern not in line]
+    new_lines = [line for line in lines if line.strip() != ref_pattern]
 
     if len(new_lines) == len(lines):
         print(json.dumps({"ok": False, "error": f"Reference not found: {args.ref}"}))
