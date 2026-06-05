@@ -88,6 +88,19 @@ class AgentLoop:
                             result = {"ok": False, "error": str(e)}
 
                         result_str = json.dumps(result, ensure_ascii=False)
+                        # Truncate large tool results to prevent context overflow
+                        MAX_TOOL_RESULT_CHARS = 8000
+                        if len(result_str) > MAX_TOOL_RESULT_CHARS:
+                            truncated = {"ok": result.get("ok"), "truncated": True}
+                            if "count" in result:
+                                truncated["count"] = result["count"]
+                            if "total_lines" in result:
+                                truncated["total_lines"] = result["total_lines"]
+                            if "hint" in result:
+                                truncated["hint"] = result["hint"]
+                            truncated["preview"] = result_str[:MAX_TOOL_RESULT_CHARS]
+                            truncated["error"] = result.get("error", "")[:200] if not result.get("ok") else ""
+                            result_str = json.dumps(truncated, ensure_ascii=False)
                         self.memory.add_message("tool", result_str, tool_name=tc["id"])
                         yield {
                             "type": "tool_result",

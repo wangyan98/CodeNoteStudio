@@ -40,7 +40,21 @@ class OpenAICompatProvider(BaseProvider):
 
         async with httpx.AsyncClient(timeout=120.0) as client:
             async with client.stream("POST", url, headers=headers, json=body) as response:
-                response.raise_for_status()
+                if response.status_code >= 400:
+                    error_body = ""
+                    async for chunk in response.aiter_bytes():
+                        error_body += chunk.decode(errors="replace")
+                        if len(error_body) > 2000:
+                            break
+                    detail = error_body
+                    try:
+                        detail = json.loads(error_body)
+                    except json.JSONDecodeError:
+                        pass
+                    raise Exception(
+                        f"HTTP {response.status_code} from {self.model}: "
+                        f"{json.dumps(detail, ensure_ascii=False) if isinstance(detail, dict) else detail}"
+                    )
 
                 tool_call_buffers: dict[int, dict] = {}
 
