@@ -196,9 +196,18 @@ export function SequenceDiagramViewer({ content, notePath }: SequenceDiagramView
   }, [svg, notePath, navigateToCode])
 
   const handleLocate = useCallback(() => {
-    if (scrollContainerRef.current) {
-      scrollContainerRef.current.scrollTo({ left: 0, behavior: 'smooth' })
+    const container = scrollContainerRef.current
+    if (!container) return
+
+    const svgEl = container.querySelector('svg')
+    const natural = svgNaturalSizeRef.current
+    if (svgEl && natural.width > 0) {
+      svgEl.setAttribute('width', String(natural.width))
+      svgEl.setAttribute('height', String(natural.height))
     }
+    zoomRef.current = 1
+
+    container.scrollTo({ left: 0, behavior: 'smooth' })
   }, [])
 
   if (error) {
