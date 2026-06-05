@@ -51,6 +51,70 @@ def register_markdown_tools(registry: ToolRegistry):
         ),
     )
 
+    registry.register(
+        name="insert_embed",
+        description="Insert an ![[path]] embed reference into a .md file. Embeds another notebook note inline. Path is relative to workspace root. Supported targets: .seq.mermaid, .derive.json, .mind.json, .net.json, .md.",
+        parameters={
+            "type": "object",
+            "properties": {
+                "path": {"type": "string", "description": "Path to the .md file"},
+                "embed_path": {"type": "string", "description": "Path to the note to embed (relative to workspace root, e.g. 'diagrams/flow.seq.mermaid')"},
+            },
+            "required": ["path", "embed_path"],
+        },
+        handler=lambda path, embed_path: _run_skill_script(
+            "markdown/scripts/insert_embed.py", path, embed_path
+        ),
+    )
+
+    registry.register(
+        name="delete_embed",
+        description="Delete an ![[path]] embed reference from a .md file",
+        parameters={
+            "type": "object",
+            "properties": {
+                "path": {"type": "string", "description": "Path to the .md file"},
+                "embed_path": {"type": "string", "description": "The embed path to remove"},
+            },
+            "required": ["path", "embed_path"],
+        },
+        handler=lambda path, embed_path: _run_skill_script(
+            "markdown/scripts/delete_embed.py", path, embed_path
+        ),
+    )
+
+    registry.register(
+        name="insert_ref",
+        description="Insert an @ref() code reference into a .md file. Links to specific code locations with #-separated segments: @ref(repo#file#line#name). All segments are optional. Without repo prefix, scoped to current repo.",
+        parameters={
+            "type": "object",
+            "properties": {
+                "path": {"type": "string", "description": "Path to the .md file"},
+                "ref": {"type": "string", "description": "Reference string (e.g. 'repo#file.h#287' or 'MyClass.getValue')"},
+            },
+            "required": ["path", "ref"],
+        },
+        handler=lambda path, ref: _run_skill_script(
+            "markdown/scripts/insert_ref.py", path, ref
+        ),
+    )
+
+    registry.register(
+        name="delete_ref",
+        description="Delete an @ref() code reference from a .md file",
+        parameters={
+            "type": "object",
+            "properties": {
+                "path": {"type": "string", "description": "Path to the .md file"},
+                "ref": {"type": "string", "description": "The ref string to remove (without @ref() wrapper)"},
+            },
+            "required": ["path", "ref"],
+        },
+        handler=lambda path, ref: _run_skill_script(
+            "markdown/scripts/delete_ref.py", path, ref
+        ),
+    )
+
 
 def _create_md(name, title=None):
     args = ["markdown/scripts/create_md.py", name]
