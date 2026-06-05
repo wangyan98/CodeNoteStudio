@@ -38,6 +38,43 @@ export function SequenceDiagramViewer({ content, notePath }: SequenceDiagramView
   const zoomRef = useRef(1)
   const svgNaturalSizeRef = useRef({ width: 0, height: 0 })
 
+  const handleWheel = useCallback((e: React.WheelEvent) => {
+    if (!e.ctrlKey && !e.metaKey) return
+    e.preventDefault()
+
+    const container = scrollContainerRef.current
+    if (!container) return
+
+    const natural = svgNaturalSizeRef.current
+    if (natural.width === 0) return
+
+    const oldZoom = zoomRef.current
+    const step = -e.deltaY * 0.002
+    const newZoom = Math.min(3, Math.max(0.3, oldZoom + step))
+    if (newZoom === oldZoom) return
+
+    const containerRect = container.getBoundingClientRect()
+
+    const cursorX = e.clientX - containerRect.left + container.scrollLeft
+    const cursorY = e.clientY - containerRect.top + container.scrollTop
+
+    const svgPointX = cursorX / oldZoom
+    const svgPointY = cursorY / oldZoom
+
+    const svgEl = container.querySelector('svg')
+    if (svgEl) {
+      svgEl.setAttribute('width', String(natural.width * newZoom))
+      svgEl.setAttribute('height', String(natural.height * newZoom))
+    }
+
+    zoomRef.current = newZoom
+
+    requestAnimationFrame(() => {
+      container.scrollLeft = svgPointX * newZoom - (e.clientX - containerRect.left)
+      container.scrollTop = svgPointY * newZoom - (e.clientY - containerRect.top)
+    })
+  }, [])
+
   useEffect(() => {
     initMermaid()
     const renderDiagram = async () => {
@@ -181,6 +218,7 @@ export function SequenceDiagramViewer({ content, notePath }: SequenceDiagramView
   }
 
   return (
+<<<<<<< HEAD
     <div style={{ position: 'relative', height: '100%', width: '100%', overflow: 'hidden' }}>
       <div
         ref={scrollContainerRef}
@@ -190,5 +228,14 @@ export function SequenceDiagramViewer({ content, notePath }: SequenceDiagramView
       />
       <LocateButton onLocate={handleLocate} />
     </div>
+=======
+    <div
+      ref={scrollContainerRef}
+      className="sequence-diagram-viewer"
+      style={{ overflow: 'auto', padding: 8, height: '100%' }}
+      onWheel={handleWheel}
+      dangerouslySetInnerHTML={{ __html: svg }}
+    />
+>>>>>>> 8c41aed (feat: add Ctrl+wheel zoom to sequence diagram viewer)
   )
 }
