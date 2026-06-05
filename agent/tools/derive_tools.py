@@ -18,7 +18,7 @@ def register_derive_tools(registry: ToolRegistry):
 
     registry.register(
         name="add_step",
-        description="Add a step to a derivation tree",
+        description="Add a step to a derivation tree. IMPORTANT: If this step has corresponding source code, call set_code_mapping immediately after with the returned step id.",
         parameters={
             "type": "object",
             "properties": {

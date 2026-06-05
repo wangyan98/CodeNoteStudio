@@ -23,7 +23,7 @@ def register_mindmap_tools(registry: ToolRegistry):
 
     registry.register(
         name="add_node",
-        description="Add a child node to a mind map node",
+        description="Add a child node to a mind map node. IMPORTANT: If this node represents specific code (a function, class, or file location), call set_code_mapping immediately after with the returned node id.",
         parameters={
             "type": "object",
             "properties": {
