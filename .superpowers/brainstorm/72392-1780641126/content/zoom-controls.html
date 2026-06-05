@@ -1,0 +1,77 @@
+<h2>Sequence Diagram Zoom — Control Placement</h2>
+<p class="subtitle">The sequence diagram viewer currently has a locate button (bottom-right). Where should zoom controls go?</p>
+
+<div class="options" data-multiselect>
+  <div class="option" data-choice="a" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="content">
+      <h3>Stack with Locate Button</h3>
+      <p>Zoom in/out buttons stacked vertically with the existing locate button in a single control group (bottom-right). Minimal, compact.</p>
+    </div>
+  </div>
+  <div class="option" data-choice="b" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="content">
+      <h3>Separate Toolbar</h3>
+      <p>Zoom controls in a horizontal toolbar at top-right of the viewport. More prominent, keeps locate button independent.</p>
+    </div>
+  </div>
+  <div class="option" data-choice="c" onclick="toggleSelect(this)">
+    <div class="letter">C</div>
+    <div class="content">
+      <h3>No Buttons — Wheel Only</h3>
+      <p>Ctrl + mouse wheel for zoom. No visible buttons. Cleanest look, but less discoverable.</p>
+    </div>
+  </div>
+</div>
+
+<div class="mockup" style="margin-top: 24px;">
+  <div class="mockup-header">Preview: Option A — Stacked controls (bottom-right)</div>
+  <div class="mockup-body">
+    <div style="position: relative; height: 300px; background: #1e1e2e; border-radius: 6px; overflow: hidden;">
+      <!-- SVG area -->
+      <div style="position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; opacity: 0.3;">
+        <div style="border: 1px dashed #888; padding: 60px 100px; color: #aaa; font-size: 12px; border-radius: 4px;">
+          Sequence Diagram SVG
+        </div>
+      </div>
+      <!-- Control group -->
+      <div style="position: absolute; bottom: 16px; right: 16px; display: flex; flex-direction: column; gap: 6px; align-items: center;">
+        <button style="width: 36px; height: 36px; border-radius: 50%; border: 1px solid #555; background: #2d2d2d; color: #ccc; font-size: 18px; cursor: pointer;">+</button>
+        <div style="font-size: 10px; color: #888;">100%</div>
+        <button style="width: 36px; height: 36px; border-radius: 50%; border: 1px solid #555; background: #2d2d2d; color: #ccc; font-size: 18px; cursor: pointer;">−</button>
+        <div style="width: 20px; height: 1px; background: #444; margin: 2px 0;"></div>
+        <button style="width: 36px; height: 36px; border-radius: 50%; border: 1px solid #555; background: #2d2d2d; display: flex; align-items: center; justify-content: center; cursor: pointer;">
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+            <circle cx="8" cy="8" r="6" stroke="#aaa" stroke-width="1.5"/>
+            <circle cx="8" cy="8" r="2" fill="#4a90d9"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="mockup" style="margin-top: 16px;">
+  <div class="mockup-header">Preview: Option B — Toolbar (top-right)</div>
+  <div class="mockup-body">
+    <div style="position: relative; height: 200px; background: #1e1e2e; border-radius: 6px; overflow: hidden;">
+      <div style="position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; opacity: 0.3;">
+        <div style="border: 1px dashed #888; padding: 40px 80px; color: #aaa; font-size: 12px; border-radius: 4px;">
+          Sequence Diagram SVG
+        </div>
+      </div>
+      <div style="position: absolute; top: 8px; right: 8px; display: flex; gap: 4px; align-items: center; background: rgba(30,30,30,0.9); border-radius: 4px; padding: 4px 6px; border: 1px solid #444;">
+        <button style="width: 28px; height: 28px; border-radius: 3px; border: 1px solid #555; background: #333; color: #ccc; font-size: 14px; cursor: pointer;">+</button>
+        <span style="font-size: 10px; color: #888; padding: 0 4px;">100%</span>
+        <button style="width: 28px; height: 28px; border-radius: 3px; border: 1px solid #555; background: #333; color: #ccc; font-size: 14px; cursor: pointer;">−</button>
+      </div>
+      <button style="position: absolute; bottom: 12px; right: 12px; width: 36px; height: 36px; border-radius: 50%; border: 1px solid #555; background: #2d2d2d; display: flex; align-items: center; justify-content: center; cursor: pointer;">
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+          <circle cx="8" cy="8" r="6" stroke="#aaa" stroke-width="1.5"/>
+          <circle cx="8" cy="8" r="2" fill="#4a90d9"/>
+        </svg>
+      </button>
+    </div>
+  </div>
+</div>
