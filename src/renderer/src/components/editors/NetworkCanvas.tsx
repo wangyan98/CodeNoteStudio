@@ -3,6 +3,7 @@ import * as d3 from 'd3'
 import dagre from 'dagre'
 import type { NetworkDocument, GraphNode, GraphEdge } from '../../../../main/schemas/note-types'
 import type { LayerDef } from '../../../../main/schemas/layer-catalog'
+import { LocateButton } from './LocateButton'
 import './NetworkCanvas.css'
 
 interface NetworkCanvasProps {
@@ -75,6 +76,8 @@ export function NetworkCanvas({
     line: d3.Selection<SVGLineElement, unknown, null, undefined> | null
     cleanup: (() => void) | null
   }>({ active: false, sourceNodeId: null, line: null, cleanup: null })
+
+  const fitTransformRef = useRef<{ x: number; y: number; k: number }>({ x: 0, y: 0, k: 1 })
 
   // Cleanup drag listeners on unmount
   useEffect(() => {
@@ -229,6 +232,7 @@ export function NetworkCanvas({
     // Apply initial fit transform (centered in viewport)
     const initTx = (W - contentW * fitScale) / 2
     const initTy = (H - contentH * fitScale) / 2
+    fitTransformRef.current = { x: initTx, y: initTy, k: fitScale }
     svg.call(zoom.transform as any, d3.zoomIdentity.translate(initTx, initTy).scale(fitScale))
 
     // Helper to render a single edge (used for both top-level and internal edges)
@@ -848,6 +852,13 @@ export function NetworkCanvas({
     if (layerType) onDropLayer?.(layerType)
   }
 
+  const handleLocate = useCallback(() => {
+    const g = d3.select(svgRef.current).select<SVGGElement>('.canvas-content')
+    if (g.empty()) return
+    const { x, y, k } = fitTransformRef.current
+    g.transition().duration(400).attr('transform', `translate(${x}, ${y}) scale(${k})`)
+  }, [])
+
   return (
     <div
       className="network-canvas-container"
@@ -857,6 +868,7 @@ export function NetworkCanvas({
       onDrop={handleDrop}
     >
       <svg ref={svgRef} />
+      <LocateButton onLocate={handleLocate} />
     </div>
   )
 }
