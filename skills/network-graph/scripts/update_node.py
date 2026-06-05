@@ -4,7 +4,7 @@ import argparse, json, sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
-from lib.file_utils import load_network, save_network
+from lib.file_utils import load_network, save_network, resolve_path
 from lib.schemas import parse_code_mapping
 
 def main():
@@ -15,6 +15,8 @@ def main():
     parser.add_argument("--params", help="JSON params object")
     parser.add_argument("--code-mapping", help="JSON code mapping object")
     args = parser.parse_args()
+
+    args.path = resolve_path(args.path, ".net.json")
 
     doc = load_network(args.path)
     node = next((n for n in doc.nodes if n.id == args.node_id), None)

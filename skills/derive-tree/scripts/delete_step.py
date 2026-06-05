@@ -4,7 +4,7 @@ import argparse, json, sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
-from lib.file_utils import load_derive, save_derive
+from lib.file_utils import load_derive, save_derive, resolve_path
 
 
 def recalc(nodes):
@@ -22,6 +22,8 @@ def main():
     parser.add_argument("path", help="Path to the .derive.json file")
     parser.add_argument("step_id", help="ID of the step to delete")
     args = parser.parse_args()
+
+    args.path = resolve_path(args.path, ".derive.json")
 
     doc = load_derive(args.path)
     target = next((n for n in doc.nodes if n.id == args.step_id), None)

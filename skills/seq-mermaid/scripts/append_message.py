@@ -4,6 +4,10 @@ import argparse
 import json
 import os
 import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+from lib.file_utils import resolve_path
 
 ARROW_MAP = {
     "solid": "->>",
@@ -23,6 +27,7 @@ def main():
                         help="Arrow type (default: solid)")
     args = parser.parse_args()
 
+    args.path = resolve_path(args.path, ".seq.mermaid")
     arrow = ARROW_MAP[args.type]
 
     if not os.path.exists(args.path):

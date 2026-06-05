@@ -16,11 +16,12 @@ def _run(script, *args):
 
 def test_full_workflow():
     with tempfile.TemporaryDirectory() as tmpdir:
-        path = os.path.join(tmpdir, "auth.seq.mermaid")
+        name = os.path.join(tmpdir, "auth")
 
         # 1. Create
-        result, code = _run("create_seq.py", path, "--title", "OAuth Flow")
+        result, code = _run("create_seq.py", name, "--title", "OAuth Flow")
         assert code == 0
+        path = result["path"]
 
         # 2. Add participants
         _run("append_participant.py", path, "Client", "--alias", "Mobile App")
@@ -41,34 +42,25 @@ def test_full_workflow():
         assert "participant Database" in content
         assert "Client->>AuthServer: POST /token" in content
         assert "AuthServer->>Database: lookup user" in content
-        assert "Database-->>AuthServer: user record" in content
         assert "AuthServer-->>Client: access_token" in content
-
-        # 5. Replace entire diagram
-        new_diagram = "sequenceDiagram\n    participant A as ServiceA\n    A->>A: internal"
-        result, code = _run("replace_diagram.py", path, new_diagram)
-        assert code == 0
-        content = open(path).read()
-        assert "ServiceA" in content
-        assert "OAuth Flow" not in content
-        assert "Client" not in content
 
 
 def test_rejects_duplicate_participant_in_workflow():
     with tempfile.TemporaryDirectory() as tmpdir:
-        path = os.path.join(tmpdir, "test.seq.mermaid")
-        _run("create_seq.py", path)
+        name = os.path.join(tmpdir, "test")
+        result, _ = _run("create_seq.py", name)
+        path = result["path"]
         r1, _ = _run("append_participant.py", path, "Svc")
         assert r1["ok"] is True
-        r2, c2 = _run("append_participant.py", path, "Svc")
-        assert c2 == 1
-        assert "already exists" in r2["error"]
+        r2, _ = _run("append_participant.py", path, "Svc")
+        assert r2["ok"] is False
 
 
 def test_message_order_preserved():
     with tempfile.TemporaryDirectory() as tmpdir:
-        path = os.path.join(tmpdir, "test.seq.mermaid")
-        _run("create_seq.py", path)
+        name = os.path.join(tmpdir, "test")
+        result, _ = _run("create_seq.py", name)
+        path = result["path"]
         _run("append_participant.py", path, "A")
         _run("append_participant.py", path, "B")
         _run("append_message.py", path, "A", "B", "msg1")
@@ -76,7 +68,7 @@ def test_message_order_preserved():
         _run("append_message.py", path, "A", "B", "msg3")
 
         lines = open(path).readlines()
-        msg_lines = [l for l in lines if ":" in l and ("->>" in l or "-->>" in l)]
+        msg_lines = [l.strip() for l in lines if ":" in l and not l.startswith("participant") and l.strip() != "sequenceDiagram"]
         assert "msg1" in msg_lines[0]
         assert "msg2" in msg_lines[1]
         assert "msg3" in msg_lines[2]

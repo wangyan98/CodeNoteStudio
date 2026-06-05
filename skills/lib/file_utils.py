@@ -14,6 +14,17 @@ def ensure_dir(dir_path: str) -> None:
         os.makedirs(dir_path, exist_ok=True)
 
 
+def resolve_path(path: str, *extensions: str) -> str:
+    """Resolve path by trying known extensions when exact path doesn't exist."""
+    if os.path.exists(path):
+        return path
+    for ext in extensions:
+        candidate = path + ext
+        if os.path.exists(candidate):
+            return candidate
+    return path
+
+
 def read_json(path: str) -> Any:
     with open(path, 'r', encoding='utf-8') as f:
         return json.load(f)

@@ -4,7 +4,7 @@ import argparse, json, os, sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
-from lib.file_utils import load_mindmap, save_mindmap
+from lib.file_utils import load_mindmap, save_mindmap, resolve_path
 from lib.schemas import MindMapNode, create_mindmap_document
 
 
@@ -23,6 +23,8 @@ def main():
     parser.add_argument("path", help="Path to the .mind.json file")
     parser.add_argument("node_id", help="ID of the node to delete")
     args = parser.parse_args()
+
+    args.path = resolve_path(args.path, ".mind.json")
 
     doc = load_mindmap(args.path)
 

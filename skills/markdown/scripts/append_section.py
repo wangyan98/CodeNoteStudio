@@ -1,6 +1,10 @@
 #!/usr/bin/env python3
 """Append a ## heading section to a .md file."""
 import argparse, json, os, sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+from lib.file_utils import resolve_path
 
 def main():
     parser = argparse.ArgumentParser(description="Append a section to a .md file")
@@ -8,6 +12,8 @@ def main():
     parser.add_argument("heading", help="Section heading (without ##)")
     parser.add_argument("content", help="Section content (markdown)")
     args = parser.parse_args()
+
+    args.path = resolve_path(args.path, ".md")
 
     if not os.path.exists(args.path):
         print(json.dumps({"ok": False, "error": f"File not found: {args.path}"}))

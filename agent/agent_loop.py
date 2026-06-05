@@ -1,4 +1,4 @@
-import json
+import json, os
 from typing import AsyncIterator
 from provider.base import BaseProvider
 from tools.registry import ToolRegistry
@@ -96,10 +96,10 @@ class AgentLoop:
                     for tc in tool_calls_in_turn:
                         tool_name = tc["function"]["name"]
                         args = tc["function"]["arguments"]
-                        # Ensure create_* tools write under output_dir
-                        if tool_name.startswith("create_") and "name" in args and self.output_dir:
-                            args = {**args, "name": f"{self.output_dir}/{args['name']}"}
-                            args["name"] = args["name"].replace("//", "/")
+                        # Ensure create_* tools write under workspace
+                        if tool_name.startswith("create_") and "name" in args and self.workspace:
+                            resolved = os.path.normpath(os.path.join(self.workspace, args['name']))
+                            args = {**args, "name": resolved}
                         try:
                             result = self.registry.execute(tool_name, args)
                         except Exception as e:

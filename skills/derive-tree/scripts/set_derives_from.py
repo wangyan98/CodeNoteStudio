@@ -4,7 +4,7 @@ import argparse, json, sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
-from lib.file_utils import load_derive, save_derive
+from lib.file_utils import load_derive, save_derive, resolve_path
 
 
 def get_descendants(nodes, node_id):
@@ -37,6 +37,7 @@ def main():
     parser.add_argument("parent_id", help="ID of the parent step, or 'null' to make it a root")
     args = parser.parse_args()
 
+    args.path = resolve_path(args.path, ".derive.json")
     parent_id = None if args.parent_id == "null" else args.parent_id
 
     doc = load_derive(args.path)

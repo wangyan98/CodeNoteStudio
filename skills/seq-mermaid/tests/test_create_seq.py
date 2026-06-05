@@ -16,10 +16,11 @@ def _run(*args):
 
 def test_creates_file_with_title():
     with tempfile.TemporaryDirectory() as tmpdir:
-        path = os.path.join(tmpdir, "test.seq.mermaid")
-        result, code = _run(path, "--title", "Auth Flow")
+        name = os.path.join(tmpdir, "test")
+        result, code = _run(name, "--title", "Auth Flow")
         assert code == 0
         assert result["ok"] is True
+        path = result["path"]
         assert os.path.exists(path)
         content = open(path).read()
         assert content.startswith("sequenceDiagram")
@@ -28,21 +29,23 @@ def test_creates_file_with_title():
 
 def test_creates_file_without_title():
     with tempfile.TemporaryDirectory() as tmpdir:
-        path = os.path.join(tmpdir, "test.seq.mermaid")
-        result, code = _run(path)
+        name = os.path.join(tmpdir, "test")
+        result, code = _run(name)
         assert code == 0
         assert result["ok"] is True
+        path = result["path"]
         content = open(path).read()
         assert "Sequence Diagram" in content
 
 
 def test_idempotent_on_existing():
     with tempfile.TemporaryDirectory() as tmpdir:
-        path = os.path.join(tmpdir, "test.seq.mermaid")
-        _run(path, "--title", "First")
-        result, code = _run(path, "--title", "Second")
+        name = os.path.join(tmpdir, "test")
+        _run(name, "--title", "First")
+        result, code = _run(name, "--title", "Second")
         assert code == 0
         assert result["ok"] is True
+        path = result["path"]
         content = open(path).read()
         assert "First" in content
         assert "Second" not in content
@@ -50,8 +53,8 @@ def test_idempotent_on_existing():
 
 def test_creates_nested_dirs():
     with tempfile.TemporaryDirectory() as tmpdir:
-        path = os.path.join(tmpdir, "sub", "nested", "test.seq.mermaid")
-        result, code = _run(path)
+        name = os.path.join(tmpdir, "sub", "nested", "test")
+        result, code = _run(name)
         assert code == 0
         assert result["ok"] is True
-        assert os.path.exists(path)
+        assert os.path.exists(result["path"])

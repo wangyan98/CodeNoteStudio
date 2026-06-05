@@ -4,13 +4,15 @@ import argparse, json, sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
-from lib.file_utils import load_network, save_network
+from lib.file_utils import load_network, save_network, resolve_path
 
 def main():
     parser = argparse.ArgumentParser(description="Delete a node from a network graph")
     parser.add_argument("path", help="Path to the .net.json file")
     parser.add_argument("node_id", help="ID of the node to delete")
     args = parser.parse_args()
+
+    args.path = resolve_path(args.path, ".net.json")
 
     doc = load_network(args.path)
     if not any(n.id == args.node_id for n in doc.nodes):

@@ -4,7 +4,7 @@ import argparse, json, os, sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
-from lib.file_utils import load_mindmap, save_mindmap
+from lib.file_utils import load_mindmap, save_mindmap, resolve_path
 from lib.schemas import MindMapNode, parse_code_mapping
 
 
@@ -26,6 +26,8 @@ def main():
     parser.add_argument("--content")
     parser.add_argument("--code-mapping", help='JSON: {"raw":"...","functionName":"...",...}')
     args = parser.parse_args()
+
+    args.path = resolve_path(args.path, ".mind.json")
 
     doc = load_mindmap(args.path)
     node = find_node(doc.root, args.node_id)

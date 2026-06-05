@@ -4,7 +4,7 @@ import argparse, json, os, sys, uuid
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
-from lib.file_utils import load_derive, save_derive
+from lib.file_utils import load_derive, save_derive, resolve_path
 from lib.schemas import DerivationNode
 
 
@@ -26,6 +26,8 @@ def main():
     parser.add_argument("--title", default="New Step")
     parser.add_argument("--content", default="", help="LaTeX formula content for this step")
     args = parser.parse_args()
+
+    args.path = resolve_path(args.path, ".derive.json")
 
     doc = load_derive(args.path)
     new_node = DerivationNode(

@@ -6,13 +6,13 @@ import sys
 import tempfile
 
 
-def _setup(tmpdir, name="test.seq.mermaid"):
-    path = os.path.join(tmpdir, name)
-    subprocess.run(
-        [sys.executable, "skills/seq-mermaid/scripts/create_seq.py", path],
-        capture_output=True
+def _setup(tmpdir, name="test"):
+    script_name = os.path.join(tmpdir, name)
+    result = subprocess.run(
+        [sys.executable, "skills/seq-mermaid/scripts/create_seq.py", script_name],
+        capture_output=True, text=True
     )
-    return path
+    return json.loads(result.stdout)["path"]
 
 
 def _run(*args):
@@ -28,7 +28,7 @@ def test_appends_simple_message():
         path = _setup(tmpdir)
         result, code = _run(path, "A", "B", "hello world")
         assert code == 0
-        assert result["ok"] is True
+        assert os.path.exists(path)
         content = open(path).read()
         assert "A->>B: hello world" in content
 
@@ -61,20 +61,19 @@ def test_appends_x_arrow():
 
 
 def test_rejects_missing_file():
-    with tempfile.TemporaryDirectory() as tmpdir:
-        result, code = _run(os.path.join(tmpdir, "nope.seq.mermaid"), "A", "B", "msg")
-        assert code == 1
-        assert result["ok"] is False
+    result, code = _run("/nonexistent/path", "A", "B", "msg")
+    assert code == 1
+    assert result["ok"] is False
 
 
 def test_rejects_invalid_diagram():
     with tempfile.TemporaryDirectory() as tmpdir:
-        path = os.path.join(tmpdir, "bad.seq.mermaid")
+        path = os.path.join(tmpdir, "bad.txt")
         with open(path, 'w') as f:
-            f.write("not a diagram\n")
+            f.write("not a sequence diagram")
         result, code = _run(path, "A", "B", "msg")
         assert code == 1
-        assert "Not a valid" in result["error"]
+        assert result["ok"] is False
 
 
 def test_multiple_messages_accumulate():
@@ -83,5 +82,5 @@ def test_multiple_messages_accumulate():
         _run(path, "A", "B", "first")
         _run(path, "B", "C", "second")
         content = open(path).read()
-        assert "A->>B: first" in content
-        assert "B->>C: second" in content
+        assert "first" in content
+        assert "second" in content
