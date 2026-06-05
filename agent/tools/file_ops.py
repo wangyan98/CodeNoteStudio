@@ -34,48 +34,68 @@ def read_file(path: str, start_line: int = 1, end_line: int = -1, max_lines: int
 
 
 def list_files(directory: str, pattern: str = "*", max_results: int = 200) -> dict:
-    """List files in a directory, recursively. Limited to max_results entries."""
+    """List files in a directory recursively. Returns compact tree text format."""
     import fnmatch
 
     if not os.path.isdir(directory):
         return {"ok": False, "error": f"Not a directory: {directory}"}
 
-    files = []
+    # Collect dirs and files, grouped by parent directory
+    dir_entries: dict[str, list[str]] = {}
+    file_entries: dict[str, list[str]] = {}
+    total = 0
     truncated = False
+
     for root, dirs, filenames in os.walk(directory):
         dirs[:] = [d for d in dirs if not d.startswith(".") and d != "__pycache__"]
+        rel_root = os.path.relpath(root, directory)
+        if rel_root == ".":
+            rel_root = ""
 
         for d in dirs:
-            if len(files) >= max_results:
+            if total >= max_results:
                 truncated = True
                 break
-            files.append({
-                "name": d,
-                "path": os.path.join(root, d),
-                "is_directory": True,
-            })
+            dir_entries.setdefault(rel_root, []).append(d)
+            total += 1
 
         for fname in filenames:
             if fname.startswith("."):
                 continue
             if pattern != "*" and not fnmatch.fnmatch(fname, pattern):
                 continue
-            if len(files) >= max_results:
+            if total >= max_results:
                 truncated = True
                 break
-            files.append({
-                "name": fname,
-                "path": os.path.join(root, fname),
-                "is_directory": False,
-            })
+            file_entries.setdefault(rel_root, []).append(fname)
+            total += 1
 
         if truncated:
             break
 
-    result = {"ok": True, "files": files, "count": len(files)}
+    # Build compact tree text
+    lines = []
+    # Sort dirs to show top-level first, then nested
+    for parent in sorted(dir_entries.keys()):
+        for d in sorted(dir_entries[parent]):
+            p = f"{parent}/{d}" if parent else d
+            lines.append(f"{p}/")
+        for f in sorted(file_entries.get(parent, [])):
+            p = f"{parent}/{f}" if parent else f
+            lines.append(p)
+
+    # Also list files in dirs that have no subdirectories
+    for parent in sorted(file_entries.keys()):
+        if parent not in dir_entries:
+            for f in sorted(file_entries[parent]):
+                p = f"{parent}/{f}" if parent else f
+                lines.append(p)
+
+    tree = "\n".join(lines)
+    result = {"ok": True, "tree": tree, "count": total}
     if truncated:
         result["truncated"] = True
-        result["hint"] = f"Results truncated at {max_results}. Use a more specific directory or pattern to narrow down."
+        result["hint"] = f"Showing {total} of many entries. Use a more specific directory or pattern to narrow down."
     return result
 
 

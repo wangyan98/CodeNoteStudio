@@ -35,10 +35,12 @@ class TestListFiles:
 
             result = list_files(tmpdir)
             assert result["ok"] is True
-            names = [f["name"] for f in result["files"]]
-            assert "a.py" in names
-            assert "b.txt" in names
-            assert any(f["is_directory"] for f in result["files"])
+            assert "tree" in result
+            tree = result["tree"]
+            assert "a.py" in tree
+            assert "b.txt" in tree
+            assert "subdir/" in tree
+            assert result["count"] >= 3
 
 
 class TestSearchInFiles:
