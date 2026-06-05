@@ -42,7 +42,7 @@
 .seq-editor-code {
   flex: 0 0 45%;
   min-height: 100px;
-  overflow: hidden;
+  overflow: auto;
   border-bottom: 2px solid var(--border-color, #3e3e42);
 }
 
