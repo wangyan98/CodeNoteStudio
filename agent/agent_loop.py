@@ -84,7 +84,10 @@ class AgentLoop:
                             {
                                 "id": tc["id"],
                                 "type": "function",
-                                "function": tc["function"],
+                                "function": {
+                                    "name": tc["function"]["name"],
+                                    "arguments": json.dumps(tc["function"]["arguments"], ensure_ascii=False),
+                                },
                             }
                             for tc in tool_calls_in_turn
                         ],
