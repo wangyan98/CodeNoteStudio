@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import mermaid from 'mermaid'
 import { useCodeNavigation } from '../../hooks/useCodeNavigation'
 import { LocateButton } from './LocateButton'
+import './SequenceDiagramViewer.css'
 
 // Initialize mermaid once
 let mermaidInitialized = false
@@ -174,7 +175,7 @@ export function SequenceDiagramViewer({ content, notePath }: SequenceDiagramView
       <div
         ref={containerRef}
         className="sequence-diagram-viewer"
-        style={{ overflowX: 'auto', overflowY: 'auto', padding: 8, display: 'flex', justifyContent: 'center', height: '100%' }}
+        style={{ overflow: 'auto', padding: 8, height: '100%' }}
         dangerouslySetInnerHTML={{ __html: svg }}
       />
       <LocateButton onLocate={handleLocate} />
