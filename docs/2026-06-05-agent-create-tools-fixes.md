@@ -57,3 +57,23 @@ LLM 按 workspace 相对路径传 `name: "docs/hello"`，agent_loop 又拼了 `o
 Agent 一次生成最终总结 md，缺乏中间分析过程。
 
 **修复**: system prompt 要求先为每个子主题创建中间 md 文件，最后才汇总生成最终总结。
+
+## 9. 写入文件时缺少后缀导致失败
+
+LLM 调用 `append_section`、`add_step`、`add_node` 等写入工具时，偶尔传不带后缀的 `path`（如 `docs/fft_ocean_math`），导致找不到文件。
+
+**修复**: 新增 `file_utils.resolve_path(path, *extensions)` 共享函数——先检查精确路径，不存在则依次尝试拼接扩展名。所有 15 个写入脚本统一调用：
+
+| 文件类型 | 扩展名 | 脚本 |
+|---------|--------|------|
+| Markdown | `.md` | `append_section`, `replace_section` |
+| Mind Map | `.mind.json` | `add_node`, `update_node`, `delete_node` |
+| Derive Tree | `.derive.json` | `add_step`, `update_step`, `delete_step`, `set_derives_from` |
+| Network | `.net.json` | `add_layer`, `add_block`, `add_connection`, `update_node`, `delete_node` |
+| Seq Diagram | `.seq.mermaid` | `append_participant`, `append_message`, `replace_diagram` |
+
+## 10. create_seq 未统一
+
+`create_seq` 还沿用旧的 `path` 参数（需要带 `.seq.mermaid` 后缀），与其他 `create_*` 工具不一致。
+
+**修复**: 改为接受 `name`（无后缀），自动拼接 `.seq.mermaid`，返回绝对路径。与 `create_md`、`create_network` 等保持一致。
