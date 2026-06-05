@@ -13,7 +13,7 @@ You have access to tools for:
       When creating derivation trees, follow these rules:
       * **Top-down decomposition**: When a formula has multiple terms (e.g., L = L_d + L_i + k),
         FIRST create a parent step with the full formula, THEN create one sibling step per term,
-        each deriving from the parent via --derives-from.
+        each deriving from the parent via derives_from.
       * **Sibling steps for parallel terms**: Terms of the same formula are siblings — they share the
         same derivesFrom parent. Do NOT chain them sequentially unless one term is literally derived
         from another.
