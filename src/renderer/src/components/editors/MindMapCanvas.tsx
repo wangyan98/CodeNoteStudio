@@ -5,6 +5,7 @@ import type { MindMapAction } from './mindMapReducer'
 import { findNode, findParentAndIndex } from './mindMapReducer'
 import { inferEmbedType, renderMarkdownForEmbed } from '../../services/markdown-renderer'
 import { MindMapRenderer } from './MindMapRenderer'
+import { LocateButton } from './LocateButton'
 import { DerivationDagViewer } from './DerivationDagViewer'
 import { SequenceDiagramViewer } from './SequenceDiagramViewer'
 import { NetworkEmbedViewer } from './NetworkEmbedViewer'
@@ -167,6 +168,7 @@ export const MindMapCanvas = forwardRef<MindMapCanvasHandle, MindMapCanvasProps>
     const containerRef = useRef<HTMLDivElement>(null)
     const gElRef = useRef<SVGGElement | null>(null)
     const zoomRef = useRef<d3.ZoomBehavior<SVGSVGElement, unknown> | null>(null)
+    const fitTransformRef = useRef<{ x: number; y: number; k: number }>({ x: 0, y: 0, k: 1 })
     const focusNodeIdRef = useRef<string | null>(null)
     const selectedNodeIdRef = useRef<string | null>(null)
     const embedOverlayRef = useRef<HTMLDivElement>(null)
@@ -1184,6 +1186,21 @@ export const MindMapCanvas = forwardRef<MindMapCanvasHandle, MindMapCanvasProps>
         dispatch({ type: 'SELECT_NODE', nodeId: '' })
       })
 
+      // Compute zoom-to-fit transform for locate button
+      const gNode = g.node() as SVGGElement
+      if (gNode) {
+        const bbox = gNode.getBBox()
+        const pad = 40
+        const fitScale = Math.min(
+          (width - pad * 2) / (bbox.width || 1),
+          (height - pad * 2) / (bbox.height || 1),
+          1.5
+        )
+        const ftx = (width - bbox.width * fitScale) / 2 - bbox.x * fitScale
+        const fty = (height - bbox.height * fitScale) / 2 - bbox.y * fitScale
+        fitTransformRef.current = { x: ftx, y: fty, k: fitScale }
+      }
+
       // Zoom — create once, reuse across renders to avoid listener stacking
       if (!zoomRef.current) {
         zoomRef.current = d3.zoom<SVGSVGElement, unknown>()
@@ -1315,6 +1332,15 @@ export const MindMapCanvas = forwardRef<MindMapCanvasHandle, MindMapCanvasProps>
       }
     }, [])
 
+    const handleLocate = useCallback(() => {
+      const svg = d3.select(svgRef.current)
+      const zoom = zoomRef.current
+      if (!zoom) return
+      const { x, y, k } = fitTransformRef.current
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      ;(svg as any).transition().duration(400).call(zoom.transform, d3.zoomIdentity.translate(x, y).scale(k))
+    }, [])
+
     return (
       <div
         className="mindmap-container"
@@ -1350,6 +1376,7 @@ export const MindMapCanvas = forwardRef<MindMapCanvasHandle, MindMapCanvasProps>
             <EmbedCard key={cacheKey} cacheKey={cacheKey} cached={cached} />
           ))}
         </div>
+        <LocateButton onLocate={handleLocate} />
       </div>
     )
   }
