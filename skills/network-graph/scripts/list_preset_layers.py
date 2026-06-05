@@ -5,12 +5,16 @@ from pathlib import Path
 
 
 def find_catalog_path():
-    """Find layer-catalog.json starting from project root (CWD)."""
-    cwd = Path.cwd()
-    candidate = cwd / "layer-catalog.json"
+    """Find layer-catalog.json relative to the script file, falling back to CWD."""
+    # Navigate from scripts/ -> network-graph/ -> skills/ -> project root
+    candidate = Path(__file__).resolve().parents[3] / "layer-catalog.json"
     if candidate.exists():
         return str(candidate)
-    print(json.dumps({"ok": False, "error": "layer-catalog.json not found in project root"}))
+    # Fallback: try CWD (for when running directly from project root)
+    cwd_candidate = Path.cwd() / "layer-catalog.json"
+    if cwd_candidate.exists():
+        return str(cwd_candidate)
+    print(json.dumps({"ok": False, "error": "layer-catalog.json not found"}))
     sys.exit(1)
 
 
