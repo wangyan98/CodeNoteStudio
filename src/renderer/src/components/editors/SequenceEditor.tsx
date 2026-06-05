@@ -140,7 +140,7 @@ export function SequenceEditor({ content: initialContent, notePath, onSave }: Se
             theme="vs-dark"
             options={{
               minimap: { enabled: false },
-              wordWrap: 'on',
+              wordWrap: 'off',
               fontSize: 13,
               lineNumbers: 'on',
               scrollBeyondLastLine: false,
