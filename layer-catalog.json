@@ -4,100 +4,288 @@
       "category": "convolution",
       "color": "#4a90d9",
       "params": [
-        { "name": "in_channels", "type": "number", "required": true, "default": null },
-        { "name": "out_channels", "type": "number", "required": true, "default": null },
-        { "name": "kernel_size", "type": "number", "required": false, "default": 3 },
-        { "name": "stride", "type": "number", "required": false, "default": 1 },
-        { "name": "padding", "type": "number", "required": false, "default": 0 },
-        { "name": "dilation", "type": "number", "required": false, "default": 1 },
-        { "name": "bias", "type": "boolean", "required": false, "default": true }
+        {
+          "name": "in_channels",
+          "type": "number",
+          "required": true
+        },
+        {
+          "name": "out_channels",
+          "type": "number",
+          "required": true
+        },
+        {
+          "name": "kernel_size",
+          "type": "number",
+          "required": false,
+          "default": 3
+        },
+        {
+          "name": "stride",
+          "type": "number",
+          "required": false,
+          "default": 1
+        },
+        {
+          "name": "padding",
+          "type": "number",
+          "required": false,
+          "default": 0
+        },
+        {
+          "name": "dilation",
+          "type": "number",
+          "required": false,
+          "default": 1
+        },
+        {
+          "name": "bias",
+          "type": "boolean",
+          "required": false,
+          "default": true
+        }
       ]
     },
     "Conv2d": {
       "category": "convolution",
       "color": "#4a90d9",
       "params": [
-        { "name": "in_channels", "type": "number", "required": true, "default": null },
-        { "name": "out_channels", "type": "number", "required": true, "default": null },
-        { "name": "kernel_size", "type": "number", "required": false, "default": 3 },
-        { "name": "stride", "type": "number", "required": false, "default": 1 },
-        { "name": "padding", "type": "number", "required": false, "default": 0 },
-        { "name": "dilation", "type": "number", "required": false, "default": 1 },
-        { "name": "groups", "type": "number", "required": false, "default": 1 },
-        { "name": "bias", "type": "boolean", "required": false, "default": true }
+        {
+          "name": "in_channels",
+          "type": "number",
+          "required": true
+        },
+        {
+          "name": "out_channels",
+          "type": "number",
+          "required": true
+        },
+        {
+          "name": "kernel_size",
+          "type": "number",
+          "required": false,
+          "default": 3
+        },
+        {
+          "name": "stride",
+          "type": "number",
+          "required": false,
+          "default": 1
+        },
+        {
+          "name": "padding",
+          "type": "number",
+          "required": false,
+          "default": 0
+        },
+        {
+          "name": "dilation",
+          "type": "number",
+          "required": false,
+          "default": 1
+        },
+        {
+          "name": "groups",
+          "type": "number",
+          "required": false,
+          "default": 1
+        },
+        {
+          "name": "bias",
+          "type": "boolean",
+          "required": false,
+          "default": true
+        }
       ]
     },
     "Conv3d": {
       "category": "convolution",
       "color": "#4a90d9",
       "params": [
-        { "name": "in_channels", "type": "number", "required": true, "default": null },
-        { "name": "out_channels", "type": "number", "required": true, "default": null },
-        { "name": "kernel_size", "type": "number", "required": false, "default": 3 },
-        { "name": "stride", "type": "number", "required": false, "default": 1 },
-        { "name": "padding", "type": "number", "required": false, "default": 0 },
-        { "name": "bias", "type": "boolean", "required": false, "default": true }
+        {
+          "name": "in_channels",
+          "type": "number",
+          "required": true
+        },
+        {
+          "name": "out_channels",
+          "type": "number",
+          "required": true
+        },
+        {
+          "name": "kernel_size",
+          "type": "number",
+          "required": false,
+          "default": 3
+        },
+        {
+          "name": "stride",
+          "type": "number",
+          "required": false,
+          "default": 1
+        },
+        {
+          "name": "padding",
+          "type": "number",
+          "required": false,
+          "default": 0
+        },
+        {
+          "name": "bias",
+          "type": "boolean",
+          "required": false,
+          "default": true
+        }
       ]
     },
     "ConvTranspose2d": {
       "category": "convolution",
       "color": "#4a90d9",
       "params": [
-        { "name": "in_channels", "type": "number", "required": true, "default": null },
-        { "name": "out_channels", "type": "number", "required": true, "default": null },
-        { "name": "kernel_size", "type": "number", "required": false, "default": 3 },
-        { "name": "stride", "type": "number", "required": false, "default": 1 },
-        { "name": "padding", "type": "number", "required": false, "default": 0 },
-        { "name": "bias", "type": "boolean", "required": false, "default": true }
+        {
+          "name": "in_channels",
+          "type": "number",
+          "required": true
+        },
+        {
+          "name": "out_channels",
+          "type": "number",
+          "required": true
+        },
+        {
+          "name": "kernel_size",
+          "type": "number",
+          "required": false,
+          "default": 3
+        },
+        {
+          "name": "stride",
+          "type": "number",
+          "required": false,
+          "default": 1
+        },
+        {
+          "name": "padding",
+          "type": "number",
+          "required": false,
+          "default": 0
+        },
+        {
+          "name": "bias",
+          "type": "boolean",
+          "required": false,
+          "default": true
+        }
       ]
     },
     "BatchNorm1d": {
       "category": "normalization",
       "color": "#ea4335",
       "params": [
-        { "name": "num_features", "type": "number", "required": true, "default": null },
-        { "name": "eps", "type": "number", "required": false, "default": 1e-5 },
-        { "name": "momentum", "type": "number", "required": false, "default": 0.1 }
+        {
+          "name": "num_features",
+          "type": "number",
+          "required": true
+        },
+        {
+          "name": "eps",
+          "type": "number",
+          "required": false,
+          "default": 1e-05
+        },
+        {
+          "name": "momentum",
+          "type": "number",
+          "required": false,
+          "default": 0.1
+        }
       ]
     },
     "BatchNorm2d": {
       "category": "normalization",
       "color": "#ea4335",
       "params": [
-        { "name": "num_features", "type": "number", "required": true, "default": null },
-        { "name": "eps", "type": "number", "required": false, "default": 1e-5 },
-        { "name": "momentum", "type": "number", "required": false, "default": 0.1 }
+        {
+          "name": "num_features",
+          "type": "number",
+          "required": true
+        },
+        {
+          "name": "eps",
+          "type": "number",
+          "required": false,
+          "default": 1e-05
+        },
+        {
+          "name": "momentum",
+          "type": "number",
+          "required": false,
+          "default": 0.1
+        }
       ]
     },
     "LayerNorm": {
       "category": "normalization",
       "color": "#ea4335",
       "params": [
-        { "name": "normalized_shape", "type": "string", "required": true, "default": null },
-        { "name": "eps", "type": "number", "required": false, "default": 1e-5 }
+        {
+          "name": "normalized_shape",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "eps",
+          "type": "number",
+          "required": false,
+          "default": 1e-05
+        }
       ]
     },
     "InstanceNorm2d": {
       "category": "normalization",
       "color": "#ea4335",
       "params": [
-        { "name": "num_features", "type": "number", "required": true, "default": null },
-        { "name": "eps", "type": "number", "required": false, "default": 1e-5 }
+        {
+          "name": "num_features",
+          "type": "number",
+          "required": true
+        },
+        {
+          "name": "eps",
+          "type": "number",
+          "required": false,
+          "default": 1e-05
+        }
       ]
     },
     "ReLU": {
       "category": "activation",
       "color": "#34a853",
       "params": [
-        { "name": "inplace", "type": "boolean", "required": false, "default": false }
+        {
+          "name": "inplace",
+          "type": "boolean",
+          "required": false,
+          "default": false
+        }
       ]
     },
     "LeakyReLU": {
       "category": "activation",
       "color": "#34a853",
       "params": [
-        { "name": "negative_slope", "type": "number", "required": false, "default": 0.01 },
-        { "name": "inplace", "type": "boolean", "required": false, "default": false }
+        {
+          "name": "negative_slope",
+          "type": "number",
+          "required": false,
+          "default": 0.01
+        },
+        {
+          "name": "inplace",
+          "type": "boolean",
+          "required": false,
+          "default": false
+        }
       ]
     },
     "GELU": {
@@ -119,41 +307,94 @@
       "category": "activation",
       "color": "#34a853",
       "params": [
-        { "name": "dim", "type": "number", "required": false, "default": -1 }
+        {
+          "name": "dim",
+          "type": "number",
+          "required": false,
+          "default": -1
+        }
       ]
     },
     "MaxPool2d": {
       "category": "pooling",
       "color": "#ff9800",
       "params": [
-        { "name": "kernel_size", "type": "number", "required": false, "default": 2 },
-        { "name": "stride", "type": "number", "required": false, "default": 2 },
-        { "name": "padding", "type": "number", "required": false, "default": 0 }
+        {
+          "name": "kernel_size",
+          "type": "number",
+          "required": false,
+          "default": 2
+        },
+        {
+          "name": "stride",
+          "type": "number",
+          "required": false,
+          "default": 2
+        },
+        {
+          "name": "padding",
+          "type": "number",
+          "required": false,
+          "default": 0
+        }
       ]
     },
     "AvgPool2d": {
       "category": "pooling",
       "color": "#ff9800",
       "params": [
-        { "name": "kernel_size", "type": "number", "required": false, "default": 2 },
-        { "name": "stride", "type": "number", "required": false, "default": 2 },
-        { "name": "padding", "type": "number", "required": false, "default": 0 }
+        {
+          "name": "kernel_size",
+          "type": "number",
+          "required": false,
+          "default": 2
+        },
+        {
+          "name": "stride",
+          "type": "number",
+          "required": false,
+          "default": 2
+        },
+        {
+          "name": "padding",
+          "type": "number",
+          "required": false,
+          "default": 0
+        }
       ]
     },
     "AdaptiveAvgPool2d": {
       "category": "pooling",
       "color": "#ff9800",
       "params": [
-        { "name": "output_size", "type": "string", "required": false, "default": "1" }
+        {
+          "name": "output_size",
+          "type": "string",
+          "required": false,
+          "default": "1"
+        }
       ]
     },
     "Linear": {
       "category": "linear",
       "color": "#4a90d9",
       "params": [
-        { "name": "in_features", "type": "number", "required": true, "default": null },
-        { "name": "out_features", "type": "number", "required": true, "default": null },
-        { "name": "bias", "type": "boolean", "required": false, "default": true }
+        {
+          "name": "in_features",
+          "type": "number",
+          "required": true
+        },
+        {
+          "name": "out_features",
+          "type": "number",
+          "required": true
+        },
+        {
+          "name": "bias",
+          "type": "boolean",
+          "required": false,
+          "default": true
+        }
       ]
     },
     "Identity": {
@@ -165,56 +406,148 @@
       "category": "dropout",
       "color": "#9c27b0",
       "params": [
-        { "name": "p", "type": "number", "required": false, "default": 0.5 },
-        { "name": "inplace", "type": "boolean", "required": false, "default": false }
+        {
+          "name": "p",
+          "type": "number",
+          "required": false,
+          "default": 0.5
+        },
+        {
+          "name": "inplace",
+          "type": "boolean",
+          "required": false,
+          "default": false
+        }
       ]
     },
     "Dropout2d": {
       "category": "dropout",
       "color": "#9c27b0",
       "params": [
-        { "name": "p", "type": "number", "required": false, "default": 0.5 },
-        { "name": "inplace", "type": "boolean", "required": false, "default": false }
+        {
+          "name": "p",
+          "type": "number",
+          "required": false,
+          "default": 0.5
+        },
+        {
+          "name": "inplace",
+          "type": "boolean",
+          "required": false,
+          "default": false
+        }
       ]
     },
     "LSTM": {
       "category": "recurrent",
       "color": "#795548",
       "params": [
-        { "name": "input_size", "type": "number", "required": true, "default": null },
-        { "name": "hidden_size", "type": "number", "required": true, "default": null },
-        { "name": "num_layers", "type": "number", "required": false, "default": 1 },
-        { "name": "bias", "type": "boolean", "required": false, "default": true },
-        { "name": "dropout", "type": "number", "required": false, "default": 0 }
+        {
+          "name": "input_size",
+          "type": "number",
+          "required": true
+        },
+        {
+          "name": "hidden_size",
+          "type": "number",
+          "required": true
+        },
+        {
+          "name": "num_layers",
+          "type": "number",
+          "required": false,
+          "default": 1
+        },
+        {
+          "name": "bias",
+          "type": "boolean",
+          "required": false,
+          "default": true
+        },
+        {
+          "name": "dropout",
+          "type": "number",
+          "required": false,
+          "default": 0
+        }
       ]
     },
     "GRU": {
       "category": "recurrent",
       "color": "#795548",
       "params": [
-        { "name": "input_size", "type": "number", "required": true, "default": null },
-        { "name": "hidden_size", "type": "number", "required": true, "default": null },
-        { "name": "num_layers", "type": "number", "required": false, "default": 1 },
-        { "name": "bias", "type": "boolean", "required": false, "default": true },
-        { "name": "dropout", "type": "number", "required": false, "default": 0 }
+        {
+          "name": "input_size",
+          "type": "number",
+          "required": true
+        },
+        {
+          "name": "hidden_size",
+          "type": "number",
+          "required": true
+        },
+        {
+          "name": "num_layers",
+          "type": "number",
+          "required": false,
+          "default": 1
+        },
+        {
+          "name": "bias",
+          "type": "boolean",
+          "required": false,
+          "default": true
+        },
+        {
+          "name": "dropout",
+          "type": "number",
+          "required": false,
+          "default": 0
+        }
       ]
     },
     "Embedding": {
       "category": "embedding",
       "color": "#009688",
       "params": [
-        { "name": "num_embeddings", "type": "number", "required": true, "default": null },
-        { "name": "embedding_dim", "type": "number", "required": true, "default": null }
+        {
+          "name": "num_embeddings",
+          "type": "number",
+          "required": true
+        },
+        {
+          "name": "embedding_dim",
+          "type": "number",
+          "required": true
+        }
       ]
     },
     "MultiheadAttention": {
       "category": "attention",
       "color": "#e91e63",
       "params": [
-        { "name": "embed_dim", "type": "number", "required": true, "default": null },
-        { "name": "num_heads", "type": "number", "required": true, "default": null },
-        { "name": "dropout", "type": "number", "required": false, "default": 0 },
-        { "name": "bias", "type": "boolean", "required": false, "default": true }
+        {
+          "name": "embed_dim",
+          "type": "number",
+          "required": true
+        },
+        {
+          "name": "num_heads",
+          "type": "number",
+          "required": true
+        },
+        {
+          "name": "dropout",
+          "type": "number",
+          "required": false,
+          "default": 0
+        },
+        {
+          "name": "bias",
+          "type": "boolean",
+          "required": false,
+          "default": true
+        }
       ]
     }
   }
