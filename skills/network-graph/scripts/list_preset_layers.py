@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """List all preset layer types and their parameter definitions from layer-catalog.json."""
-import json, os, sys
+import json, sys
 from pathlib import Path
 
 
