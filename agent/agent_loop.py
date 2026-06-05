@@ -15,7 +15,7 @@ class AgentLoop:
         workspace: str,
         repos: list[str],
         output_dir: str,
-        max_steps: int = 15,
+        max_steps: int = 80,
     ):
         self.provider = provider
         self.registry = registry
