@@ -1,3 +1,4 @@
+import json
 import sqlite3
 import uuid
 from datetime import datetime, timezone
@@ -24,6 +25,7 @@ class ConversationMemory:
                 role TEXT,
                 content TEXT,
                 tool_name TEXT,
+                tool_calls TEXT,
                 created_at TEXT
             )
         """)
@@ -46,13 +48,18 @@ class ConversationMemory:
         return conv_id
 
     def add_message(
-        self, role: str, content: str, tool_name: str | None = None
+        self,
+        role: str,
+        content: str,
+        tool_name: str | None = None,
+        tool_calls: list[dict] | None = None,
     ):
         conv_id = self.get_or_create_conversation()
         now = datetime.now(timezone.utc).isoformat()
+        tool_calls_json = json.dumps(tool_calls) if tool_calls else None
         self.conn.execute(
-            "INSERT INTO messages (conversation_id, role, content, tool_name, created_at) VALUES (?, ?, ?, ?, ?)",
-            (conv_id, role, content, tool_name, now),
+            "INSERT INTO messages (conversation_id, role, content, tool_name, tool_calls, created_at) VALUES (?, ?, ?, ?, ?, ?)",
+            (conv_id, role, content, tool_name, tool_calls_json, now),
         )
         self.conn.execute(
             "UPDATE conversations SET updated_at = ? WHERE id = ?",
@@ -63,13 +70,14 @@ class ConversationMemory:
     def get_messages(self) -> list[dict]:
         conv_id = self.get_or_create_conversation()
         rows = self.conn.execute(
-            "SELECT role, content, tool_name FROM messages WHERE conversation_id = ? ORDER BY id",
+            "SELECT role, content, tool_name, tool_calls FROM messages WHERE conversation_id = ? ORDER BY id",
             (conv_id,),
         ).fetchall()
         return [dict(row) for row in rows]
 
     def get_openai_messages(self) -> list[dict]:
         """Return messages in OpenAI-compatible format."""
+        import json as _json
         messages = []
         for msg in self.get_messages():
             if msg["role"] == "tool":
@@ -78,6 +86,14 @@ class ConversationMemory:
                     "content": msg["content"],
                     "tool_call_id": msg["tool_name"] or "",
                 })
+            elif msg["role"] == "assistant" and msg["tool_calls"]:
+                tc = _json.loads(msg["tool_calls"])
+                entry = {"role": "assistant", "tool_calls": tc}
+                if msg["content"]:
+                    entry["content"] = msg["content"]
+                else:
+                    entry["content"] = None
+                messages.append(entry)
             else:
                 messages.append({
                     "role": msg["role"],

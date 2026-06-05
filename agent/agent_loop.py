@@ -76,8 +76,19 @@ class AgentLoop:
 
                 # Execute tool calls
                 if tool_calls_in_turn:
-                    if assistant_text_parts:
-                        self.memory.add_message("assistant", "".join(assistant_text_parts))
+                    text = "".join(assistant_text_parts) if assistant_text_parts else ""
+                    self.memory.add_message(
+                        "assistant",
+                        text,
+                        tool_calls=[
+                            {
+                                "id": tc["id"],
+                                "type": "function",
+                                "function": tc["function"],
+                            }
+                            for tc in tool_calls_in_turn
+                        ],
+                    )
 
                     for tc in tool_calls_in_turn:
                         name = tc["function"]["name"]
