@@ -46,6 +46,10 @@ The `#` delimiter avoids conflicts with `:` in file paths. Resolution priority: 
 | `scripts/create_md.py <path> [--title]` | Create .md file with `# title` |
 | `scripts/append_section.py <path> <heading> <content>` | Append `## heading` section (rejects duplicates) |
 | `scripts/replace_section.py <path> <heading> <new-content>` | Replace content under a `## heading` |
+| `scripts/insert_embed.py <path> <embed_path>` | Insert `![[embed_path]]` line (rejects duplicates) |
+| `scripts/delete_embed.py <path> <embed_path>` | Remove matching `![[embed_path]]` line |
+| `scripts/insert_ref.py <path> <ref>` | Insert `@ref(ref)` line (rejects duplicates) |
+| `scripts/delete_ref.py <path> <ref>` | Remove matching `@ref(ref)` line |
 
 ### create_md.py
 
@@ -71,3 +75,31 @@ python scripts/replace_section.py doc.md "Layers" "- Conv2d: 128@3x3\n- MaxPool"
 ```
 
 Matches `## heading` exactly, replaces content up to the next `##` or EOF.
+
+### insert_embed.py
+
+```bash
+python scripts/insert_embed.py doc.md diagrams/flow.seq.mermaid
+# => {"ok": true}
+```
+
+### delete_embed.py
+
+```bash
+python scripts/delete_embed.py doc.md diagrams/flow.seq.mermaid
+# => {"ok": true}
+```
+
+### insert_ref.py
+
+```bash
+python scripts/insert_ref.py doc.md Nilou-main#Engine/Source/Array.h#287
+# => {"ok": true}
+```
+
+### delete_ref.py
+
+```bash
+python scripts/delete_ref.py doc.md Nilou-main#Engine/Source/Array.h#287
+# => {"ok": true}
+```
