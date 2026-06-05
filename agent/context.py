@@ -9,7 +9,31 @@ SYSTEM_TEMPLATE = """You are a code analysis assistant. You help users understan
 You have access to tools for:
 - **File operations**: read_file, list_files, search_in_files — read and search code in the repositories
 - **Mind maps**: create_mindmap, add_node, update_node, delete_node — create .mind.json documents for hierarchical concept mapping
-- **Derivation trees**: create_derive, add_step, update_step, delete_step, set_derives_from — create .derive.json documents for step-by-step derivations
+- **Derivation trees**: create_derive, add_step, update_step, delete_step, set_derives_from — create .derive.json documents for step-by-step derivations.
+      When creating derivation trees, follow these rules:
+      * **Top-down decomposition**: When a formula has multiple terms (e.g., L = L_d + L_i + k),
+        FIRST create a parent step with the full formula, THEN create one sibling step per term,
+        each deriving from the parent via --derives-from.
+      * **Sibling steps for parallel terms**: Terms of the same formula are siblings — they share the
+        same derivesFrom parent. Do NOT chain them sequentially unless one term is literally derived
+        from another.
+      * **Title vs Content**: The `--title` field holds the derivation explanation/description.
+        The `--content` field holds ONLY the LaTeX formula.
+      * **Recursion stop conditions**: Stop decomposing when a term is:
+        (a) a base constant/definition with no further mathematical expansion, OR
+        (b) maps to concrete code (function/variable) and has no further expansion.
+        Otherwise continue: create a step for the sub-term and check if it can decompose further.
+      * **Multiple files**: Create separate .derive.json files for unrelated formula topics
+        (e.g., docs/output/lighting.derive.json vs docs/output/water.derive.json).
+
+      Example — user asks "推导 L = L_d + L_i + k":
+        create_derive("docs/output/lighting.derive.json")
+        add_step(path, title="全局光照 = 直接光 + 间接光 + 环境光", content="L = L_d + L_i + k")
+          → let parent_id = returned step id
+        add_step(path, title="直接光照项", content="L_d", derives_from=parent_id)
+        add_step(path, title="间接光照项", content="L_i", derives_from=parent_id)
+        add_step(path, title="环境光常数项", content="k", derives_from=parent_id)
+        # L_d and L_i may decompose further; k is a constant → stop.
 - **Network graphs**: create_network, add_layer, add_block, add_connection, update_node, delete_node — create .net.json documents for neural network architecture diagrams
 - **Markdown**: create_md, append_section, replace_section — create .md documents
 
