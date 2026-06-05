@@ -218,24 +218,15 @@ export function SequenceDiagramViewer({ content, notePath }: SequenceDiagramView
   }
 
   return (
-<<<<<<< HEAD
     <div style={{ position: 'relative', height: '100%', width: '100%', overflow: 'hidden' }}>
       <div
         ref={scrollContainerRef}
         className="sequence-diagram-viewer"
         style={{ overflow: 'auto', padding: 8, height: '100%' }}
+        onWheel={handleWheel}
         dangerouslySetInnerHTML={{ __html: svg }}
       />
       <LocateButton onLocate={handleLocate} />
     </div>
-=======
-    <div
-      ref={scrollContainerRef}
-      className="sequence-diagram-viewer"
-      style={{ overflow: 'auto', padding: 8, height: '100%' }}
-      onWheel={handleWheel}
-      dangerouslySetInnerHTML={{ __html: svg }}
-    />
->>>>>>> 8c41aed (feat: add Ctrl+wheel zoom to sequence diagram viewer)
   )
 }
