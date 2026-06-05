@@ -78,6 +78,7 @@ export function NetworkCanvas({
   }>({ active: false, sourceNodeId: null, line: null, cleanup: null })
 
   const fitTransformRef = useRef<{ x: number; y: number; k: number }>({ x: 0, y: 0, k: 1 })
+  const zoomRef = useRef<d3.ZoomBehavior<SVGSVGElement, unknown> | null>(null)
 
   // Cleanup drag listeners on unmount
   useEffect(() => {
@@ -228,6 +229,7 @@ export function NetworkCanvas({
       .on('zoom', (event) => { g.attr('transform', event.transform.toString()) })
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     svg.call(zoom as any)
+    zoomRef.current = zoom
 
     // Apply initial fit transform (centered in viewport)
     const initTx = (W - contentW * fitScale) / 2
@@ -853,10 +855,12 @@ export function NetworkCanvas({
   }
 
   const handleLocate = useCallback(() => {
-    const g = d3.select(svgRef.current).select<SVGGElement>('.canvas-content')
-    if (g.empty()) return
+    const svg = d3.select(svgRef.current)
+    const zoom = zoomRef.current
+    if (!zoom) return
     const { x, y, k } = fitTransformRef.current
-    g.transition().duration(400).attr('transform', `translate(${x}, ${y}) scale(${k})`)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    ;(svg as any).transition().duration(400).call(zoom.transform, d3.zoomIdentity.translate(x, y).scale(k))
   }, [])
 
   return (
