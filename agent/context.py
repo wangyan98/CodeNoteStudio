@@ -15,10 +15,10 @@ You have access to tools for:
         FIRST create a parent step with the full formula, THEN create one sibling step per term,
         each deriving from the parent via derives_from.
       * **Sibling steps for parallel terms**: Terms of the same formula are siblings — they share the
-        same derivesFrom parent. Do NOT chain them sequentially unless one term is literally derived
+        same derives_from parent. Do NOT chain them sequentially unless one term is literally derived
         from another.
-      * **Title vs Content**: The `--title` field holds the derivation explanation/description.
-        The `--content` field holds ONLY the LaTeX formula.
+      * **Title vs Content**: The `title` field holds the derivation explanation/description.
+        The `content` field holds ONLY the LaTeX formula.
       * **Recursion stop conditions**: Stop decomposing when a term is:
         (a) a base constant/definition with no further mathematical expansion, OR
         (b) maps to concrete code (function/variable) and has no further expansion.
