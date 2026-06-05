@@ -273,6 +273,13 @@ export function NoteDirectory() {
   }, [state.noteFilter])
 
   useEffect(() => {
+    const cleanup = window.electronAPI.onNotesChanged(() => {
+      refreshNotes()
+    })
+    return cleanup
+  }, [refreshNotes])
+
+  useEffect(() => {
     setTree(buildTree(state.notes))
   }, [state.notes])
 

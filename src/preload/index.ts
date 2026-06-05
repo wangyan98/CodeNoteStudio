@@ -70,6 +70,13 @@ const api = {
   startAgent: () => ipcRenderer.invoke('agent:start'),
   stopAgent: () => ipcRenderer.invoke('agent:stop'),
   getAgentPort: () => ipcRenderer.invoke('agent:get-port'),
+
+  // File watcher
+  onNotesChanged: (callback: () => void) => {
+    const handler = () => callback()
+    ipcRenderer.on('notes:changed', handler)
+    return () => { ipcRenderer.removeListener('notes:changed', handler) }
+  },
 }
 
 contextBridge.exposeInMainWorld('electronAPI', api)

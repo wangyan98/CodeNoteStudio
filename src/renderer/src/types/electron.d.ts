@@ -85,6 +85,7 @@ declare global {
       startAgent: () => Promise<{ port: number }>
       stopAgent: () => Promise<void>
       getAgentPort: () => Promise<number>
+      onNotesChanged: (callback: () => void) => () => void
     }
   }
 }

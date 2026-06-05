@@ -1,4 +1,4 @@
-import { ipcMain } from 'electron'
+import { ipcMain, BrowserWindow } from 'electron'
 import { loadConfig, saveConfig } from './services/notebook-config'
 import {
   createNote,
@@ -11,18 +11,35 @@ import {
 } from './services/note-service'
 import { initDatabase, closeDatabase } from './services/index-db'
 import { loadUiState, saveUiState } from './services/ui-state'
+import { startWatching, stopWatching } from './services/file-watcher'
 import type { UiState } from './services/ui-state'
 import type { NotebookConfig } from './types'
 import type { NoteFileType, NoteListItem } from './types'
 import type { NoteContent } from './services/note-service'
+import path from 'node:path'
 
 let currentProjectPath: string | null = null
+
+function notifyRenderers(): void {
+  for (const win of BrowserWindow.getAllWindows()) {
+    win.webContents.send('notes:changed')
+  }
+}
+
+async function restartWatcher(): Promise<void> {
+  stopWatching()
+  if (!currentProjectPath) return
+  const config = await loadConfig(currentProjectPath)
+  const notesPath = path.resolve(currentProjectPath, config.notesPath || './')
+  startWatching(notesPath, notifyRenderers)
+}
 
 export function registerIpcHandlers(projectPath: string): void {
   currentProjectPath = projectPath
 
   if (projectPath) {
     initDatabase(projectPath)
+    restartWatcher()
   }
 
   // Notebook config
@@ -140,6 +157,7 @@ export function registerIpcHandlers(projectPath: string): void {
     initDatabase(newPath)
     const config = await loadConfig(newPath)
     await addToHistory(newPath, config.name || path.basename(newPath))
+    restartWatcher()
     return config
   })
 
@@ -160,6 +178,7 @@ export function registerIpcHandlers(projectPath: string): void {
 
   ipcMain.handle('workspace:clear', async () => {
     closeDatabase()
+    stopWatching()
     currentProjectPath = null
   })
 
@@ -306,5 +325,6 @@ export function registerIpcHandlers(projectPath: string): void {
 
 export function unregisterIpcHandlers(): void {
   closeDatabase()
+  stopWatching()
   currentProjectPath = null
 }
