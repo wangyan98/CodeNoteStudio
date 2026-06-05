@@ -17,6 +17,7 @@ from tools.derive_tools import register_derive_tools
 from tools.network_tools import register_network_tools
 from tools.markdown_tools import register_markdown_tools
 from tools.file_search_tools import register_file_search_tools
+from tools.code_mapping_tools import register_code_mapping_tools
 from agent_loop import AgentLoop
 from provider.openai_compat import OpenAICompatProvider
 
@@ -86,6 +87,7 @@ def build_registry() -> ToolRegistry:
     register_network_tools(registry)
     register_markdown_tools(registry)
     register_file_search_tools(registry)
+    register_code_mapping_tools(registry)
 
     return registry
 
