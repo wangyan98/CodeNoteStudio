@@ -10,7 +10,8 @@ from .schemas import (
 
 
 def ensure_dir(dir_path: str) -> None:
-    os.makedirs(dir_path, exist_ok=True)
+    if dir_path:
+        os.makedirs(dir_path, exist_ok=True)
 
 
 def read_json(path: str) -> Any:

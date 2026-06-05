@@ -8,16 +8,18 @@ from lib.schemas import create_network_document
 from lib.file_utils import save_network
 
 EXTENSION = ".net.json"
-# Extensions to strip if the LLM accidentally includes them
-KNOWN_EXTS = [".net.json", ".json", ".net"]
+# Compound extensions checked first, splitext fallback handles unknown extensions
+_KNOWN_EXTS = [".net.json"]
 
 
 def _build_path(name: str) -> str:
-    """Strip any known extension from name and append the correct one."""
-    for ext in KNOWN_EXTS:
+    """Strip any extension from name and append the correct one."""
+    for ext in _KNOWN_EXTS:
         if name.endswith(ext):
             name = name[: -len(ext)]
             break
+    else:
+        name = os.path.splitext(name)[0]
     return name + EXTENSION
 
 
@@ -27,7 +29,7 @@ def main():
     parser.add_argument("--title", default="New Network", help="Title for the network")
     args = parser.parse_args()
 
-    path = _build_path(args.name)
+    path = os.path.abspath(_build_path(args.name))
 
     if os.path.exists(path):
         print(json.dumps({"ok": True, "path": path}))

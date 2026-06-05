@@ -124,9 +124,10 @@ def create_app(agent_factory=None, memory=None):
         body = await request.json()
         message = body["message"]
         provider_id = body.get("provider_id")
-        workspace = body.get("workspace", "")
+        workspace = body.get("workspace", "") or os.getcwd()
         repos = body.get("repos", [])
-        output_dir = body.get("output_dir", f"{workspace}/docs")
+        default_output = f"{workspace}/docs" if workspace else f"{os.getcwd()}/docs"
+        output_dir = body.get("output_dir", default_output)
 
         # Resolve provider
         provider_config = next(

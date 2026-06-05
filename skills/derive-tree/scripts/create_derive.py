@@ -8,15 +8,18 @@ from lib.schemas import create_derive_document
 from lib.file_utils import save_derive
 
 EXTENSION = ".derive.json"
-KNOWN_EXTS = [".derive.json", ".json"]
+# Compound extensions checked first, splitext fallback handles unknown extensions
+_KNOWN_EXTS = [".derive.json"]
 
 
 def _build_path(name: str) -> str:
-    """Strip any known extension from name and append the correct one."""
-    for ext in KNOWN_EXTS:
+    """Strip any extension from name and append the correct one."""
+    for ext in _KNOWN_EXTS:
         if name.endswith(ext):
             name = name[: -len(ext)]
             break
+    else:
+        name = os.path.splitext(name)[0]
     return name + EXTENSION
 
 
@@ -25,7 +28,7 @@ def main():
     parser.add_argument("name", help="Name for the file (without extension)")
     args = parser.parse_args()
 
-    path = _build_path(args.name)
+    path = os.path.abspath(_build_path(args.name))
 
     if os.path.exists(path):
         print(json.dumps({"ok": True, "path": path}))

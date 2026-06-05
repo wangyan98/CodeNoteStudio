@@ -3,15 +3,11 @@
 import argparse, json, os, sys
 
 EXTENSION = ".md"
-KNOWN_EXTS = [".md", ".markdown", ".txt"]
 
 
 def _build_path(name: str) -> str:
-    """Strip any known extension from name and append the correct one."""
-    for ext in KNOWN_EXTS:
-        if name.endswith(ext):
-            name = name[: -len(ext)]
-            break
+    """Strip any extension from name and append the correct one."""
+    name = os.path.splitext(name)[0]
     return name + EXTENSION
 
 
@@ -21,7 +17,7 @@ def main():
     parser.add_argument("--title", default="Untitled")
     args = parser.parse_args()
 
-    path = _build_path(args.name)
+    path = os.path.abspath(_build_path(args.name))
 
     if os.path.exists(path):
         print(json.dumps({"ok": True, "path": path}))

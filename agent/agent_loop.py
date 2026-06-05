@@ -94,10 +94,14 @@ class AgentLoop:
                     )
 
                     for tc in tool_calls_in_turn:
-                        name = tc["function"]["name"]
+                        tool_name = tc["function"]["name"]
                         args = tc["function"]["arguments"]
+                        # Ensure create_* tools write under output_dir
+                        if tool_name.startswith("create_") and "name" in args and self.output_dir:
+                            args = {**args, "name": f"{self.output_dir}/{args['name']}"}
+                            args["name"] = args["name"].replace("//", "/")
                         try:
-                            result = self.registry.execute(name, args)
+                            result = self.registry.execute(tool_name, args)
                         except Exception as e:
                             result = {"ok": False, "error": str(e)}
 
@@ -119,7 +123,7 @@ class AgentLoop:
                         yield {
                             "type": "tool_result",
                             "tool_call_id": tc["id"],
-                            "name": name,
+                            "name": tool_name,
                             "result": result,
                         }
                     continue
