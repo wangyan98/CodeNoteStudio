@@ -91,8 +91,6 @@ class ConversationMemory:
                 entry = {"role": "assistant", "tool_calls": tc}
                 if msg["content"]:
                     entry["content"] = msg["content"]
-                else:
-                    entry["content"] = None
                 messages.append(entry)
             else:
                 messages.append({
