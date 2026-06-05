@@ -1,6 +1,7 @@
 import { useRef, useEffect, useCallback } from 'react'
 import * as d3 from 'd3'
 import type { MindMapDocument, MindMapNode } from '../../../../main/schemas/note-types'
+import { LocateButton } from './LocateButton'
 import './MindMapRenderer.css'
 
 interface MindMapRendererProps {
@@ -13,6 +14,7 @@ export function MindMapRenderer({ document, onSave }: MindMapRendererProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const gElRef = useRef<SVGGElement | null>(null)
   const zoomRef = useRef<d3.ZoomBehavior<SVGSVGElement, unknown> | null>(null)
+  const fitTransformRef = useRef<{ x: number; y: number; k: number }>({ x: 0, y: 0, k: 1 })
 
   const render = useCallback(() => {
     const svg = d3.select(svgRef.current)
@@ -131,6 +133,7 @@ export function MindMapRenderer({ document, onSave }: MindMapRendererProps) {
       const ty = (height - bbox.height * scale) / 2 - bbox.y * scale
       const transform = d3.zoomIdentity.translate(tx, ty).scale(scale)
       ;(svg as any).call(zoomRef.current!.transform, transform)
+      fitTransformRef.current = { x: tx, y: ty, k: scale }
     }
   }, [document])
 
@@ -150,9 +153,19 @@ export function MindMapRenderer({ document, onSave }: MindMapRendererProps) {
     }
   }, [])
 
+  const handleLocate = useCallback(() => {
+    const svg = d3.select(svgRef.current)
+    const zoom = zoomRef.current
+    if (!zoom) return
+    const { x, y, k } = fitTransformRef.current
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    ;(svg as any).transition().duration(400).call(zoom.transform, d3.zoomIdentity.translate(x, y).scale(k))
+  }, [])
+
   return (
     <div className="mindmap-container" ref={containerRef}>
       <svg ref={svgRef} />
+      <LocateButton onLocate={handleLocate} />
     </div>
   )
 }
