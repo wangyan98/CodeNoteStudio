@@ -38,24 +38,23 @@ function renderTable(lines: string[]): string {
 
   const headerCells = rows[0]
   const hasDelimiter = rows.length > 1 && /^[\s:\-|]+$/.test(lines[1])
-  const hasAlignmentMarkers = hasDelimiter && /:/.test(lines[1])
   const alignments = hasDelimiter
     ? parseAlignment(lines[1])
     : headerCells.map(() => 'left')
 
   const dataStart = hasDelimiter ? 2 : 1
 
-  const headerHtml = '<tr>' + headerCells.map((cell, i) => {
-    const style = hasAlignmentMarkers && alignments[i] ? ` style="text-align:${alignments[i]}"` : ''
-    return `<th${style}>${cell}</th>`
-  }).join('') + '</tr>'
+  const alignmentStyle = (i: number) => ` style="text-align:${alignments[i]}"`
 
-  const bodyHtml = rows.slice(dataStart).map(row => {
-    return '<tr>' + row.map((cell, i) => {
-      const style = hasAlignmentMarkers && alignments[i] ? ` style="text-align:${alignments[i]}"` : ''
-      return `<td${style}>${cell}</td>`
-    }).join('') + '</tr>'
-  }).join('')
+  const headerHtml = '<tr>' + headerCells.map((cell, i) =>
+    `<th${alignmentStyle(i)}>${cell}</th>`
+  ).join('') + '</tr>'
+
+  const bodyHtml = rows.slice(dataStart).map(row =>
+    '<tr>' + row.map((cell, i) =>
+      `<td${alignmentStyle(i)}>${cell}</td>`
+    ).join('') + '</tr>'
+  ).join('')
 
   return `<table><thead>${headerHtml}</thead><tbody>${bodyHtml}</tbody></table>`
 }

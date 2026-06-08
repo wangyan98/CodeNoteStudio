@@ -14,13 +14,13 @@ describe('renderMarkdown - tables', () => {
 
     expect(html).toContain('<table>')
     expect(html).toContain('<thead>')
-    expect(html).toContain('<th>Name</th>')
-    expect(html).toContain('<th>Age</th>')
+    expect(html).toMatch(/<th[^>]*>Name<\/th>/)
+    expect(html).toMatch(/<th[^>]*>Age<\/th>/)
     expect(html).toContain('<tbody>')
-    expect(html).toContain('<td>Bob</td>')
-    expect(html).toContain('<td>30</td>')
-    expect(html).toContain('<td>Jane</td>')
-    expect(html).toContain('<td>25</td>')
+    expect(html).toMatch(/<td[^>]*>Bob<\/td>/)
+    expect(html).toMatch(/<td[^>]*>30<\/td>/)
+    expect(html).toMatch(/<td[^>]*>Jane<\/td>/)
+    expect(html).toMatch(/<td[^>]*>25<\/td>/)
   })
 
   it('renders a table with alignment', () => {
@@ -47,9 +47,9 @@ describe('renderMarkdown - tables', () => {
 
     const html = renderMarkdown(md, [])
 
-    expect(html).toContain('<th>Item</th>')
-    expect(html).toContain('<td>one</td>')
-    expect(html).toContain('<td>two</td>')
+    expect(html).toMatch(/<th[^>]*>Item<\/th>/)
+    expect(html).toMatch(/<td[^>]*>one<\/td>/)
+    expect(html).toMatch(/<td[^>]*>two<\/td>/)
   })
 
   it('handles empty cells', () => {
@@ -62,7 +62,7 @@ describe('renderMarkdown - tables', () => {
 
     const html = renderMarkdown(md, [])
 
-    expect(html).toContain('<td></td>')
+    expect(html).toMatch(/<td[^>]*><\/td>/)
   })
 
   it('does not confuse non-table pipe usage with tables', () => {
