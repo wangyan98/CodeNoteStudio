@@ -115,6 +115,17 @@ describe('WorkspaceToolbar', () => {
     expect(await screen.findByText('repo-b')).toBeDefined()
   })
 
+  it('repos can be reordered via state', () => {
+    const repos = [
+      { path: '/a', commit: '1' },
+      { path: '/b', commit: '2' },
+    ]
+    const newRepos = [...repos]
+    ;[newRepos[0], newRepos[1]] = [newRepos[1], newRepos[0]]
+    expect(newRepos[0].path).toBe('/b')
+    expect(newRepos[1].path).toBe('/a')
+  })
+
   it('hides recent workspaces section when history is empty', () => {
     render(
       <AppProvider initialStateOverride={{

@@ -168,6 +168,47 @@ export function WorkspaceToolbar() {
     await window.electronAPI.saveConfig({ ...config, codeRepos: newRepos })
   }, [codeRepos, state.codeRepoPath, dispatch])
 
+  const persistRepos = useCallback(async (repos: Array<{ path: string; commit: string; color?: string }>) => {
+    setCodeRepos(repos)
+    dispatch({ type: 'SET_CODE_REPOS', repos })
+    const config = await window.electronAPI.loadConfig()
+    await window.electronAPI.saveConfig({ ...config, codeRepos: repos })
+  }, [dispatch])
+
+  const handleMoveToFront = useCallback((repoPath: string) => {
+    const idx = codeRepos.findIndex((r) => r.path === repoPath)
+    if (idx <= 0) return
+    const newRepos = [...codeRepos]
+    const [item] = newRepos.splice(idx, 1)
+    newRepos.unshift(item)
+    persistRepos(newRepos)
+  }, [codeRepos, persistRepos])
+
+  const handleMoveToBack = useCallback((repoPath: string) => {
+    const idx = codeRepos.findIndex((r) => r.path === repoPath)
+    if (idx < 0 || idx >= codeRepos.length - 1) return
+    const newRepos = [...codeRepos]
+    const [item] = newRepos.splice(idx, 1)
+    newRepos.push(item)
+    persistRepos(newRepos)
+  }, [codeRepos, persistRepos])
+
+  const handleMoveUp = useCallback((repoPath: string) => {
+    const idx = codeRepos.findIndex((r) => r.path === repoPath)
+    if (idx <= 0) return
+    const newRepos = [...codeRepos]
+    ;[newRepos[idx - 1], newRepos[idx]] = [newRepos[idx], newRepos[idx - 1]]
+    persistRepos(newRepos)
+  }, [codeRepos, persistRepos])
+
+  const handleMoveDown = useCallback((repoPath: string) => {
+    const idx = codeRepos.findIndex((r) => r.path === repoPath)
+    if (idx < 0 || idx >= codeRepos.length - 1) return
+    const newRepos = [...codeRepos]
+    ;[newRepos[idx], newRepos[idx + 1]] = [newRepos[idx + 1], newRepos[idx]]
+    persistRepos(newRepos)
+  }, [codeRepos, persistRepos])
+
   const buildRepoContextMenu = useCallback((repoPath: string, repoIndex: number): MenuEntry[] => {
     const isFirst = repoIndex === 0
     const isLast = repoIndex === codeRepos.length - 1
@@ -195,7 +236,26 @@ export function WorkspaceToolbar() {
         action: () => { setColorSubmenuRepo(repoPath) }
       },
       { separator: true },
-      // Sorting menu items added in Task 5
+      {
+        label: 'Move to Front',
+        action: () => handleMoveToFront(repoPath),
+        disabled: isFirst
+      },
+      {
+        label: 'Move to Back',
+        action: () => handleMoveToBack(repoPath),
+        disabled: isLast
+      },
+      {
+        label: 'Move Up',
+        action: () => handleMoveUp(repoPath),
+        disabled: isFirst
+      },
+      {
+        label: 'Move Down',
+        action: () => handleMoveDown(repoPath),
+        disabled: isLast
+      },
       { separator: true },
     ]
 

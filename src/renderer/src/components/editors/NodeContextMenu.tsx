@@ -6,6 +6,7 @@ export interface MenuItem {
   shortcut?: string
   action: () => void | Promise<void>
   danger?: boolean
+  disabled?: boolean
   separator?: false
 }
 
@@ -56,7 +57,7 @@ export function NodeContextMenu({ x, y, items, onClose }: NodeContextMenuProps) 
       if (!actionEl) return
       const index = parseInt(actionEl.dataset.menuAction!, 10)
       const entry = items[index]
-      if (!entry || 'separator' in entry) return
+      if (!entry || 'separator' in entry || entry.disabled) return
       e.preventDefault()
       e.stopPropagation()
       Promise.resolve(entry.action()).then(() => onClose())
@@ -84,7 +85,7 @@ export function NodeContextMenu({ x, y, items, onClose }: NodeContextMenuProps) 
           <div
             key={i}
             data-menu-action={i}
-            className={`node-context-menu-item${entry.danger ? ' node-context-menu-item-danger' : ''}`}
+            className={`node-context-menu-item${entry.danger ? ' node-context-menu-item-danger' : ''}${entry.disabled ? ' node-context-menu-item-disabled' : ''}`}
           >
             <span>{entry.label}</span>
             {entry.shortcut && (
