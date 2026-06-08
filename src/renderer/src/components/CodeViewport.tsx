@@ -4,6 +4,8 @@ import { useAppContext } from '../contexts/AppContext'
 import { SymbolPicker } from './SymbolPicker'
 import type { CodeSymbol } from './SymbolPicker'
 import type * as monaco from 'monaco-editor'
+import { NodeContextMenu } from './editors/NodeContextMenu'
+import type { MenuEntry } from './editors/NodeContextMenu'
 import './CodeViewport.css'
 
 const REPO_COLORS = ['#e06c75', '#61afef', '#98c379', '#d19a66', '#c678dd', '#56b6c2', '#e5c07b', '#abb2bf']
@@ -52,6 +54,11 @@ export function CodeViewport() {
   const editorContainerRef = useRef<HTMLDivElement>(null)
   const [zoomedImage, setZoomedImage] = useState<string | null>(null)
   const [zoomLevel, setZoomLevel] = useState(1)
+  const [tabContextMenu, setTabContextMenu] = useState<{
+    x: number
+    y: number
+    tabIndex: number
+  } | null>(null)
   const activeFileRef = useRef(activeFile)
   activeFileRef.current = activeFile
 
@@ -230,6 +237,67 @@ export function CodeViewport() {
     dispatch({ type: 'SET_ACTIVE_CODE_FILE', index })
   }, [dispatch])
 
+  const buildTabContextMenu = useCallback((tabIndex: number): MenuEntry[] => {
+    const file = state.openCodeFiles[tabIndex]
+    if (!file) return []
+    const isLeftmost = tabIndex === 0
+    const isRightmost = tabIndex === state.openCodeFiles.length - 1
+    const onlyOne = state.openCodeFiles.length <= 1
+
+    return [
+      {
+        label: 'Close',
+        action: () => dispatch({ type: 'CLOSE_CODE_FILE', index: tabIndex })
+      },
+      {
+        label: 'Close Others',
+        action: () => dispatch({ type: 'CLOSE_OTHER_CODE_FILES', index: tabIndex }),
+        disabled: onlyOne
+      },
+      {
+        label: 'Close to the Right',
+        action: () => dispatch({ type: 'CLOSE_CODE_FILES_RIGHT', index: tabIndex }),
+        disabled: isRightmost
+      },
+      {
+        label: 'Close to the Left',
+        action: () => dispatch({ type: 'CLOSE_CODE_FILES_LEFT', index: tabIndex }),
+        disabled: isLeftmost
+      },
+      {
+        label: 'Close All',
+        action: () => dispatch({ type: 'CLOSE_ALL_CODE_FILES' }),
+        disabled: state.openCodeFiles.length === 0
+      },
+      { separator: true },
+      {
+        label: 'Reopen Closed File',
+        action: () => dispatch({ type: 'REOPEN_CLOSED_CODE_FILE' }),
+        disabled: !state.recentlyClosedFile
+      },
+      { separator: true },
+      {
+        label: 'Copy Path',
+        action: () => { navigator.clipboard.writeText(file.path) }
+      },
+      {
+        label: 'Reveal in File Tree',
+        action: () => dispatch({ type: 'REVEAL_FILE_IN_TREE', filePath: file.path })
+      },
+      {
+        label: 'Open in External Editor',
+        action: () => { window.electronAPI.openPath(file.path) }
+      }
+    ]
+  }, [state.openCodeFiles, state.recentlyClosedFile, dispatch])
+
+  const handleTabContextMenu = useCallback((e: React.MouseEvent, index: number) => {
+    e.preventDefault()
+    e.stopPropagation()
+    dispatch({ type: 'SET_ACTIVE_CODE_FILE', index })
+    setTabContextMenu({ x: e.clientX, y: e.clientY, tabIndex: index })
+  }, [dispatch])
+
   if (!activeFile) {
     return (
       <div className="panel panel-code-viewport">
@@ -282,6 +350,7 @@ export function CodeViewport() {
                   : undefined
                 }
                 onClick={() => handleSelectTab(index)}
+                onContextMenu={(e) => handleTabContextMenu(e, index)}
               >
                 {repoColor && (
                   <span
@@ -403,6 +472,14 @@ export function CodeViewport() {
           </div>
         )}
       </div>
+      {tabContextMenu && (
+        <NodeContextMenu
+          x={tabContextMenu.x}
+          y={tabContextMenu.y}
+          items={buildTabContextMenu(tabContextMenu.tabIndex)}
+          onClose={() => setTabContextMenu(null)}
+        />
+      )}
       <SymbolPicker
         isOpen={symbolPickerOpen}
         onClose={() => setSymbolPickerOpen(false)}
