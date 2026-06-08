@@ -120,6 +120,7 @@ describe('appReducer', () => {
     expect(state.openCodeFiles).toHaveLength(2)
     expect(state.openCodeFiles[0].path).toBe('/a.ts')
     expect(state.openCodeFiles[1].path).toBe('/b.ts')
+    expect(state.activeCodeFileIndex).toBe(1)
   })
 
   it('CLOSE_ALL_CODE_FILES clears all tabs and stores active file', () => {
@@ -159,5 +160,30 @@ describe('appReducer', () => {
     let state = appReducer(initialState, { type: 'REVEAL_FILE_IN_TREE', filePath: '/x/y.ts' })
     state = appReducer(state, { type: 'CLEAR_REVEAL_FILE_IN_TREE' })
     expect(state.revealFilePath).toBeNull()
+  })
+
+  it('CLOSE_OTHER_CODE_FILES with out-of-bounds index returns state unchanged', () => {
+    const file = makeFile('/a.ts')
+    let state = appReducer(initialState, { type: 'OPEN_CODE_FILE', file })
+    const prev = state
+    state = appReducer(state, { type: 'CLOSE_OTHER_CODE_FILES', index: -1 })
+    expect(state).toEqual(prev)
+    state = appReducer(state, { type: 'CLOSE_OTHER_CODE_FILES', index: 99 })
+    expect(state).toEqual(prev)
+  })
+
+  it('CLOSE_CODE_FILES_LEFT with out-of-bounds index returns state unchanged', () => {
+    const file = makeFile('/a.ts')
+    let state = appReducer(initialState, { type: 'OPEN_CODE_FILE', file })
+    const prev = state
+    state = appReducer(state, { type: 'CLOSE_CODE_FILES_LEFT', index: -1 })
+    expect(state).toEqual(prev)
+    state = appReducer(state, { type: 'CLOSE_CODE_FILES_LEFT', index: 99 })
+    expect(state).toEqual(prev)
+  })
+
+  it('CLOSE_ALL_CODE_FILES with no active file stores null', () => {
+    const state = appReducer(initialState, { type: 'CLOSE_ALL_CODE_FILES' })
+    expect(state.recentlyClosedFile).toBeNull()
   })
 })
