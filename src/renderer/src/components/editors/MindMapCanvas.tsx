@@ -765,11 +765,23 @@ export const MindMapCanvas = forwardRef<MindMapCanvasHandle, MindMapCanvasProps>
         let dx = 0
         let dy = 0
 
-        if (distTop < AUTO_PAN_EDGE) dy = -AUTO_PAN_MAX_SPEED * (1 - distTop / AUTO_PAN_EDGE)
-        else if (distBottom < AUTO_PAN_EDGE) dy = AUTO_PAN_MAX_SPEED * (1 - distBottom / AUTO_PAN_EDGE)
+        if (distTop < AUTO_PAN_EDGE) {
+          const clamped = Math.max(0, distTop)
+          dy = -AUTO_PAN_MAX_SPEED * (1 - clamped / AUTO_PAN_EDGE)
+        }
+        else if (distBottom < AUTO_PAN_EDGE) {
+          const clamped = Math.max(0, distBottom)
+          dy = AUTO_PAN_MAX_SPEED * (1 - clamped / AUTO_PAN_EDGE)
+        }
 
-        if (distLeft < AUTO_PAN_EDGE) dx = -AUTO_PAN_MAX_SPEED * (1 - distLeft / AUTO_PAN_EDGE)
-        else if (distRight < AUTO_PAN_EDGE) dx = AUTO_PAN_MAX_SPEED * (1 - distRight / AUTO_PAN_EDGE)
+        if (distLeft < AUTO_PAN_EDGE) {
+          const clamped = Math.max(0, distLeft)
+          dx = -AUTO_PAN_MAX_SPEED * (1 - clamped / AUTO_PAN_EDGE)
+        }
+        else if (distRight < AUTO_PAN_EDGE) {
+          const clamped = Math.max(0, distRight)
+          dx = AUTO_PAN_MAX_SPEED * (1 - clamped / AUTO_PAN_EDGE)
+        }
 
         return { dx, dy }
       }
@@ -1202,6 +1214,10 @@ export const MindMapCanvas = forwardRef<MindMapCanvasHandle, MindMapCanvasProps>
                 const dt = Math.min((now - lastTime) / 1000, 0.1)
                 lastTime = now
                 const { dx, dy } = computeAutoPanSpeed(autoPanMouseX, autoPanMouseY)
+                if (dx === 0 && dy === 0) {
+                  autoPanRafId = null
+                  return
+                }
                 if (dx !== 0 || dy !== 0) {
                   const svgEl = svgRef.current
                   if (svgEl && zoomRef.current) {
