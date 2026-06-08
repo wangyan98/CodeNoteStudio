@@ -278,3 +278,44 @@
   margin-right: 8px;
   vertical-align: middle;
 }
+
+.repo-detail-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+.repo-detail-modal {
+  background: var(--panel-bg);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  width: 480px;
+  max-height: 80vh;
+  overflow-y: auto;
+}
+.repo-detail-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border-color);
+}
+.repo-detail-header h3 { margin: 0; font-size: 15px; color: var(--text-color); }
+.repo-detail-close { background: none; border: none; font-size: 20px; color: var(--placeholder-color); cursor: pointer; }
+.repo-detail-close:hover { color: var(--text-color); }
+.repo-detail-body { padding: 16px 20px; }
+.repo-detail-section { margin-bottom: 16px; }
+.repo-detail-section-title { font-size: 11px; font-weight: 600; color: var(--placeholder-color); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; }
+.repo-detail-row { display: flex; margin-bottom: 4px; font-size: 12px; }
+.repo-detail-label { color: var(--placeholder-color); width: 100px; flex-shrink: 0; }
+.repo-detail-value { color: var(--text-color); word-break: break-all; }
+.repo-detail-commits { max-height: 200px; overflow-y: auto; }
+.repo-detail-commit { display: flex; align-items: center; gap: 8px; padding: 4px 0; font-size: 11px; border-bottom: 1px solid var(--border-color); }
+.repo-detail-commit:last-child { border-bottom: none; }
+.repo-detail-commit-sha { font-family: monospace; color: var(--accent-color); flex-shrink: 0; }
+.repo-detail-commit-msg { flex: 1; color: var(--text-color); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.repo-detail-commit-date { color: var(--placeholder-color); flex-shrink: 0; }
+.repo-detail-footer { padding: 12px 20px; border-top: 1px solid var(--border-color); display: flex; justify-content: flex-end; }

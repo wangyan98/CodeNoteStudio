@@ -25,6 +25,15 @@ export function WorkspaceToolbar() {
   } | null>(null)
   const [colorSubmenuRepo, setColorSubmenuRepo] = useState<string | null>(null)
   const [remoteUrls, setRemoteUrls] = useState<Map<string, string | null>>(new Map())
+  const [detailRepo, setDetailRepo] = useState<{
+    path: string
+    remoteUrl: string | null
+    commit: { sha: string; message: string; author: string; date: string } | null
+    fileCount: number
+    dirCount: number
+    recentCommits: Array<{ sha: string; message: string; date: string }>
+  } | null>(null)
+  const [detailLoading, setDetailLoading] = useState(false)
 
   // Load history on mount
   useEffect(() => {
@@ -209,6 +218,28 @@ export function WorkspaceToolbar() {
     persistRepos(newRepos)
   }, [codeRepos, persistRepos])
 
+  const openRepoDetail = useCallback(async (repoPath: string) => {
+    setDetailLoading(true)
+    setRepoContextMenu(null)
+    try {
+      const [remoteUrl, commit, files, recentCommits] = await Promise.all([
+        window.electronAPI.getRemoteUrl(repoPath),
+        window.electronAPI.getGitCommit(repoPath),
+        window.electronAPI.listRepoFiles(repoPath),
+        window.electronAPI.getRecentCommits(repoPath, 10),
+      ])
+
+      const fileCount = files.filter((f: any) => !f.isDirectory).length
+      const dirCount = files.filter((f: any) => f.isDirectory).length
+
+      setDetailRepo({ path: repoPath, remoteUrl, commit, fileCount, dirCount, recentCommits })
+    } catch {
+      // ignore errors
+    } finally {
+      setDetailLoading(false)
+    }
+  }, [])
+
   const buildRepoContextMenu = useCallback((repoPath: string, repoIndex: number): MenuEntry[] => {
     const isFirst = repoIndex === 0
     const isLast = repoIndex === codeRepos.length - 1
@@ -271,9 +302,7 @@ export function WorkspaceToolbar() {
     items.push(
       {
         label: 'View Details',
-        action: () => {
-          // will be implemented in Task 8
-        }
+        action: () => { openRepoDetail(repoPath) }
       },
       { separator: true },
       {
@@ -284,7 +313,7 @@ export function WorkspaceToolbar() {
     )
 
     return items
-  }, [codeRepos, remoteUrls, handleRemoveRepo])
+  }, [codeRepos, remoteUrls, handleRemoveRepo, handleMoveToFront, handleMoveToBack, handleMoveUp, handleMoveDown, openRepoDetail])
 
   // Persist UI state on changes
   useEffect(() => {
@@ -467,6 +496,80 @@ export function WorkspaceToolbar() {
           ]}
           onClose={() => setColorSubmenuRepo(null)}
         />
+      )}
+      {detailRepo && (
+        <div className="repo-detail-overlay" onClick={() => setDetailRepo(null)}>
+          <div className="repo-detail-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="repo-detail-header">
+              <h3>{detailRepo.path.split('/').pop() || detailRepo.path}</h3>
+              <button className="repo-detail-close" onClick={() => setDetailRepo(null)}>&times;</button>
+            </div>
+            <div className="repo-detail-body">
+              <div className="repo-detail-section">
+                <div className="repo-detail-row">
+                  <span className="repo-detail-label">Path:</span>
+                  <span className="repo-detail-value">{detailRepo.path}</span>
+                </div>
+                <div className="repo-detail-row">
+                  <span className="repo-detail-label">Remote:</span>
+                  <span className="repo-detail-value">{detailRepo.remoteUrl || 'N/A'}</span>
+                </div>
+              </div>
+
+              {detailRepo.commit && detailRepo.commit.sha !== 'not available' && (
+                <div className="repo-detail-section">
+                  <div className="repo-detail-section-title">Git Info</div>
+                  <div className="repo-detail-row">
+                    <span className="repo-detail-label">Latest Commit:</span>
+                    <span className="repo-detail-value">{detailRepo.commit.sha.substring(0, 8)}</span>
+                  </div>
+                  <div className="repo-detail-row">
+                    <span className="repo-detail-label">Message:</span>
+                    <span className="repo-detail-value">{detailRepo.commit.message}</span>
+                  </div>
+                  <div className="repo-detail-row">
+                    <span className="repo-detail-label">Author:</span>
+                    <span className="repo-detail-value">{detailRepo.commit.author}</span>
+                  </div>
+                  <div className="repo-detail-row">
+                    <span className="repo-detail-label">Date:</span>
+                    <span className="repo-detail-value">{detailRepo.commit.date}</span>
+                  </div>
+                </div>
+              )}
+
+              <div className="repo-detail-section">
+                <div className="repo-detail-section-title">Repository</div>
+                <div className="repo-detail-row">
+                  <span className="repo-detail-label">Files:</span>
+                  <span className="repo-detail-value">{detailRepo.fileCount}</span>
+                </div>
+                <div className="repo-detail-row">
+                  <span className="repo-detail-label">Directories:</span>
+                  <span className="repo-detail-value">{detailRepo.dirCount}</span>
+                </div>
+              </div>
+
+              {detailRepo.recentCommits.length > 0 && (
+                <div className="repo-detail-section">
+                  <div className="repo-detail-section-title">Recent Commits</div>
+                  <div className="repo-detail-commits">
+                    {detailRepo.recentCommits.map((c) => (
+                      <div key={c.sha} className="repo-detail-commit">
+                        <span className="repo-detail-commit-sha">{c.sha.substring(0, 8)}</span>
+                        <span className="repo-detail-commit-msg">{c.message}</span>
+                        <span className="repo-detail-commit-date">{c.date}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+            <div className="repo-detail-footer">
+              <button className="workspace-toolbar-btn" onClick={() => setDetailRepo(null)}>Close</button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   )
