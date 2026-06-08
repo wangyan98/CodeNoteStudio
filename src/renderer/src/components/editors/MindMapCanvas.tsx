@@ -746,6 +746,34 @@ export const MindMapCanvas = forwardRef<MindMapCanvasHandle, MindMapCanvasProps>
       let dragTargetAction: 'reparent' | 'reorder' | null = null
       let dragInsertIndex: number | null = null
 
+      // Auto-pan during drag
+      let autoPanRafId: number | null = null
+      let autoPanMouseX = 0
+      let autoPanMouseY = 0
+      const AUTO_PAN_EDGE = 35
+      const AUTO_PAN_MAX_SPEED = 500 // px/s
+
+      function computeAutoPanSpeed(clientX: number, clientY: number): { dx: number; dy: number } {
+        const containerEl = containerRef.current
+        if (!containerEl) return { dx: 0, dy: 0 }
+        const rect = containerEl.getBoundingClientRect()
+        const distTop = clientY - rect.top
+        const distBottom = rect.bottom - clientY
+        const distLeft = clientX - rect.left
+        const distRight = rect.right - clientX
+
+        let dx = 0
+        let dy = 0
+
+        if (distTop < AUTO_PAN_EDGE) dy = -AUTO_PAN_MAX_SPEED * (1 - distTop / AUTO_PAN_EDGE)
+        else if (distBottom < AUTO_PAN_EDGE) dy = AUTO_PAN_MAX_SPEED * (1 - distBottom / AUTO_PAN_EDGE)
+
+        if (distLeft < AUTO_PAN_EDGE) dx = -AUTO_PAN_MAX_SPEED * (1 - distLeft / AUTO_PAN_EDGE)
+        else if (distRight < AUTO_PAN_EDGE) dx = AUTO_PAN_MAX_SPEED * (1 - distRight / AUTO_PAN_EDGE)
+
+        return { dx, dy }
+      }
+
       // Collect descendant IDs for a node
       function getDescendantIds(nodeId: string): Set<string> {
         const ids = new Set<string>()
