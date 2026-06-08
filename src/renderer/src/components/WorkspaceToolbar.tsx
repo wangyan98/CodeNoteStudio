@@ -7,14 +7,14 @@ import './WorkspaceToolbar.css'
 
 const REPO_COLORS = ['#e06c75', '#61afef', '#98c379', '#d19a66', '#c678dd', '#56b6c2', '#e5c07b', '#abb2bf']
 
-function getRepoColor(index: number): string {
-  return REPO_COLORS[index % REPO_COLORS.length]
+function getRepoColor(repo: { path: string; commit: string; color?: string }, index: number): string {
+  return repo.color || REPO_COLORS[index % REPO_COLORS.length]
 }
 
 export function WorkspaceToolbar() {
   const { state, dispatch } = useAppContext()
   const { workspacePath, workspaceName, workspaceHistory } = state
-  const [codeRepos, setCodeRepos] = useState<Array<{ path: string; commit: string }>>([])
+  const [codeRepos, setCodeRepos] = useState<Array<{ path: string; commit: string; color?: string }>>([])
   const restoringRef = useRef(false)
   const loadingRef = useRef(false)
   const [repoContextMenu, setRepoContextMenu] = useState<{
@@ -390,7 +390,7 @@ export function WorkspaceToolbar() {
           >
             <span
               className="repo-chip-dot"
-              style={{ backgroundColor: getRepoColor(index) }}
+              style={{ backgroundColor: getRepoColor(repo, index) }}
             />
             {repo.path.split('/').pop() || repo.path}
             <button
@@ -424,6 +424,48 @@ export function WorkspaceToolbar() {
           y={repoContextMenu.y}
           items={buildRepoContextMenu(repoContextMenu.repoPath, repoContextMenu.repoIndex)}
           onClose={() => setRepoContextMenu(null)}
+        />
+      )}
+      {colorSubmenuRepo && repoContextMenu && (
+        <NodeContextMenu
+          x={repoContextMenu.x + 160}
+          y={repoContextMenu.y}
+          items={[
+            ...REPO_COLORS.map((color) => ({
+              label: '●',
+              action: async () => {
+                const newRepos = codeRepos.map((r) =>
+                  r.path === colorSubmenuRepo ? { ...r, color } : r
+                )
+                setCodeRepos(newRepos)
+                dispatch({ type: 'SET_CODE_REPOS', repos: newRepos })
+                const config = await window.electronAPI.loadConfig()
+                await window.electronAPI.saveConfig({ ...config, codeRepos: newRepos })
+                setColorSubmenuRepo(null)
+                setRepoContextMenu(null)
+              }
+            })),
+            { separator: true },
+            {
+              label: 'Reset to Default',
+              action: async () => {
+                const newRepos = codeRepos.map((r) => {
+                  if (r.path === colorSubmenuRepo) {
+                    const { color, ...rest } = r
+                    return rest
+                  }
+                  return r
+                })
+                setCodeRepos(newRepos)
+                dispatch({ type: 'SET_CODE_REPOS', repos: newRepos })
+                const config = await window.electronAPI.loadConfig()
+                await window.electronAPI.saveConfig({ ...config, codeRepos: newRepos })
+                setColorSubmenuRepo(null)
+                setRepoContextMenu(null)
+              }
+            }
+          ]}
+          onClose={() => setColorSubmenuRepo(null)}
         />
       )}
     </div>
