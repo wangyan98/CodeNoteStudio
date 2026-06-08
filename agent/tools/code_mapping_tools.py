@@ -6,6 +6,7 @@ def register_code_mapping_tools(registry: ToolRegistry):
     registry.register(
         name="set_code_mapping",
         description="Set a codeMapping on a node in any document (.mind.json, .derive.json, .net.json). Links the node to specific source code. Use this after creating a node with add_node/add_step/add_layer when the node corresponds to specific code.",
+        skill="code-mapping",
         parameters={
             "type": "object",
             "properties": {
@@ -33,6 +34,7 @@ def register_code_mapping_tools(registry: ToolRegistry):
     registry.register(
         name="delete_code_mapping",
         description="Remove the codeMapping from a node in any document",
+        skill="code-mapping",
         parameters={
             "type": "object",
             "properties": {

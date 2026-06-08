@@ -2,7 +2,7 @@ import json, os
 from typing import AsyncIterator
 from provider.base import BaseProvider
 from tools.registry import ToolRegistry
-from context import build_system_message
+from context import build_system_message, load_full_skill, SKILLS_DIR
 from memory import ConversationMemory
 
 
@@ -24,15 +24,21 @@ class AgentLoop:
         self.repos = repos
         self.output_dir = output_dir
         self.max_steps = max_steps
+        self._activated_skills: set[str] = set()
 
     async def run(self, user_message: str) -> AsyncIterator[dict]:
         try:
             existing = self.memory.get_messages()
             if len(existing) == 0:
+                tools_summary = [
+                    {"name": t["name"], "description": t["description"]}
+                    for t in self.registry.tools.values()
+                ]
                 system_msg = build_system_message(
                     workspace=self.workspace,
                     repos=self.repos,
                     output_dir=self.output_dir,
+                    tools_summary=tools_summary,
                 )
                 self.memory.add_message("system", system_msg)
 
@@ -126,6 +132,10 @@ class AgentLoop:
                             "name": tool_name,
                             "result": result,
                         }
+
+                    # Progressive disclosure: inject full SKILL.md for first-time skill usage
+                    self._activate_skills(tool_calls_in_turn)
+
                     continue
 
                 # No tool calls — conversation complete
@@ -144,3 +154,21 @@ class AgentLoop:
                 "content": f"Agent error: {e}",
             }
             yield {"type": "done"}
+
+    def _activate_skills(self, tool_calls_in_turn: list[dict]) -> None:
+        """Inject full SKILL.md content for any newly-activated skills."""
+        for tc in tool_calls_in_turn:
+            tool_name = tc["function"]["name"]
+            tool_info = self.registry.tools.get(tool_name)
+            if not tool_info:
+                continue
+            skill_name = tool_info.get("skill")
+            if not skill_name or skill_name in self._activated_skills:
+                continue
+            full_skill = load_full_skill(skill_name, SKILLS_DIR)
+            if full_skill:
+                self._activated_skills.add(skill_name)
+                self.memory.add_message(
+                    "system",
+                    f"[Activated skill: {skill_name}]\n\n{full_skill}",
+                )

@@ -23,8 +23,13 @@
 }
 
 .agent-dialog.minimized {
-  height: 40px;
+  height: auto;
+  min-height: unset;
   resize: none;
+}
+
+.agent-dialog.minimized .agent-dialog-header {
+  border-bottom: none;
 }
 
 .agent-dialog-header {

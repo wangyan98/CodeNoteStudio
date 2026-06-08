@@ -11,12 +11,14 @@ class ToolRegistry:
         description: str,
         parameters: dict,
         handler: Callable,
+        skill: str | None = None,
     ):
         self.tools[name] = {
             "name": name,
             "description": description,
             "parameters": parameters,
             "handler": handler,
+            "skill": skill,
         }
 
     def get_openai_schemas(self) -> list[dict]:

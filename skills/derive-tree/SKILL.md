@@ -16,6 +16,40 @@ Typical use cases:
 - Showing how a theorem follows from axioms and prior results
 - Tracing the gradient computation graph through chain-rule applications
 
+## Derivation Rules
+
+Follow these rules strictly when creating derivation trees:
+
+### Top-down Decomposition
+When a formula has multiple terms (e.g., L = L_d + L_i + k), FIRST create a parent step with the full formula, THEN create one sibling step per term, each deriving from the parent via `derives_from`.
+
+### Sibling Steps for Parallel Terms
+Terms of the same formula are siblings — they share the same `derives_from` parent. Do NOT chain them sequentially unless one term is literally derived from another.
+
+### Title vs Content
+The `title` field holds the derivation explanation/description. The `content` field holds ONLY the LaTeX formula.
+
+### Recursion Stop Conditions
+Stop decomposing when a term is:
+(a) a base constant/definition with no further mathematical expansion, OR
+(b) maps to concrete code (function/variable) and has no further expansion.
+
+Otherwise continue: create a step for the sub-term and check if it can decompose further.
+
+### Multiple Files
+Each independent top-level formula gets its own `.derive.json` file. When adding a step, if it does NOT derive from any existing node (i.e., no `derives_from`), you MUST create a NEW `.derive.json` file for it — do NOT pile unrelated formulas into the same file. Only steps that share a derivation chain belong in the same file.
+
+### Example — User asks "推导 L = L_d + L_i + k"
+```
+create_derive("docs/output/lighting")
+add_step(path, title="全局光照 = 直接光 + 间接光 + 环境光", content="L = L_d + L_i + k")
+  → let parent_id = returned step id
+add_step(path, title="直接光照项", content="L_d", derives_from=parent_id)
+add_step(path, title="间接光照项", content="L_i", derives_from=parent_id)
+add_step(path, title="环境光常数项", content="k", derives_from=parent_id)
+# L_d and L_i may decompose further; k is a constant → stop.
+```
+
 ## Node Structure
 
 ```json

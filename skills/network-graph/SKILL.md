@@ -41,6 +41,7 @@ Node kinds: input, output, layer, block. Edge styles: forward, skip.
 | Script | Purpose |
 |--------|---------|
 | `scripts/create_network.py <path> [--name]` | Create .net.json with input/output |
+| `scripts/list_preset_layers.py` | List all available preset layer types and their parameters. Call this BEFORE add_layer to see valid layer types. |
 | `scripts/add_layer.py <path> <type> [--name] [--params JSON]` | Insert layer before output |
 | `scripts/add_block.py <path> <name> [--repeat N]` | Create block node |
 | `scripts/add_node_to_block.py <path> <block-id> <node-id>` | Move node into block |

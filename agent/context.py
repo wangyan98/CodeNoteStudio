@@ -1,3 +1,7 @@
+from pathlib import Path
+
+SKILLS_DIR = Path(__file__).resolve().parent.parent / "skills"
+
 SYSTEM_TEMPLATE = """You are a code analysis assistant. You help users understand code repositories by searching, reading files, and generating structured documentation.
 
 ## Current Context
@@ -6,38 +10,7 @@ SYSTEM_TEMPLATE = """You are a code analysis assistant. You help users understan
 - Output directory for generated docs: {output_dir}
 
 ## Available Tools
-You have access to tools for:
-- **File operations**: read_file, list_files, search_in_files — read and search code in the repositories
-- **Mind maps**: create_mindmap, add_node, update_node, delete_node — create .mind.json documents for hierarchical concept mapping
-- **Derivation trees**: create_derive, add_step, update_step, delete_step, set_derives_from — create .derive.json documents for step-by-step derivations.
-      When creating derivation trees, follow these rules:
-      * **Top-down decomposition**: When a formula has multiple terms (e.g., L = L_d + L_i + k),
-        FIRST create a parent step with the full formula, THEN create one sibling step per term,
-        each deriving from the parent via derives_from.
-      * **Sibling steps for parallel terms**: Terms of the same formula are siblings — they share the
-        same derives_from parent. Do NOT chain them sequentially unless one term is literally derived
-        from another.
-      * **Title vs Content**: The `title` field holds the derivation explanation/description.
-        The `content` field holds ONLY the LaTeX formula.
-      * **Recursion stop conditions**: Stop decomposing when a term is:
-        (a) a base constant/definition with no further mathematical expansion, OR
-        (b) maps to concrete code (function/variable) and has no further expansion.
-        Otherwise continue: create a step for the sub-term and check if it can decompose further.
-      * **Multiple files**: Each independent top-level formula gets its own .derive.json file.
-        When adding a step, if it does NOT derive from any existing node (i.e., no derives_from),
-        you MUST create a NEW .derive.json file for it — do NOT pile unrelated formulas into
-        the same file. Only steps that share a derivation chain belong in the same file.
-
-      Example — user asks "推导 L = L_d + L_i + k":
-        create_derive("docs/output/lighting")
-        add_step(path, title="全局光照 = 直接光 + 间接光 + 环境光", content="L = L_d + L_i + k")
-          → let parent_id = returned step id
-        add_step(path, title="直接光照项", content="L_d", derives_from=parent_id)
-        add_step(path, title="间接光照项", content="L_i", derives_from=parent_id)
-        add_step(path, title="环境光常数项", content="k", derives_from=parent_id)
-        # L_d and L_i may decompose further; k is a constant → stop.
-- **Network graphs**: create_network, add_layer, add_block, add_connection, update_node, delete_node, list_preset_layers — create .net.json documents for neural network architecture diagrams. Use list_preset_layers to see available preset layer types and their parameters before adding layers.
-- **Markdown**: create_md, append_section, replace_section — create .md documents
+{tools_section}
 
 ## Guidelines
 1. When asked to analyze code, first use search_in_files and read_file to understand the relevant source files.
@@ -59,16 +32,98 @@ When the user asks for a final analysis/report in markdown:
 5. After generating documents, summarize what you created and where.
 """
 
+# Fallback tool descriptions used when no ToolRegistry is passed to build_system_message
+_FALLBACK_TOOLS = """You have access to tools for:
+- **File operations**: read_file, list_files, search_in_files — read and search code in the repositories
+- **Mind maps**: create_mindmap, add_node, update_node, delete_node — create .mind.json documents for hierarchical concept mapping
+- **Derivation trees**: create_derive, add_step, update_step, delete_step, set_derives_from — create .derive.json documents for step-by-step derivations
+- **Network graphs**: create_network, add_layer, add_block, add_connection, update_node, delete_node — create .net.json documents for neural network architecture diagrams
+- **Markdown**: create_md, append_section, replace_section — create .md documents"""
+
+
+def _parse_frontmatter(text: str) -> dict | None:
+    """Extract YAML frontmatter from SKILL.md content. Returns dict with keys from frontmatter."""
+    lines = text.split("\n")
+    if not lines or lines[0].strip() != "---":
+        return None
+    end_idx = None
+    for i in range(1, len(lines)):
+        if lines[i].strip() == "---":
+            end_idx = i
+            break
+    if end_idx is None:
+        return None
+    result = {}
+    for line in lines[1:end_idx]:
+        if ":" in line:
+            key, _, value = line.partition(":")
+            result[key.strip()] = value.strip()
+    return result
+
+
+def load_skills_summary(skills_dir: Path | None = None) -> list[dict]:
+    """Load name and description from all SKILL.md files.
+
+    Returns a list of dicts with keys: name, description, path (relative to skills_dir).
+    """
+    if skills_dir is None:
+        skills_dir = SKILLS_DIR
+    summaries = []
+    for skill_md in sorted(skills_dir.glob("*/SKILL.md")):
+        content = skill_md.read_text(encoding="utf-8")
+        fm = _parse_frontmatter(content)
+        if fm and "name" in fm:
+            summaries.append({
+                "name": fm["name"],
+                "description": fm.get("description", ""),
+                "path": str(skill_md.relative_to(skills_dir.parent)),
+            })
+    return summaries
+
+
+def load_full_skill(skill_name: str, skills_dir: Path | None = None) -> str | None:
+    """Load the full SKILL.md content for a given skill name.
+
+    Returns the complete markdown content (including frontmatter), or None if not found.
+    """
+    if skills_dir is None:
+        skills_dir = SKILLS_DIR
+    for skill_md in sorted(skills_dir.glob("*/SKILL.md")):
+        content = skill_md.read_text(encoding="utf-8")
+        fm = _parse_frontmatter(content)
+        if fm and fm.get("name") == skill_name:
+            return content
+    return None
+
+
+def _build_tools_section(tools: list[dict]) -> str:
+    """Generate a concise tools section from a list of tool metadata dicts.
+
+    Each dict should have: name, description.
+    """
+    lines = []
+    for t in tools:
+        name = t["name"]
+        desc = t.get("description", "")
+        # Truncate very long descriptions
+        if len(desc) > 120:
+            desc = desc[:117] + "..."
+        lines.append(f"- **{name}**: {desc}")
+    return "\n".join(lines)
+
 
 def build_system_message(
     workspace: str,
     repos: list[str],
     output_dir: str,
+    tools_summary: list[dict] | None = None,
 ) -> str:
+    tools_section = _build_tools_section(tools_summary) if tools_summary else _FALLBACK_TOOLS
     return SYSTEM_TEMPLATE.format(
         workspace=workspace,
         repos=", ".join(repos) if repos else "(none)",
         output_dir=output_dir,
+        tools_section=tools_section,
     )
 
 

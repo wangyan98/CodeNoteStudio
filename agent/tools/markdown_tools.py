@@ -6,6 +6,7 @@ def register_markdown_tools(registry: ToolRegistry):
     registry.register(
         name="create_md",
         description="Create a new .md markdown file",
+        skill="markdown",
         parameters={
             "type": "object",
             "properties": {
@@ -20,6 +21,7 @@ def register_markdown_tools(registry: ToolRegistry):
     registry.register(
         name="append_section",
         description="Append a section to a markdown file",
+        skill="markdown",
         parameters={
             "type": "object",
             "properties": {
@@ -37,6 +39,7 @@ def register_markdown_tools(registry: ToolRegistry):
     registry.register(
         name="replace_section",
         description="Replace a section in a markdown file",
+        skill="markdown",
         parameters={
             "type": "object",
             "properties": {
@@ -54,6 +57,7 @@ def register_markdown_tools(registry: ToolRegistry):
     registry.register(
         name="insert_embed",
         description="Insert an ![[path]] embed reference into a .md file. Embeds another notebook note inline. Path is relative to workspace root. Supported targets: .seq.mermaid, .derive.json, .mind.json, .net.json, .md.",
+        skill="markdown",
         parameters={
             "type": "object",
             "properties": {
@@ -70,6 +74,7 @@ def register_markdown_tools(registry: ToolRegistry):
     registry.register(
         name="delete_embed",
         description="Delete an ![[path]] embed reference from a .md file",
+        skill="markdown",
         parameters={
             "type": "object",
             "properties": {
@@ -86,6 +91,7 @@ def register_markdown_tools(registry: ToolRegistry):
     registry.register(
         name="insert_ref",
         description="Insert an @ref() code reference into a .md file. Links to specific code locations with #-separated segments: @ref(repo#file#line#name). All segments are optional. Without repo prefix, scoped to current repo.",
+        skill="markdown",
         parameters={
             "type": "object",
             "properties": {
@@ -102,6 +108,7 @@ def register_markdown_tools(registry: ToolRegistry):
     registry.register(
         name="delete_ref",
         description="Delete an @ref() code reference from a .md file",
+        skill="markdown",
         parameters={
             "type": "object",
             "properties": {

@@ -236,11 +236,11 @@ export function AgentDialog({ visible, onClose }: AgentDialogProps) {
         <div className="agent-dialog-header">
           <span className="agent-dialog-title">Code Agent</span>
           <div className="agent-dialog-header-actions">
-            <button className="agent-dialog-header-btn" onClick={() => setMinimized(!minimized)}>
-              {minimized ? '□' : '−'}
-            </button>
-            <button className="agent-dialog-header-btn" onClick={handleClearHistory} title="Clear">
+            <button className="agent-dialog-header-btn" onClick={handleClearHistory} title="Clear history">
               Clear
+            </button>
+            <button className="agent-dialog-header-btn" onClick={() => setMinimized(!minimized)} title={minimized ? 'Expand' : 'Minimize'}>
+              {minimized ? '□' : '−'}
             </button>
             <button className="agent-dialog-header-btn" onClick={onClose}>×</button>
           </div>

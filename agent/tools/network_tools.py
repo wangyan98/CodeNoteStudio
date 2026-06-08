@@ -6,6 +6,7 @@ def register_network_tools(registry: ToolRegistry):
     registry.register(
         name="create_network",
         description="Create a new .net.json neural network graph file",
+        skill="network-graph",
         parameters={
             "type": "object",
             "properties": {
@@ -20,6 +21,7 @@ def register_network_tools(registry: ToolRegistry):
     registry.register(
         name="add_layer",
         description="Add a layer to a network graph. IMPORTANT: If this layer maps to specific code, call set_code_mapping immediately after with the returned node id.",
+        skill="network-graph",
         parameters={
             "type": "object",
             "properties": {
@@ -35,6 +37,7 @@ def register_network_tools(registry: ToolRegistry):
     registry.register(
         name="add_block",
         description="Add a block node (container for sub-layers) to a network graph. IMPORTANT: If this block maps to specific code, call set_code_mapping immediately after with the returned node id.",
+        skill="network-graph",
         parameters={
             "type": "object",
             "properties": {
@@ -50,6 +53,7 @@ def register_network_tools(registry: ToolRegistry):
     registry.register(
         name="list_preset_layers",
         description="List all available preset layer types and their parameter definitions for neural network graphs",
+        skill="network-graph",
         parameters={
             "type": "object",
             "properties": {},

@@ -6,6 +6,7 @@ def register_derive_tools(registry: ToolRegistry):
     registry.register(
         name="create_derive",
         description="Create a new .derive.json derivation tree file",
+        skill="derive-tree",
         parameters={
             "type": "object",
             "properties": {
@@ -19,6 +20,7 @@ def register_derive_tools(registry: ToolRegistry):
     registry.register(
         name="add_step",
         description="Add a step to a derivation tree. IMPORTANT: If this step has corresponding source code, call set_code_mapping immediately after with the returned step id.",
+        skill="derive-tree",
         parameters={
             "type": "object",
             "properties": {

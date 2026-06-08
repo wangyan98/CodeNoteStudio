@@ -11,6 +11,7 @@ def register_mindmap_tools(registry: ToolRegistry):
     registry.register(
         name="create_mindmap",
         description="Create a new .mind.json mind map file with a root node",
+        skill="mind-map",
         parameters={
             "type": "object",
             "properties": {
@@ -24,6 +25,7 @@ def register_mindmap_tools(registry: ToolRegistry):
     registry.register(
         name="add_node",
         description="Add a child node to a mind map node. IMPORTANT: If this node represents specific code (a function, class, or file location), call set_code_mapping immediately after with the returned node id.",
+        skill="mind-map",
         parameters={
             "type": "object",
             "properties": {
@@ -42,6 +44,7 @@ def register_mindmap_tools(registry: ToolRegistry):
     registry.register(
         name="update_node",
         description="Update a mind map node's title, content, or code mapping",
+        skill="mind-map",
         parameters={
             "type": "object",
             "properties": {
@@ -58,6 +61,7 @@ def register_mindmap_tools(registry: ToolRegistry):
     registry.register(
         name="delete_node",
         description="Delete a node from a mind map (and its subtree)",
+        skill="mind-map",
         parameters={
             "type": "object",
             "properties": {
