@@ -18,6 +18,48 @@ function tokenizeLine(line: string): string {
   })
 }
 
+function parseAlignment(delimiter: string): ('left' | 'center' | 'right')[] {
+  return delimiter
+    .replace(/^\|/, '')
+    .replace(/\|$/, '')
+    .split('|')
+    .map(cell => {
+      const trimmed = cell.trim()
+      if (trimmed.startsWith(':') && trimmed.endsWith(':')) return 'center'
+      if (trimmed.endsWith(':')) return 'right'
+      return 'left'
+    })
+}
+
+function renderTable(lines: string[]): string {
+  const rows = lines
+    .map(line => line.replace(/^\|/, '').replace(/\|$/, ''))
+    .map(line => line.split('|').map(cell => cell.trim()))
+
+  const headerCells = rows[0]
+  const hasDelimiter = rows.length > 1 && /^[\s:\-|]+$/.test(lines[1])
+  const hasAlignmentMarkers = hasDelimiter && /:/.test(lines[1])
+  const alignments = hasDelimiter
+    ? parseAlignment(lines[1])
+    : headerCells.map(() => 'left')
+
+  const dataStart = hasDelimiter ? 2 : 1
+
+  const headerHtml = '<tr>' + headerCells.map((cell, i) => {
+    const style = hasAlignmentMarkers && alignments[i] ? ` style="text-align:${alignments[i]}"` : ''
+    return `<th${style}>${cell}</th>`
+  }).join('') + '</tr>'
+
+  const bodyHtml = rows.slice(dataStart).map(row => {
+    return '<tr>' + row.map((cell, i) => {
+      const style = hasAlignmentMarkers && alignments[i] ? ` style="text-align:${alignments[i]}"` : ''
+      return `<td${style}>${cell}</td>`
+    }).join('') + '</tr>'
+  }).join('')
+
+  return `<table><thead>${headerHtml}</thead><tbody>${bodyHtml}</tbody></table>`
+}
+
 function renderCodeSnippet(snippet: CodeSnippet): string {
   const lines = snippet.lines.map((line, i) => {
     const lineNum = snippet.startLine + i
@@ -163,6 +205,13 @@ export function renderMarkdown(
       return result
     }
   )
+
+  // Tables (consecutive pipe-table lines)
+  html = html.replace(/(?:^\|.+\|$\n?)+/gm, (match) => {
+    const lines = match.trim().split('\n')
+    if (lines.length < 2) return match // single pipe line is not a table
+    return renderTable(lines)
+  })
 
   // Restore protected code blocks
   html = html.replace(/\x00CODE(\d+)\x00/g, (_full, idx) => codeBlocks[parseInt(idx)])
