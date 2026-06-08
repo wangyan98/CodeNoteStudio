@@ -408,13 +408,14 @@ export function WorkspaceToolbar() {
             onClick={() => {
               dispatch({ type: 'SET_CODE_REPO', path: repo.path })
             }}
-            onContextMenu={async (e) => {
+            onContextMenu={(e) => {
               e.preventDefault()
-              if (!remoteUrls.has(repo.path)) {
-                const url = await window.electronAPI.getRemoteUrl(repo.path)
-                setRemoteUrls((prev) => new Map(prev).set(repo.path, url))
-              }
               setRepoContextMenu({ x: e.clientX, y: e.clientY, repoPath: repo.path, repoIndex: index })
+              if (!remoteUrls.has(repo.path)) {
+                window.electronAPI.getRemoteUrl(repo.path).then((url) => {
+                  setRemoteUrls((prev) => new Map(prev).set(repo.path, url))
+                })
+              }
             }}
           >
             <span
