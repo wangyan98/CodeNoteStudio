@@ -172,7 +172,6 @@ export const MindMapCanvas = forwardRef<MindMapCanvasHandle, MindMapCanvasProps>
     const focusNodeIdRef = useRef<string | null>(null)
     const selectedNodeIdRef = useRef<string | null>(null)
     const embedOverlayRef = useRef<HTMLDivElement>(null)
-    const autoPanOffsetRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 })
 
     const [expandedEmbeds, setExpandedEmbeds] = useState<Set<string>>(new Set())
     const embedCacheRef = useRef<Map<string, ResolvedEmbed>>(new Map())
@@ -752,6 +751,8 @@ export const MindMapCanvas = forwardRef<MindMapCanvasHandle, MindMapCanvasProps>
       let autoPanMouseX = 0
       let autoPanMouseY = 0
       let autoPanDraggedNode: SVGGElement | null = null
+      let autoPanDraggedOrigX = 0
+      let autoPanDraggedOrigY = 0
       let autoPanDescendantIds: Set<string> = new Set()
       const AUTO_PAN_EDGE = 35
       const AUTO_PAN_MAX_SPEED = 500 // px/s
@@ -970,6 +971,8 @@ export const MindMapCanvas = forwardRef<MindMapCanvasHandle, MindMapCanvasProps>
           const pt = d3.pointer(event, svgRef.current!)
           dragOffset = { x: pt[0] - d.y!, y: pt[1] - d.x! }
           autoPanDraggedNode = this
+          autoPanDraggedOrigX = d.x!
+          autoPanDraggedOrigY = d.y!
           autoPanDescendantIds = getDescendantIds(d.data.id)
         })
         .on('drag', function (event: d3.D3DragEvent<SVGGElement, unknown, unknown>, d: d3.HierarchyNode<MindMapNode>) {
@@ -1225,31 +1228,33 @@ export const MindMapCanvas = forwardRef<MindMapCanvasHandle, MindMapCanvasProps>
                 }
                 const totalDx = dx * dt
                 const totalDy = dy * dt
-                autoPanOffsetRef.current = {
-                  x: autoPanOffsetRef.current.x + totalDx,
-                  y: autoPanOffsetRef.current.y + totalDy
-                }
                 const svgEl = svgRef.current
-                if (gElRef.current && svgEl) {
-                  const zt = d3.zoomTransform(svgEl)
-                  const ox = autoPanOffsetRef.current.x
-                  const oy = autoPanOffsetRef.current.y
-                  d3.select(gElRef.current).attr('transform',
-                    `translate(${zt.x + ox},${zt.y + oy}) scale(${zt.k})`)
-                  // Compensate dragged node to stay under cursor
-                  const gDx = -totalDx / zt.k
-                  const gDy = -totalDy / zt.k
-                  const shiftEl = (el: SVGGElement) => {
-                    const cur = el.getAttribute('transform') || ''
-                    const m = /translate\(([^,]+),\s*([^)]+)\)/.exec(cur)
-                    if (m) {
-                      el.setAttribute('transform', `translate(${parseFloat(m[1]) + gDx},${parseFloat(m[2]) + gDy})`)
-                    }
+                if (svgEl && zoomRef.current && dragOffset) {
+                  const ztBefore = d3.zoomTransform(svgEl)
+                  d3.select(svgEl).call(zoomRef.current.translateBy, totalDx, totalDy)
+                  const ztAfter = d3.zoomTransform(svgEl)
+                  // Adjust dragOffset so the next drag event computes correct positions
+                  dragOffset.x += totalDx / ztAfter.k
+                  dragOffset.y += totalDy / ztAfter.k
+                  // Reposition dragged node and descendants immediately
+                  const svgRect = svgEl.getBoundingClientRect()
+                  const px = autoPanMouseX - svgRect.left
+                  const py = autoPanMouseY - svgRect.top
+                  const newNodeX = px - dragOffset.x
+                  const newNodeY = py - dragOffset.y
+                  const newDx = newNodeX - autoPanDraggedOrigY
+                  const newDy = newNodeY - autoPanDraggedOrigX
+                  // Move dragged node
+                  if (autoPanDraggedNode) {
+                    d3.select(autoPanDraggedNode).attr('transform', `translate(${newNodeX},${newNodeY})`)
                   }
-                  if (autoPanDraggedNode) shiftEl(autoPanDraggedNode)
+                  // Move descendants by the same delta
                   autoPanDescendantIds.forEach(id => {
+                    const orig = originalPositions.get(id)
                     const el = svgEl.querySelector<SVGGElement>(`[data-node-id="${id}"]`)
-                    if (el) shiftEl(el)
+                    if (el && orig) {
+                      el.setAttribute('transform', `translate(${orig.y + newDx},${orig.x + newDy})`)
+                    }
                   })
                 }
                 autoPanRafId = requestAnimationFrame(panStep)
@@ -1275,16 +1280,6 @@ export const MindMapCanvas = forwardRef<MindMapCanvasHandle, MindMapCanvasProps>
           }
           autoPanDraggedNode = null
           autoPanDescendantIds = new Set()
-
-          // Fold accumulated auto-pan offset into zoom state
-          if (autoPanOffsetRef.current.x !== 0 || autoPanOffsetRef.current.y !== 0) {
-            const svgEl = svgRef.current
-            if (svgEl && zoomRef.current) {
-              d3.select(svgEl).call(zoomRef.current.translateBy,
-                autoPanOffsetRef.current.x, autoPanOffsetRef.current.y)
-            }
-            autoPanOffsetRef.current = { x: 0, y: 0 }
-          }
 
           clearDragHighlight()
 
@@ -1337,10 +1332,8 @@ export const MindMapCanvas = forwardRef<MindMapCanvasHandle, MindMapCanvasProps>
           .scaleExtent([0.3, 2.5])
           .on('zoom', (event) => {
             if (gElRef.current) {
-              const ox = autoPanOffsetRef.current.x
-              const oy = autoPanOffsetRef.current.y
               d3.select(gElRef.current).attr('transform',
-                `translate(${event.transform.x + ox},${event.transform.y + oy}) scale(${event.transform.k})`)
+                `translate(${event.transform.x},${event.transform.y}) scale(${event.transform.k})`)
             }
             requestAnimationFrame(() => syncEmbedPositions())
           })
@@ -1352,10 +1345,8 @@ export const MindMapCanvas = forwardRef<MindMapCanvasHandle, MindMapCanvasProps>
       const svgNode = svg.node()
       if (svgNode) {
         const transform = d3.zoomTransform(svgNode)
-        const ox = autoPanOffsetRef.current.x
-        const oy = autoPanOffsetRef.current.y
-        if (transform.x !== 0 || transform.y !== 0 || transform.k !== 1 || ox !== 0 || oy !== 0) {
-          g.attr('transform', `translate(${transform.x + ox},${transform.y + oy}) scale(${transform.k})`)
+        if (transform.x !== 0 || transform.y !== 0 || transform.k !== 1) {
+          g.attr('transform', `translate(${transform.x},${transform.y}) scale(${transform.k})`)
         }
       }
 
