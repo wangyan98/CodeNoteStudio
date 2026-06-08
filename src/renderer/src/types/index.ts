@@ -76,6 +76,13 @@ export type AppAction =
   | { type: 'SET_PENDING_SCROLL'; filePath: string; line: number }
   | { type: 'SET_CODE_REPOS'; repos: CodeRepo[] }
   | { type: 'CLEAR_PENDING_SCROLL' }
+  | { type: 'CLOSE_OTHER_CODE_FILES'; index: number }
+  | { type: 'CLOSE_CODE_FILES_LEFT'; index: number }
+  | { type: 'CLOSE_CODE_FILES_RIGHT'; index: number }
+  | { type: 'CLOSE_ALL_CODE_FILES' }
+  | { type: 'REOPEN_CLOSED_CODE_FILE' }
+  | { type: 'REVEAL_FILE_IN_TREE'; filePath: string }
+  | { type: 'CLEAR_REVEAL_FILE_IN_TREE' }
 
 export interface AppState {
   notes: NoteItem[]
@@ -95,4 +102,6 @@ export interface AppState {
   codeMappings: CodeMapping[]
   pendingScroll: { filePath: string; line: number } | null
   codeRepos: CodeRepo[]
+  recentlyClosedFile: CodeFile | null
+  revealFilePath: string | null
 }
