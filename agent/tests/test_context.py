@@ -35,4 +35,4 @@ def test_build_context_returns_correct_dict():
 
 def test_build_context_default_output_dir():
     result = build_context(workspace="/ws", repos=["/repo"])
-    assert result["output_dir"] == "/ws/docs"
+    assert result["output_dir"] == "/ws"

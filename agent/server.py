@@ -128,7 +128,7 @@ def create_app(agent_factory=None, memory=None):
         provider_id = body.get("provider_id")
         workspace = body.get("workspace", "") or os.getcwd()
         repos = body.get("repos", [])
-        default_output = f"{workspace}/docs" if workspace else f"{os.getcwd()}/docs"
+        default_output = workspace if workspace else os.getcwd()
         output_dir = body.get("output_dir", default_output)
 
         # Resolve provider
