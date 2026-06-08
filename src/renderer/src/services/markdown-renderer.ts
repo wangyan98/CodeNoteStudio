@@ -1,3 +1,4 @@
+import katex from 'katex'
 import type { CodeMapping, CodeSnippet } from '../types'
 
 function escapeHtml(text: string): string {
@@ -138,6 +139,26 @@ export function renderMarkdown(
     return `\x00CODE${idx}\x00`
   })
 
+  // Protect block formulas $$...$$
+  const blockFormulas: string[] = []
+  html = html.replace(/\$\$([\s\S]*?)\$\$/g, (_full, formula) => {
+    const idx = blockFormulas.length
+    blockFormulas.push(
+      katex.renderToString(formula.trim(), { displayMode: true, throwOnError: false })
+    )
+    return `\x00MATHB${idx}\x00`
+  })
+
+  // Protect inline formulas $...$
+  const inlineFormulas: string[] = []
+  html = html.replace(/\$([^$\n]+)\$/g, (_full, formula) => {
+    const idx = inlineFormulas.length
+    inlineFormulas.push(
+      katex.renderToString(formula.trim(), { displayMode: false, throwOnError: false })
+    )
+    return `\x00MATHI${idx}\x00`
+  })
+
   // Inline code
   html = html.replace(/`([^`]+)`/g, '<code>$1</code>')
 
@@ -214,6 +235,18 @@ export function renderMarkdown(
 
   // Restore protected code blocks
   html = html.replace(/\x00CODE(\d+)\x00/g, (_full, idx) => codeBlocks[parseInt(idx)])
+
+  // Restore protected block formulas
+  html = html.replace(
+    /\x00MATHB(\d+)\x00/g,
+    (_full, idx) => `<div class="math-block">${blockFormulas[parseInt(idx)]}</div>`
+  )
+
+  // Restore protected inline formulas
+  html = html.replace(
+    /\x00MATHI(\d+)\x00/g,
+    (_full, idx) => `<span class="math-inline">${inlineFormulas[parseInt(idx)]}</span>`
+  )
 
   // Paragraph wrapping: split by blank lines, wrap non-block segments in <p>
   const blocks = html.split(/\n\n+/)
