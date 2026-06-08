@@ -81,6 +81,12 @@ Four-panel resizable interface:
 - Node.js 18+
 - npm 9+
 - Python 3.10+ (for the AI Agent)
+- C++ compiler toolchain (for native module rebuild):
+  - macOS: Xcode Command Line Tools (`xcode-select --install`)
+  - Windows: Visual Studio Build Tools + Python 3
+  - Linux: `build-essential` (gcc, g++, make)
+
+> **Windows note:** The AI Agent expects a `python3` command on your PATH. If your Python is only available as `python` or `py`, create a symlink or alias so `python3` resolves correctly.
 
 ### Install
 
@@ -90,7 +96,11 @@ cd note
 npm install
 ```
 
-The `postinstall` script automatically rebuilds native modules for Electron and copies Tree-sitter grammar files.
+The `postinstall` script automatically rebuilds native modules for Electron and copies Tree-sitter grammar files. If grammar files are missing after install, run the fallback script:
+
+```bash
+bash scripts/download-grammars.sh
+```
 
 Install the Python agent dependencies:
 
@@ -132,6 +142,8 @@ npm test                # Run all frontend tests once
 npm run test:watch      # Run in watch mode
 cd agent && pytest      # Run Python agent tests
 ```
+
+> Agent integration tests require a configured LLM provider. If you don't have one set up yet, skip them with `SKIP_INTEGRATION_TESTS=1 pytest`.
 
 ## Project Structure
 
@@ -284,6 +296,10 @@ The AI Agent connects to any OpenAI-compatible API. Providers are configured in 
 | `model` | Model name string sent in the chat completion request |
 
 Multiple providers can be configured — select between them in the agent dialog's model dropdown. Any OpenAI-compatible service works, including self-hosted models (Ollama, vLLM, etc.).
+
+### layer-catalog.json (per-workspace override)
+
+The project includes a built-in catalog of ~26 PyTorch layer definitions for the neural network diagram editor. You can override or extend it by placing a `layer-catalog.json` in your workspace root. The editor merges workspace-level layers with the built-in catalog, so workspace-specific layers take precedence.
 
 ## IPC API
 
