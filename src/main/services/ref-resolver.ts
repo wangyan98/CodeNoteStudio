@@ -99,6 +99,22 @@ async function extractCodeSnippet(
   }
 }
 
+function getRepoPath(
+  symbols: (CodeSymbol & { repoPath?: string })[],
+  targetRepo?: string,
+  activeRepo?: string
+): string | undefined {
+  if (targetRepo) {
+    const match = symbols.find(
+      (s) => s.repoPath && (s.repoPath.endsWith('/' + targetRepo) || s.repoPath === targetRepo)
+    )
+    if (match?.repoPath) return match.repoPath
+  }
+  const any = symbols.find((s) => s.repoPath)
+  if (any?.repoPath) return any.repoPath
+  return activeRepo
+}
+
 /**
  * Resolve RefSpecs to CodeMapping objects using a 5-tier priority.
  * Only matched refs are returned. Unmatched refs are silently dropped.
@@ -179,6 +195,36 @@ export async function resolveRefs(
           mappings.push(mapping)
           continue
         }
+        // Fallback A: file found in index but no symbol spans this line.
+        // Still allow navigation to file:line.
+        const absPath = fileSymbols[0]?.filePath
+        if (absPath) {
+          const mapping: CodeMapping = {
+            raw: ref.raw,
+            functionName: ref.name ?? `line ${ref.line}`,
+            filePath: absPath,
+            startLine: ref.line,
+            endLine: ref.line,
+          }
+          mapping.codeSnippet = await extractCodeSnippet(absPath, ref.line)
+          mappings.push(mapping)
+          continue
+        }
+      }
+      // Fallback B: file not in symbol index. Construct path from repo root.
+      const repoPath = getRepoPath(candidateSymbols, targetRepo, activeRepo)
+      if (repoPath) {
+        const absPath = repoPath + '/' + ref.filePath
+        const mapping: CodeMapping = {
+          raw: ref.raw,
+          functionName: ref.name ?? `line ${ref.line}`,
+          filePath: absPath,
+          startLine: ref.line,
+          endLine: ref.line,
+        }
+        mapping.codeSnippet = await extractCodeSnippet(absPath, ref.line)
+        mappings.push(mapping)
+        continue
       }
     }
 
@@ -195,6 +241,30 @@ export async function resolveRefs(
           mappings.push(mapping)
           continue
         }
+        // Fallback: file found but symbol not matched. Navigate to file start.
+        const absPath = fileSymbols[0]?.filePath
+        if (absPath) {
+          mappings.push({
+            raw: ref.raw,
+            functionName: ref.name,
+            filePath: absPath,
+            startLine: 1,
+            endLine: 1,
+          })
+          continue
+        }
+      }
+      // Fallback: file not in index. Construct path from repo root.
+      const repoPath = getRepoPath(candidateSymbols, targetRepo, activeRepo)
+      if (repoPath) {
+        mappings.push({
+          raw: ref.raw,
+          functionName: ref.name,
+          filePath: repoPath + '/' + ref.filePath,
+          startLine: 1,
+          endLine: 1,
+        })
+        continue
       }
     }
 
