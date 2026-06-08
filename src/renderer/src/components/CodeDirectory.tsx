@@ -178,19 +178,31 @@ export function CodeDirectory() {
   useEffect(() => {
     if (!state.revealFilePath) return
     const filePath = state.revealFilePath
-    // Double rAF to wait for tree re-render and paint after directory expansion
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        const escaped = filePath.replace(/"/g, '\\"')
+    let raf1: number
+    let raf2: number
+    let timer: ReturnType<typeof setTimeout>
+    let cancelled = false
+
+    raf1 = requestAnimationFrame(() => {
+      raf2 = requestAnimationFrame(() => {
+        if (cancelled) return
+        const escaped = CSS.escape(filePath)
         const el = document.querySelector(`[data-file-path="${escaped}"]`)
         if (el) {
           el.scrollIntoView({ block: 'center', behavior: 'smooth' })
           el.classList.add('code-file-item-highlight')
-          setTimeout(() => el.classList.remove('code-file-item-highlight'), 2000)
+          timer = setTimeout(() => el.classList.remove('code-file-item-highlight'), 2000)
         }
         dispatch({ type: 'CLEAR_REVEAL_FILE_IN_TREE' })
       })
     })
+
+    return () => {
+      cancelled = true
+      cancelAnimationFrame(raf1)
+      cancelAnimationFrame(raf2)
+      clearTimeout(timer)
+    }
   }, [state.revealFilePath, dispatch])
 
   const handleFileSelect = useCallback((file: RepoFileNode) => {
