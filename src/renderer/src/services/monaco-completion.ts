@@ -8,7 +8,7 @@ export function registerRefCompletionProvider(): monaco.IDisposable {
       const lineContent = model.getLineContent(position.lineNumber)
       const textBeforeCursor = lineContent.substring(0, position.column - 1)
 
-      const refMatch = textBeforeCursor.match(/@ref\(([a-zA-Z0-9._/\-:]*)$/)
+      const refMatch = textBeforeCursor.match(/@ref\(([a-zA-Z0-9._/\-:#]*)$/)
       if (!refMatch) return { suggestions: [] }
 
       const partialName = refMatch[1] || ''

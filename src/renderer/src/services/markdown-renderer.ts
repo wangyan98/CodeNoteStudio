@@ -212,7 +212,7 @@ export function renderMarkdown(
 
   // @ref code references
   html = html.replace(
-    /@ref\(([a-zA-Z0-9._/\-:]+)\)/g,
+    /@ref\(([a-zA-Z0-9._/\-:#]+)\)/g,
     (_fullMatch: string, refBody: string) => {
       if (!matchedRaws.has(refBody)) {
         return `@ref(${refBody})`
