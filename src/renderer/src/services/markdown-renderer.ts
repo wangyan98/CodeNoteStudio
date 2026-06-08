@@ -1,6 +1,13 @@
 import katex from 'katex'
 import type { CodeMapping, CodeSnippet } from '../types'
 
+function decodeHtmlEntities(text: string): string {
+  return text
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&amp;/g, '&')
+}
+
 function escapeHtml(text: string): string {
   return text
     .replace(/&/g, '&amp;')
@@ -144,7 +151,7 @@ export function renderMarkdown(
   html = html.replace(/\$\$([\s\S]*?)\$\$/g, (_full, formula) => {
     const idx = blockFormulas.length
     blockFormulas.push(
-      katex.renderToString(formula.trim(), { displayMode: true, throwOnError: false })
+      katex.renderToString(decodeHtmlEntities(formula.trim()), { displayMode: true, throwOnError: false })
     )
     return `\x00MATHB${idx}\x00`
   })
@@ -154,7 +161,7 @@ export function renderMarkdown(
   html = html.replace(/\$([^$\n]+)\$/g, (_full, formula) => {
     const idx = inlineFormulas.length
     inlineFormulas.push(
-      katex.renderToString(formula.trim(), { displayMode: false, throwOnError: false })
+      katex.renderToString(decodeHtmlEntities(formula.trim()), { displayMode: false, throwOnError: false })
     )
     return `\x00MATHI${idx}\x00`
   })
