@@ -46,6 +46,8 @@ const api = {
   readBinaryFile: (absolutePath: string) => ipcRenderer.invoke('code:read-binary-file', absolutePath),
   getGitCommit: (repoPath: string) => ipcRenderer.invoke('code:get-git-commit', repoPath),
   getRemoteUrl: (repoPath: string) => ipcRenderer.invoke('code:get-remote-url', repoPath),
+  getRecentCommits: (repoPath: string, maxCount?: number) =>
+    ipcRenderer.invoke('code:get-recent-commits', repoPath, maxCount),
   parseSymbols: (filePaths: string[]) => ipcRenderer.invoke('code:parse-symbols', filePaths),
   indexSymbols: (repoPath: string) => ipcRenderer.invoke('code:index-symbols', repoPath),
   resolveRefs: (notePath: string, content: string, activeRepoPath?: string) =>

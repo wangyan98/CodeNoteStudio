@@ -208,6 +208,11 @@ export function registerIpcHandlers(projectPath: string): void {
     return getRemoteUrl(repoPath)
   })
 
+  ipcMain.handle('code:get-recent-commits', async (_event, repoPath: string, maxCount?: number) => {
+    const { getRecentCommits } = await import('./services/git-service')
+    return getRecentCommits(repoPath, maxCount)
+  })
+
   ipcMain.handle('code:parse-symbols', async (_event, filePaths: string[]) => {
     try {
       const { extractSymbols } = await import('./services/code-parser')
