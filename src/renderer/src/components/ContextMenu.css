@@ -43,6 +43,16 @@
   pointer-events: none;
 }
 
+.node-context-menu-color-dot {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  margin-right: 6px;
+  flex-shrink: 0;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
 .node-context-menu-separator {
   height: 1px;
   background: #555;

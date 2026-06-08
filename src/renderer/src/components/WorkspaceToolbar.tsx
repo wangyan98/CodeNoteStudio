@@ -264,7 +264,8 @@ export function WorkspaceToolbar() {
       },
       {
         label: 'Change Color',
-        action: () => { setColorSubmenuRepo(repoPath) }
+        action: () => { setColorSubmenuRepo(repoPath) },
+        disableAutoClose: true
       },
       { separator: true },
       {
@@ -462,7 +463,8 @@ export function WorkspaceToolbar() {
           y={repoContextMenu.y}
           items={[
             ...REPO_COLORS.map((color) => ({
-              label: '●',
+              label: color,
+              color: color,
               action: async () => {
                 const newRepos = codeRepos.map((r) =>
                   r.path === colorSubmenuRepo ? { ...r, color } : r

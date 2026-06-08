@@ -8,6 +8,8 @@ export interface MenuItem {
   danger?: boolean
   disabled?: boolean
   separator?: false
+  color?: string
+  disableAutoClose?: boolean
 }
 
 export interface MenuSeparator {
@@ -60,7 +62,9 @@ export function NodeContextMenu({ x, y, items, onClose }: NodeContextMenuProps) 
       if (!entry || 'separator' in entry || entry.disabled) return
       e.preventDefault()
       e.stopPropagation()
-      Promise.resolve(entry.action()).then(() => onClose())
+      Promise.resolve(entry.action()).then(() => {
+        if (!entry.disableAutoClose) onClose()
+      })
     }
 
     menu.addEventListener('click', handleItemClick)
@@ -87,6 +91,12 @@ export function NodeContextMenu({ x, y, items, onClose }: NodeContextMenuProps) 
             data-menu-action={i}
             className={`node-context-menu-item${entry.danger ? ' node-context-menu-item-danger' : ''}${entry.disabled ? ' node-context-menu-item-disabled' : ''}`}
           >
+            {entry.color && (
+              <span
+                className="node-context-menu-color-dot"
+                style={{ backgroundColor: entry.color }}
+              />
+            )}
             <span>{entry.label}</span>
             {entry.shortcut && (
               <span className="node-context-menu-shortcut">{entry.shortcut}</span>

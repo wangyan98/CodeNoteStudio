@@ -8,11 +8,12 @@ import './CodeViewport.css'
 
 const REPO_COLORS = ['#e06c75', '#61afef', '#98c379', '#d19a66', '#c678dd', '#56b6c2', '#e5c07b', '#abb2bf']
 
-function getRepoColorByPath(repoPath: string | undefined, codeRepos: Array<{ path: string }>): string | undefined {
+function getRepoColorByPath(repoPath: string | undefined, codeRepos: Array<{ path: string; color?: string }>): string | undefined {
   if (!repoPath) return undefined
   const index = codeRepos.findIndex((r) => r.path === repoPath)
   if (index < 0) return undefined
-  return REPO_COLORS[index % REPO_COLORS.length]
+  const repo = codeRepos[index]
+  return repo.color || REPO_COLORS[index % REPO_COLORS.length]
 }
 
 const IMAGE_EXTS = new Set(['png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp'])

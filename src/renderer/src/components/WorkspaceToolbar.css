@@ -270,15 +270,6 @@
   color: #e06c75;
 }
 
-.node-context-menu-item .color-dot {
-  display: inline-block;
-  width: 12px;
-  height: 12px;
-  border-radius: 50%;
-  margin-right: 8px;
-  vertical-align: middle;
-}
-
 .repo-detail-overlay {
   position: fixed;
   inset: 0;
