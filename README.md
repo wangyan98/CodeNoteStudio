@@ -27,6 +27,16 @@ A desktop note-taking tool that combines Markdown, mind maps, derivation trees, 
 - Attach multiple code repositories per workspace
 - Remembers last-opened note, active code repo, and open code file tabs across restarts
 
+### AI Agent
+
+LLM-powered coding assistant that can analyze code repositories and generate structured notes:
+
+- **Chat Interface** — Toggle the agent dialog from the toolbar to chat with an LLM about your code
+- **Tool Use** — The agent can read files, search code, and create/edit notes (Markdown, mind maps, derivation trees, network diagrams) directly in your workspace
+- **Progressive Skill Disclosure** — Specialized note-type skills are loaded on-demand; the agent learns how to create mind maps or network diagrams only when needed
+- **Streaming Responses** — Server-Sent Events (SSE) deliver real-time token streaming with tool call visibility in the chat UI
+- **Multi-Provider** — Supports any OpenAI-compatible API (DeepSeek, OpenAI, local models via Ollama, etc.)
+
 ### Live Server
 
 Built-in HTTP + WebSocket server for read-only web access to your workspace:
@@ -61,7 +71,8 @@ Four-panel resizable interface:
 | Databases | better-sqlite3 (`.index.db`, `.symbols.db`) |
 | Code Parsing | web-tree-sitter (8 language grammars) |
 | Live Server | Express 5 + WebSocket (ws) |
-| Testing | Vitest + Testing Library |
+| AI Agent | Python 3, FastAPI, uvicorn, httpx (OpenAI-compatible streaming) |
+| Testing | Vitest + Testing Library, pytest (agent) |
 
 ## Getting Started
 
@@ -69,6 +80,7 @@ Four-panel resizable interface:
 
 - Node.js 18+
 - npm 9+
+- Python 3.10+ (for the AI Agent)
 
 ### Install
 
@@ -80,13 +92,19 @@ npm install
 
 The `postinstall` script automatically rebuilds native modules for Electron and copies Tree-sitter grammar files.
 
+Install the Python agent dependencies:
+
+```bash
+pip install -r agent/requirements.txt
+```
+
 ### Development
 
 ```bash
 npm run dev
 ```
 
-Starts electron-vite in development mode with hot module replacement for the renderer and auto-restart for the main process.
+Starts electron-vite in development mode with hot module replacement for the renderer, auto-restart for the main process, and the Python agent server on a random port.
 
 ### Build
 
@@ -110,8 +128,9 @@ out/
 ### Test
 
 ```bash
-npm test          # Run all tests once
-npm run test:watch  # Run in watch mode
+npm test                # Run all frontend tests once
+npm run test:watch      # Run in watch mode
+cd agent && pytest      # Run Python agent tests
 ```
 
 ## Project Structure
@@ -121,6 +140,7 @@ src/
 ├── main/                          # Electron main process
 │   ├── index.ts                   # Entry point, window creation
 │   ├── ipc-handlers.ts            # All IPC handler registrations
+│   ├── agent-manager.ts           # Python agent process lifecycle (spawn, health-check, restart)
 │   ├── types.ts                   # Shared types
 │   ├── schemas/
 │   │   ├── note-types.ts          # MindMap, Derivation, & Network document schemas
@@ -161,6 +181,7 @@ src/
             ├── Layout.tsx            # 4-panel resizable layout
             ├── WorkspaceToolbar.tsx   # Workspace bar and landing page
             ├── ServerStatus.tsx      # Live server status indicator
+            ├── AgentDialog.tsx       # AI Agent chat dialog
             ├── NoteDirectory.tsx     # Note file tree (left panel)
             ├── NoteViewport.tsx      # Note editor/viewer (center-left)
             ├── CodeViewport.tsx      # Monaco code viewer (center-right)
@@ -180,6 +201,36 @@ src/
                 ├── NetworkEmbedViewer.tsx   # Static embed for .md
                 ├── networkReducer.ts        # State reducer for .net.json
                 └── EmbedCard.tsx            # Generic embed card for ![[path]]
+
+agent/                             # Python AI Agent (FastAPI server)
+├── server.py                      # Entry point, /health /providers /chat /history endpoints
+├── agent_loop.py                  # Tool-use loop with LLM (max 80 steps, streaming SSE)
+├── context.py                     # System prompt builder + skill loader
+├── memory.py                      # SQLite conversation memory (OpenAI-format messages)
+├── requirements.txt               # Python dependencies
+├── provider/
+│   ├── __init__.py                # Provider interface exports
+│   ├── base.py                    # BaseProvider abstract class (chat_stream)
+│   └── openai_compat.py           # OpenAI-compatible streaming provider (httpx SSE)
+├── tools/
+│   ├── registry.py                # ToolRegistry (register, schemas, execute)
+│   ├── file_ops.py                # read_file, list_files, search_in_files
+│   ├── mindmap_tools.py           # Mind map CRUD tools
+│   ├── derive_tools.py            # Derivation tree tools
+│   ├── network_tools.py           # Network diagram tools
+│   ├── markdown_tools.py          # Markdown document tools
+│   ├── file_search_tools.py       # File search tools
+│   └── code_mapping_tools.py      # Code mapping tools
+└── tests/
+    └── test_provider.py           # Provider unit tests
+
+skills/                            # Agent skill definitions (progressive disclosure)
+├── code-mapping/SKILL.md
+├── derive-tree/SKILL.md
+├── markdown/SKILL.md
+├── mind-map/SKILL.md
+├── network-graph/SKILL.md
+└── seq-mermaid/SKILL.md
 ```
 
 ## Configuration
@@ -208,6 +259,32 @@ Each workspace contains a `notebook.json` file:
 - `.symbols.db` — SQLite index of all parsed code symbols
 - `.index.db` — SQLite note-to-code mapping index
 
+### Model Providers (AI Agent)
+
+The AI Agent connects to any OpenAI-compatible API. Providers are configured in `~/.code-note-studio/providers.json`:
+
+```json
+[
+  {
+    "id": "my-provider",
+    "name": "Display Name",
+    "base_url": "https://api.example.com/v1",
+    "api_key": "<your-api-key>",
+    "model": "model-name"
+  }
+]
+```
+
+| Field | Description |
+|-------|-------------|
+| `id` | Internal identifier, passed from the frontend when sending a chat |
+| `name` | Display name shown in the model selector dropdown |
+| `base_url` | OpenAI-compatible API base URL (`/chat/completions` is appended automatically) |
+| `api_key` | API key for authentication (can also be set via `MODEL_API_KEY` environment variable) |
+| `model` | Model name string sent in the chat completion request |
+
+Multiple providers can be configured — select between them in the agent dialog's model dropdown. Any OpenAI-compatible service works, including self-hosted models (Ollama, vLLM, etc.).
+
 ## IPC API
 
 All IPC communication uses `ipcMain.handle` / `ipcRenderer.invoke`:
@@ -221,6 +298,7 @@ All IPC communication uses `ipcMain.handle` / `ipcRenderer.invoke`:
 | `code:resolve-refs` | Parse and resolve @ref() references |
 | `workspace:open` / `workspace:create` | Workspace management |
 | `server:start` / `server:stop` / `server:status` | Live server control |
+| `agent:start` / `agent:stop` / `agent:get-port` | AI Agent lifecycle |
 | `ui-state:load` / `ui-state:save` | UI state persistence |
 
 ## Live Server API
@@ -240,6 +318,30 @@ When the live server is running, REST endpoints are available:
 | `GET /api/ui-state` | Load persisted UI state |
 
 WebSocket events are broadcast on note create/update/delete.
+
+## Agent API
+
+The Python agent runs as a local FastAPI server on a random port. The Electron main process spawns and manages it automatically.
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/health` | GET | Health check (returns 200 when ready) |
+| `/providers` | GET | List configured model providers `{providers: [{id, name, model}]}` |
+| `/chat` | POST | Send a chat message, returns SSE stream. Body: `{message, provider_id, workspace, repos, output_dir}` |
+| `/history` | GET | Get conversation history |
+| `/history` | DELETE | Clear conversation history |
+
+### Chat SSE Events
+
+The `/chat` endpoint streams these event types:
+
+| Event | Description |
+|-------|-------------|
+| `token` | Text token from the LLM response |
+| `tool_call` | Agent is invoking a tool (includes tool name and arguments) |
+| `tool_result` | Result from a completed tool call |
+| `error` | Error during processing |
+| `done` | Stream complete |
 
 ## License
 
