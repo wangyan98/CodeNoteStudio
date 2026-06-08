@@ -1,7 +1,12 @@
 import { describe, it, expect } from 'vitest'
 import { appReducer, initialState } from '../../src/renderer/src/contexts/AppContext'
+import type { CodeFile } from '../../src/renderer/src/types'
 
 describe('appReducer', () => {
+  function makeFile(path: string): CodeFile {
+    return { path, name: path.split('/').pop() || path, language: 'typescript' }
+  }
+
   it('SELECT_NOTE sets selectedNoteId', () => {
     const state = appReducer(initialState, { type: 'SELECT_NOTE', noteId: 'note-1' })
     expect(state.selectedNoteId).toBe('note-1')
@@ -47,6 +52,7 @@ describe('appReducer', () => {
     state = appReducer(state, { type: 'CLOSE_CODE_FILE', index: 0 })
     expect(state.openCodeFiles).toHaveLength(1)
     expect(state.openCodeFiles[0]).toEqual(file2)
+    expect(state.recentlyClosedFile).toEqual(file1)
   })
 
   it('SET_ACTIVE_CODE_FILE changes active index', () => {
@@ -71,5 +77,87 @@ describe('appReducer', () => {
     ]
     const state = appReducer(initialState, { type: 'SET_WORKSPACE_HISTORY', history: entries })
     expect(state.workspaceHistory).toEqual(entries)
+  })
+
+  it('CLOSE_CODE_FILE stores closed file in recentlyClosedFile', () => {
+    const file = makeFile('/a.ts')
+    let state = appReducer(initialState, { type: 'OPEN_CODE_FILE', file })
+    state = appReducer(state, { type: 'CLOSE_CODE_FILE', index: 0 })
+    expect(state.openCodeFiles).toHaveLength(0)
+    expect(state.recentlyClosedFile).toEqual(file)
+  })
+
+  it('CLOSE_OTHER_CODE_FILES keeps only the clicked tab', () => {
+    let state = initialState
+    for (const f of [makeFile('/a.ts'), makeFile('/b.ts'), makeFile('/c.ts')]) {
+      state = appReducer(state, { type: 'OPEN_CODE_FILE', file: f })
+    }
+    state = appReducer(state, { type: 'CLOSE_OTHER_CODE_FILES', index: 1 })
+    expect(state.openCodeFiles).toHaveLength(1)
+    expect(state.openCodeFiles[0].path).toBe('/b.ts')
+    expect(state.activeCodeFileIndex).toBe(0)
+    expect(state.recentlyClosedFile).toBeNull()
+  })
+
+  it('CLOSE_CODE_FILES_LEFT removes tabs before index', () => {
+    let state = initialState
+    for (const f of [makeFile('/a.ts'), makeFile('/b.ts'), makeFile('/c.ts')]) {
+      state = appReducer(state, { type: 'OPEN_CODE_FILE', file: f })
+    }
+    state = appReducer(state, { type: 'CLOSE_CODE_FILES_LEFT', index: 1 })
+    expect(state.openCodeFiles).toHaveLength(2)
+    expect(state.openCodeFiles[0].path).toBe('/b.ts')
+    expect(state.openCodeFiles[1].path).toBe('/c.ts')
+    expect(state.activeCodeFileIndex).toBe(0)
+  })
+
+  it('CLOSE_CODE_FILES_RIGHT removes tabs after index', () => {
+    let state = initialState
+    for (const f of [makeFile('/a.ts'), makeFile('/b.ts'), makeFile('/c.ts')]) {
+      state = appReducer(state, { type: 'OPEN_CODE_FILE', file: f })
+    }
+    state = appReducer(state, { type: 'CLOSE_CODE_FILES_RIGHT', index: 1 })
+    expect(state.openCodeFiles).toHaveLength(2)
+    expect(state.openCodeFiles[0].path).toBe('/a.ts')
+    expect(state.openCodeFiles[1].path).toBe('/b.ts')
+  })
+
+  it('CLOSE_ALL_CODE_FILES clears all tabs and stores active file', () => {
+    let state = initialState
+    for (const f of [makeFile('/a.ts'), makeFile('/b.ts')]) {
+      state = appReducer(state, { type: 'OPEN_CODE_FILE', file: f })
+    }
+    state = appReducer(state, { type: 'SET_ACTIVE_CODE_FILE', index: 0 })
+    state = appReducer(state, { type: 'CLOSE_ALL_CODE_FILES' })
+    expect(state.openCodeFiles).toHaveLength(0)
+    expect(state.activeCodeFileIndex).toBe(-1)
+    expect(state.recentlyClosedFile?.path).toBe('/a.ts')
+  })
+
+  it('REOPEN_CLOSED_CODE_FILE restores the last closed file', () => {
+    const file = makeFile('/a.ts')
+    let state = appReducer(initialState, { type: 'OPEN_CODE_FILE', file })
+    state = appReducer(state, { type: 'CLOSE_CODE_FILE', index: 0 })
+    state = appReducer(state, { type: 'REOPEN_CLOSED_CODE_FILE' })
+    expect(state.openCodeFiles).toHaveLength(1)
+    expect(state.openCodeFiles[0]).toEqual(file)
+    expect(state.activeCodeFileIndex).toBe(0)
+    expect(state.recentlyClosedFile).toBeNull()
+  })
+
+  it('REOPEN_CLOSED_CODE_FILE is no-op when recentlyClosedFile is null', () => {
+    const state = appReducer(initialState, { type: 'REOPEN_CLOSED_CODE_FILE' })
+    expect(state).toEqual(initialState)
+  })
+
+  it('REVEAL_FILE_IN_TREE sets revealFilePath', () => {
+    const state = appReducer(initialState, { type: 'REVEAL_FILE_IN_TREE', filePath: '/x/y.ts' })
+    expect(state.revealFilePath).toBe('/x/y.ts')
+  })
+
+  it('CLEAR_REVEAL_FILE_IN_TREE clears revealFilePath', () => {
+    let state = appReducer(initialState, { type: 'REVEAL_FILE_IN_TREE', filePath: '/x/y.ts' })
+    state = appReducer(state, { type: 'CLEAR_REVEAL_FILE_IN_TREE' })
+    expect(state.revealFilePath).toBeNull()
   })
 })
