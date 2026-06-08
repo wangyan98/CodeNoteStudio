@@ -47,7 +47,11 @@ export function appReducer(state: AppState, action: AppAction): AppState {
       return {
         ...state,
         openCodeFiles: [...state.openCodeFiles, action.file],
-        activeCodeFileIndex: state.openCodeFiles.length
+        activeCodeFileIndex: state.openCodeFiles.length,
+        recentlyClosedFile:
+          action.file.path === state.recentlyClosedFile?.path
+            ? null
+            : state.recentlyClosedFile
       }
     }
 
@@ -74,7 +78,7 @@ export function appReducer(state: AppState, action: AppAction): AppState {
     }
 
     case 'CLOSE_CODE_FILES_LEFT': {
-      if (action.index < 0 || action.index > state.openCodeFiles.length) return state
+      if (action.index < 0 || action.index >= state.openCodeFiles.length) return state
       const updated = state.openCodeFiles.slice(action.index)
       return {
         ...state,
