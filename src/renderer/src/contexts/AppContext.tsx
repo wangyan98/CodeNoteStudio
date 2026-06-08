@@ -19,6 +19,8 @@ export const initialState: AppState = {
   pendingScroll: null,
   codeRepos: [],
   workspaceHistory: [],
+  recentlyClosedFile: null,
+  revealFilePath: null,
 }
 
 export function appReducer(state: AppState, action: AppAction): AppState {
@@ -50,14 +52,72 @@ export function appReducer(state: AppState, action: AppAction): AppState {
     }
 
     case 'CLOSE_CODE_FILE': {
+      const closedFile = state.openCodeFiles[action.index]
       const updated = state.openCodeFiles.filter((_, i) => i !== action.index)
       const newIndex = Math.min(state.activeCodeFileIndex, updated.length - 1)
       return {
         ...state,
         openCodeFiles: updated,
-        activeCodeFileIndex: updated.length === 0 ? -1 : newIndex
+        activeCodeFileIndex: updated.length === 0 ? -1 : newIndex,
+        recentlyClosedFile: closedFile || null
       }
     }
+
+    case 'CLOSE_OTHER_CODE_FILES': {
+      return {
+        ...state,
+        openCodeFiles: [state.openCodeFiles[action.index]],
+        activeCodeFileIndex: 0,
+        recentlyClosedFile: null
+      }
+    }
+
+    case 'CLOSE_CODE_FILES_LEFT': {
+      return {
+        ...state,
+        openCodeFiles: state.openCodeFiles.slice(action.index),
+        activeCodeFileIndex: 0,
+        recentlyClosedFile: null
+      }
+    }
+
+    case 'CLOSE_CODE_FILES_RIGHT': {
+      const updated = state.openCodeFiles.slice(0, action.index + 1)
+      return {
+        ...state,
+        openCodeFiles: updated,
+        activeCodeFileIndex: Math.min(state.activeCodeFileIndex, updated.length - 1),
+        recentlyClosedFile: null
+      }
+    }
+
+    case 'CLOSE_ALL_CODE_FILES': {
+      const activeFile = state.activeCodeFileIndex >= 0
+        ? state.openCodeFiles[state.activeCodeFileIndex]
+        : null
+      return {
+        ...state,
+        openCodeFiles: [],
+        activeCodeFileIndex: -1,
+        recentlyClosedFile: activeFile
+      }
+    }
+
+    case 'REOPEN_CLOSED_CODE_FILE': {
+      if (!state.recentlyClosedFile) return state
+      return {
+        ...state,
+        openCodeFiles: [...state.openCodeFiles, state.recentlyClosedFile],
+        activeCodeFileIndex: state.openCodeFiles.length,
+        recentlyClosedFile: null
+      }
+    }
+
+    case 'REVEAL_FILE_IN_TREE':
+      return { ...state, revealFilePath: action.filePath }
+
+    case 'CLEAR_REVEAL_FILE_IN_TREE':
+      return { ...state, revealFilePath: null }
 
     case 'SET_ACTIVE_CODE_FILE':
       return { ...state, activeCodeFileIndex: action.index }
