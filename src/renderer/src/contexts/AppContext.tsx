@@ -64,6 +64,7 @@ export function appReducer(state: AppState, action: AppAction): AppState {
     }
 
     case 'CLOSE_OTHER_CODE_FILES': {
+      if (action.index < 0 || action.index >= state.openCodeFiles.length) return state
       return {
         ...state,
         openCodeFiles: [state.openCodeFiles[action.index]],
@@ -73,10 +74,12 @@ export function appReducer(state: AppState, action: AppAction): AppState {
     }
 
     case 'CLOSE_CODE_FILES_LEFT': {
+      if (action.index < 0 || action.index > state.openCodeFiles.length) return state
+      const updated = state.openCodeFiles.slice(action.index)
       return {
         ...state,
-        openCodeFiles: state.openCodeFiles.slice(action.index),
-        activeCodeFileIndex: 0,
+        openCodeFiles: updated,
+        activeCodeFileIndex: updated.length === 0 ? -1 : 0,
         recentlyClosedFile: null
       }
     }
@@ -99,7 +102,7 @@ export function appReducer(state: AppState, action: AppAction): AppState {
         ...state,
         openCodeFiles: [],
         activeCodeFileIndex: -1,
-        recentlyClosedFile: activeFile
+        recentlyClosedFile: activeFile || null
       }
     }
 
@@ -153,7 +156,9 @@ export function appReducer(state: AppState, action: AppAction): AppState {
         codeFiles: [],
         codeRepos: [],
         codeMappings: [],
-        pendingScroll: null
+        pendingScroll: null,
+        recentlyClosedFile: null,
+        revealFilePath: null
       }
 
     case 'SET_WORKSPACE_HISTORY':
