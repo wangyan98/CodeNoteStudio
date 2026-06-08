@@ -1175,6 +1175,43 @@ export const MindMapCanvas = forwardRef<MindMapCanvasHandle, MindMapCanvasProps>
               }
             }
           }
+
+          // --- Auto-pan during drag ---
+          const containerEl = containerRef.current
+          if (containerEl) {
+            const rect = containerEl.getBoundingClientRect()
+            const distTop = (clientY ?? 0) - rect.top
+            const distBottom = rect.bottom - (clientY ?? 0)
+            const distLeft = (clientX ?? 0) - rect.left
+            const distRight = rect.right - (clientX ?? 0)
+            const inEdgeZone =
+              distTop < AUTO_PAN_EDGE || distBottom < AUTO_PAN_EDGE ||
+              distLeft < AUTO_PAN_EDGE || distRight < AUTO_PAN_EDGE
+
+            autoPanMouseX = clientX ?? 0
+            autoPanMouseY = clientY ?? 0
+
+            if (inEdgeZone && !autoPanRafId) {
+              let lastTime = performance.now()
+              const panStep = () => {
+                const now = performance.now()
+                const dt = Math.min((now - lastTime) / 1000, 0.1)
+                lastTime = now
+                const { dx, dy } = computeAutoPanSpeed(autoPanMouseX, autoPanMouseY)
+                if (dx !== 0 || dy !== 0) {
+                  const svgEl = svgRef.current
+                  if (svgEl && zoomRef.current) {
+                    d3.select(svgEl).call(zoomRef.current.translateBy, dx * dt, dy * dt)
+                  }
+                }
+                autoPanRafId = requestAnimationFrame(panStep)
+              }
+              autoPanRafId = requestAnimationFrame(panStep)
+            } else if (!inEdgeZone && autoPanRafId) {
+              cancelAnimationFrame(autoPanRafId)
+              autoPanRafId = null
+            }
+          }
         })
         .on('end', function (_event: d3.D3DragEvent<SVGGElement, unknown, unknown>, d: d3.HierarchyNode<MindMapNode>) {
           dragOffset = null
@@ -1183,6 +1220,11 @@ export const MindMapCanvas = forwardRef<MindMapCanvasHandle, MindMapCanvasProps>
           const savedAction = dragTargetAction
           const savedTargetId = dragTargetNodeId
           const savedInsertIndex = dragInsertIndex
+
+          if (autoPanRafId) {
+            cancelAnimationFrame(autoPanRafId)
+            autoPanRafId = null
+          }
 
           clearDragHighlight()
 
