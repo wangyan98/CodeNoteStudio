@@ -72,3 +72,39 @@ describe('renderMarkdown - tables', () => {
     expect(html).not.toContain('<table>')
   })
 })
+
+describe('renderMarkdown - formulas', () => {
+  it('renders inline formula with KaTeX', () => {
+    const html = renderMarkdown('Einstein said $E=mc^2$ is true', [])
+    expect(html).toContain('katex')
+    expect(html).toContain('math-inline')
+  })
+
+  it('renders block formula with KaTeX', () => {
+    const md = [
+      'Before',
+      '',
+      '$$',
+      'x = \\frac{-b \\pm \\sqrt{b^2-4ac}}{2a}',
+      '$$',
+      '',
+      'After'
+    ].join('\n')
+
+    const html = renderMarkdown(md, [])
+
+    expect(html).toContain('katex')
+    expect(html).toContain('math-block')
+  })
+
+  it('leaves unmatched single $ as literal text', () => {
+    const html = renderMarkdown('It costs $5 today', [])
+    // No closing $ on same line — $5 should stay as literal text
+    expect(html).not.toContain('katex')
+  })
+
+  it('handles inline formula adjacent to punctuation', () => {
+    const html = renderMarkdown('use $x$ here', [])
+    expect(html).toContain('katex')
+  })
+})
