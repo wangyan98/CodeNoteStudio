@@ -15,9 +15,18 @@ Operates on `.md` files — plain text markdown documents with `##` heading sect
 
 `.md` files in the notebook support two cross-reference syntaxes for linking to other notes and code.
 
-### Note Embedding: `![[path]]`
+### Note Embedding
 
-Embed other notebook notes inline using wiki-link syntax on its own line. Paths are **relative to the workspace root** (the notes directory), not relative to the current `.md` file:
+Embed other notebook notes inline. Paths are **relative to the workspace root** (the notes directory), not relative to the current `.md` file.
+
+For `.md` files, use standard markdown link syntax:
+
+```
+[fft_ocean_cpp.md](fft_ocean_cpp.md)
+[architecture/overview.md](architecture/overview.md)
+```
+
+For other notebook file types, use `![[path]]` syntax:
 
 ```
 ![[diagrams/flow.seq.mermaid]]
@@ -46,8 +55,8 @@ The `#` delimiter avoids conflicts with `:` in file paths. Resolution priority: 
 | `scripts/create_md.py <path> [--title]` | Create .md file with `# title` |
 | `scripts/append_section.py <path> <heading> <content>` | Append `## heading` section (rejects duplicates) |
 | `scripts/replace_section.py <path> <heading> <new-content>` | Replace content under a `## heading` |
-| `scripts/insert_embed.py <path> <embed_path>` | Insert `![[embed_path]]` line (rejects duplicates) |
-| `scripts/delete_embed.py <path> <embed_path>` | Remove matching `![[embed_path]]` line |
+| `scripts/insert_embed.py <path> <embed_path>` | Insert `[embed_path](embed_path)` for .md files, `![[embed_path]]` for other types (rejects duplicates) |
+| `scripts/delete_embed.py <path> <embed_path>` | Remove matching embed line |
 | `scripts/insert_ref.py <path> <ref>` | Insert `@ref(ref)` line (rejects duplicates) |
 | `scripts/delete_ref.py <path> <ref>` | Remove matching `@ref(ref)` line |
 
