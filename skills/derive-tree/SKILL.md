@@ -41,7 +41,7 @@ Each independent top-level formula gets its own `.derive.json` file. When adding
 
 ### Example — User asks "推导 L = L_d + L_i + k"
 ```
-create_derive("docs/output/lighting")
+create_derive("docs/lighting/lighting")
 add_step(path, title="全局光照 = 直接光 + 间接光 + 环境光", content="L = L_d + L_i + k")
   → let parent_id = returned step id
 add_step(path, title="直接光照项", content="L_d", derives_from=parent_id)
