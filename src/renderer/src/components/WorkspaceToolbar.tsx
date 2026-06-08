@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useAppContext } from '../contexts/AppContext'
 import type { WorkspaceHistoryEntry } from '../types'
+import { NodeContextMenu } from './editors/NodeContextMenu'
+import type { MenuEntry } from './editors/NodeContextMenu'
 import './WorkspaceToolbar.css'
 
 const REPO_COLORS = ['#e06c75', '#61afef', '#98c379', '#d19a66', '#c678dd', '#56b6c2', '#e5c07b', '#abb2bf']
@@ -15,6 +17,14 @@ export function WorkspaceToolbar() {
   const [codeRepos, setCodeRepos] = useState<Array<{ path: string; commit: string }>>([])
   const restoringRef = useRef(false)
   const loadingRef = useRef(false)
+  const [repoContextMenu, setRepoContextMenu] = useState<{
+    x: number
+    y: number
+    repoPath: string
+    repoIndex: number
+  } | null>(null)
+  const [colorSubmenuRepo, setColorSubmenuRepo] = useState<string | null>(null)
+  const [remoteUrls, setRemoteUrls] = useState<Map<string, string | null>>(new Map())
 
   // Load history on mount
   useEffect(() => {
@@ -158,6 +168,64 @@ export function WorkspaceToolbar() {
     await window.electronAPI.saveConfig({ ...config, codeRepos: newRepos })
   }, [codeRepos, state.codeRepoPath, dispatch])
 
+  const buildRepoContextMenu = useCallback((repoPath: string, repoIndex: number): MenuEntry[] => {
+    const isFirst = repoIndex === 0
+    const isLast = repoIndex === codeRepos.length - 1
+
+    const items: MenuEntry[] = [
+      {
+        label: 'Copy Repo Path',
+        action: () => { navigator.clipboard.writeText(repoPath) }
+      },
+      {
+        label: 'Open in Finder',
+        action: () => { window.electronAPI.openPath(repoPath) }
+      },
+      { separator: true },
+      {
+        label: 'Re-index Symbols',
+        action: async () => {
+          const repoName = repoPath.split('/').pop() || repoPath
+          if (!confirm(`Re-index "${repoName}"?\nThis will re-parse all source files in this repo.`)) return
+          await window.electronAPI.indexSymbols(repoPath)
+        }
+      },
+      {
+        label: 'Change Color',
+        action: () => { setColorSubmenuRepo(repoPath) }
+      },
+      { separator: true },
+      // Sorting menu items added in Task 5
+      { separator: true },
+    ]
+
+    const remoteUrl = remoteUrls.get(repoPath)
+    if (remoteUrl) {
+      items.push({
+        label: 'Open in Website',
+        action: () => { window.electronAPI.openExternal(remoteUrl) }
+      })
+      items.push({ separator: true })
+    }
+
+    items.push(
+      {
+        label: 'View Details',
+        action: () => {
+          // will be implemented in Task 8
+        }
+      },
+      { separator: true },
+      {
+        label: 'Remove Repo',
+        action: () => handleRemoveRepo(repoPath),
+        danger: true
+      }
+    )
+
+    return items
+  }, [codeRepos, remoteUrls, handleRemoveRepo])
+
   // Persist UI state on changes
   useEffect(() => {
     if (!workspacePath || restoringRef.current) return
@@ -251,9 +319,13 @@ export function WorkspaceToolbar() {
             onClick={() => {
               dispatch({ type: 'SET_CODE_REPO', path: repo.path })
             }}
-            onContextMenu={(e) => {
+            onContextMenu={async (e) => {
               e.preventDefault()
-              handleRemoveRepo(repo.path)
+              if (!remoteUrls.has(repo.path)) {
+                const url = await window.electronAPI.getRemoteUrl(repo.path)
+                setRemoteUrls((prev) => new Map(prev).set(repo.path, url))
+              }
+              setRepoContextMenu({ x: e.clientX, y: e.clientY, repoPath: repo.path, repoIndex: index })
             }}
           >
             <span
@@ -286,6 +358,14 @@ export function WorkspaceToolbar() {
           + Add Repo
         </button>
       </div>
+      {repoContextMenu && !colorSubmenuRepo && (
+        <NodeContextMenu
+          x={repoContextMenu.x}
+          y={repoContextMenu.y}
+          items={buildRepoContextMenu(repoContextMenu.repoPath, repoContextMenu.repoIndex)}
+          onClose={() => setRepoContextMenu(null)}
+        />
+      )}
     </div>
   )
 }

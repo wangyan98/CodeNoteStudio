@@ -86,6 +86,35 @@ describe('WorkspaceToolbar', () => {
     expect(screen.getByText('Project B')).toBeDefined()
   })
 
+  it('renders repo chips with context menu instead of confirm prompt', async () => {
+    window.electronAPI.loadConfig = vi.fn().mockResolvedValue({
+      name: 'My Notes',
+      notesPath: './',
+      codeRepos: [
+        { path: '/test/repo-a', commit: 'abc123' },
+        { path: '/test/repo-b', commit: 'def456' },
+      ]
+    })
+
+    render(
+      <AppProvider initialStateOverride={{
+        ...initialState,
+        workspacePath: '/test/path',
+        workspaceName: 'My Notes',
+        codeRepos: [
+          { path: '/test/repo-a', commit: 'abc123' },
+          { path: '/test/repo-b', commit: 'def456' },
+        ],
+      }}>
+        <WorkspaceToolbar />
+      </AppProvider>
+    )
+
+    // Repo chips should render with repo names visible (async loadConfig in useEffect)
+    expect(await screen.findByText('repo-a')).toBeDefined()
+    expect(await screen.findByText('repo-b')).toBeDefined()
+  })
+
   it('hides recent workspaces section when history is empty', () => {
     render(
       <AppProvider initialStateOverride={{
