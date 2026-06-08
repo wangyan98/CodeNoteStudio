@@ -1,3 +1,4 @@
+import 'katex/dist/katex.min.css'
 import { useState, useCallback, useEffect, useRef, forwardRef, useImperativeHandle } from 'react'
 import Editor from '@monaco-editor/react'
 import type * as monaco from 'monaco-editor'

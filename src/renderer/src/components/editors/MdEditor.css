@@ -237,3 +237,43 @@
   height: 300px;
   overflow: hidden;
 }
+
+/* ---- Tables ---- */
+
+.md-preview-content table {
+  border-collapse: collapse;
+  margin: 8px 0;
+  width: 100%;
+}
+
+.md-preview-content th,
+.md-preview-content td {
+  border: 1px solid var(--border-color);
+  padding: 6px 12px;
+  text-align: left;
+}
+
+.md-preview-content th {
+  background: rgba(255, 255, 255, 0.05);
+  font-weight: 600;
+}
+
+.md-preview-content tr:nth-child(even) td {
+  background: rgba(255, 255, 255, 0.02);
+}
+
+/* ---- Math ---- */
+
+.math-block {
+  text-align: center;
+  margin: 12px 0;
+  overflow-x: auto;
+}
+
+.math-block .katex-display {
+  margin: 0;
+}
+
+.math-inline {
+  display: inline;
+}
