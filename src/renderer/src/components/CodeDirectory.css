@@ -76,6 +76,12 @@
   flex-shrink: 0;
 }
 
+.code-file-item-highlight {
+  background: rgba(100, 180, 255, 0.25);
+  outline: 1px solid var(--accent-color);
+  border-radius: 3px;
+}
+
 .code-no-repo {
   display: flex;
   align-items: center;

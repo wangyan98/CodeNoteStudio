@@ -19,14 +19,22 @@ function FileTreeItem({
   file,
   depth,
   onSelect,
-  onContextMenu
+  onContextMenu,
+  revealTargetPath
 }: {
   file: RepoFileNode
   depth: number
   onSelect: (file: RepoFileNode) => void
   onContextMenu: (e: React.MouseEvent, file: RepoFileNode) => void
+  revealTargetPath?: string
 }) {
   const [expanded, setExpanded] = useState(depth < 1)
+
+  useEffect(() => {
+    if (revealTargetPath && file.isDirectory && revealTargetPath.startsWith(file.absolutePath + '/')) {
+      setExpanded(true)
+    }
+  }, [revealTargetPath, file.isDirectory, file.absolutePath])
   const icon = file.isDirectory ? (expanded ? '▾' : '▸') : getFileIcon(file.name)
 
   const IMAGE_EXTS = new Set(['png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp', 'svg'])
@@ -64,6 +72,7 @@ function FileTreeItem({
         draggable={!file.isDirectory}
         onDragStart={handleDragStart}
         onContextMenu={(e) => onContextMenu(e, file)}
+        data-file-path={file.absolutePath}
       >
         <span className="code-file-icon">{icon}</span>
         <span>{file.name}</span>
@@ -75,6 +84,7 @@ function FileTreeItem({
           depth={depth + 1}
           onSelect={onSelect}
           onContextMenu={onContextMenu}
+          revealTargetPath={revealTargetPath}
         />
       ))}
     </>
@@ -164,6 +174,24 @@ export function CodeDirectory() {
     }
     loadRepo()
   }, [codeRepoPath])
+
+  useEffect(() => {
+    if (!state.revealFilePath) return
+    const filePath = state.revealFilePath
+    // Double rAF to wait for tree re-render and paint after directory expansion
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        const escaped = filePath.replace(/"/g, '\\"')
+        const el = document.querySelector(`[data-file-path="${escaped}"]`)
+        if (el) {
+          el.scrollIntoView({ block: 'center', behavior: 'smooth' })
+          el.classList.add('code-file-item-highlight')
+          setTimeout(() => el.classList.remove('code-file-item-highlight'), 2000)
+        }
+        dispatch({ type: 'CLEAR_REVEAL_FILE_IN_TREE' })
+      })
+    })
+  }, [state.revealFilePath, dispatch])
 
   const handleFileSelect = useCallback((file: RepoFileNode) => {
     if (file.isDirectory) return
@@ -279,6 +307,7 @@ export function CodeDirectory() {
                     depth={0}
                     onSelect={handleFileSelect}
                     onContextMenu={handleContextMenu}
+                    revealTargetPath={state.revealFilePath || undefined}
                   />
                 ))
               )}
