@@ -57,7 +57,7 @@ export function CodeViewport() {
   const [tabContextMenu, setTabContextMenu] = useState<{
     x: number
     y: number
-    tabIndex: number
+    filePath: string
   } | null>(null)
   const activeFileRef = useRef(activeFile)
   activeFileRef.current = activeFile
@@ -237,9 +237,10 @@ export function CodeViewport() {
     dispatch({ type: 'SET_ACTIVE_CODE_FILE', index })
   }, [dispatch])
 
-  const buildTabContextMenu = useCallback((tabIndex: number): MenuEntry[] => {
+  const buildTabContextMenu = useCallback((filePath: string): MenuEntry[] => {
+    const tabIndex = state.openCodeFiles.findIndex(f => f.path === filePath)
+    if (tabIndex < 0) return []
     const file = state.openCodeFiles[tabIndex]
-    if (!file) return []
     const isLeftmost = tabIndex === 0
     const isRightmost = tabIndex === state.openCodeFiles.length - 1
     const onlyOne = state.openCodeFiles.length <= 1
@@ -295,8 +296,10 @@ export function CodeViewport() {
     e.preventDefault()
     e.stopPropagation()
     dispatch({ type: 'SET_ACTIVE_CODE_FILE', index })
-    setTabContextMenu({ x: e.clientX, y: e.clientY, tabIndex: index })
-  }, [dispatch])
+    const file = state.openCodeFiles[index]
+    if (!file) return
+    setTabContextMenu({ x: e.clientX, y: e.clientY, filePath: file.path })
+  }, [dispatch, state.openCodeFiles])
 
   if (!activeFile) {
     return (
@@ -476,7 +479,7 @@ export function CodeViewport() {
         <NodeContextMenu
           x={tabContextMenu.x}
           y={tabContextMenu.y}
-          items={buildTabContextMenu(tabContextMenu.tabIndex)}
+          items={buildTabContextMenu(tabContextMenu.filePath)}
           onClose={() => setTabContextMenu(null)}
         />
       )}
