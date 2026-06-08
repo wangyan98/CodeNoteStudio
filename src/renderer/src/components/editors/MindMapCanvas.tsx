@@ -750,6 +750,8 @@ export const MindMapCanvas = forwardRef<MindMapCanvasHandle, MindMapCanvasProps>
       let autoPanRafId: number | null = null
       let autoPanMouseX = 0
       let autoPanMouseY = 0
+      let autoPanDraggedNode: SVGGElement | null = null
+      let autoPanDescendantIds: Set<string> = new Set()
       const AUTO_PAN_EDGE = 35
       const AUTO_PAN_MAX_SPEED = 500 // px/s
 
@@ -966,6 +968,8 @@ export const MindMapCanvas = forwardRef<MindMapCanvasHandle, MindMapCanvasProps>
           d3.select(this).select('rect').attr('stroke', '#ff0').attr('stroke-width', 2)
           const pt = d3.pointer(event, svgRef.current!)
           dragOffset = { x: pt[0] - d.y!, y: pt[1] - d.x! }
+          autoPanDraggedNode = this
+          autoPanDescendantIds = getDescendantIds(d.data.id)
         })
         .on('drag', function (event: d3.D3DragEvent<SVGGElement, unknown, unknown>, d: d3.HierarchyNode<MindMapNode>) {
           if (!dragOffset) return
@@ -1218,10 +1222,28 @@ export const MindMapCanvas = forwardRef<MindMapCanvasHandle, MindMapCanvasProps>
                   autoPanRafId = null
                   return
                 }
-                if (dx !== 0 || dy !== 0) {
+                const totalDx = dx * dt
+                const totalDy = dy * dt
+                if (totalDx !== 0 || totalDy !== 0) {
                   const svgEl = svgRef.current
                   if (svgEl && zoomRef.current) {
-                    d3.select(svgEl).call(zoomRef.current.translateBy, dx * dt, dy * dt)
+                    d3.select(svgEl).call(zoomRef.current.translateBy, totalDx, totalDy)
+                    // Compensate dragged node + descendants so they stay under the cursor
+                    const transform = d3.zoomTransform(svgEl)
+                    const gDx = -totalDx / transform.k
+                    const gDy = -totalDy / transform.k
+                    const shiftEl = (el: SVGGElement) => {
+                      const cur = el.getAttribute('transform') || ''
+                      const m = /translate\(([^,]+),\s*([^)]+)\)/.exec(cur)
+                      if (m) {
+                        el.setAttribute('transform', `translate(${parseFloat(m[1]) + gDx},${parseFloat(m[2]) + gDy})`)
+                      }
+                    }
+                    if (autoPanDraggedNode) shiftEl(autoPanDraggedNode)
+                    autoPanDescendantIds.forEach(id => {
+                      const el = svgEl.querySelector<SVGGElement>(`[data-node-id="${id}"]`)
+                      if (el) shiftEl(el)
+                    })
                   }
                 }
                 autoPanRafId = requestAnimationFrame(panStep)
