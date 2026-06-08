@@ -685,6 +685,23 @@ export const MindMapCanvas = forwardRef<MindMapCanvasHandle, MindMapCanvasProps>
         })
       })
 
+      // Helper: resolve relative codeMapping paths before navigation
+      const handleCodeJump = (node: MindMapNode) => {
+        const cm = node.codeMapping!
+        const fp = cm.filePath
+        if (fp.startsWith('/') || /^[A-Za-z]:[/\\]/.test(fp)) {
+          onNavigateToCode!(fp, cm.startLine)
+        } else if (cm.raw) {
+          window.electronAPI.resolveRefs(notePath, `@ref(${cm.raw})`, undefined)
+            .then((mappings) => {
+              if (mappings.length > 0) {
+                onNavigateToCode!(mappings[0].filePath, mappings[0].startLine)
+              }
+            })
+            .catch(() => {})
+        }
+      }
+
       // Jump icon for code mapping
       nodeGroup.each(function (d: d3.HierarchyNode<MindMapNode>) {
         if (!d.data.codeMapping || !onNavigateToCode) return
@@ -700,7 +717,7 @@ export const MindMapCanvas = forwardRef<MindMapCanvasHandle, MindMapCanvasProps>
           .text('→')
           .on('click', (event: MouseEvent) => {
             event.stopPropagation()
-            onNavigateToCode(d.data.codeMapping!.filePath, d.data.codeMapping!.startLine)
+            handleCodeJump(d.data)
           })
       })
 
@@ -714,7 +731,7 @@ export const MindMapCanvas = forwardRef<MindMapCanvasHandle, MindMapCanvasProps>
       nodeGroup.on('dblclick', (event: MouseEvent, d: d3.HierarchyNode<MindMapNode>) => {
         event.stopPropagation()
         if (d.data.codeMapping && onNavigateToCode && d.data.codeMapping.filePath) {
-          onNavigateToCode(d.data.codeMapping.filePath, d.data.codeMapping.startLine)
+          handleCodeJump(d.data)
         } else {
           dispatch({ type: 'SELECT_NODE', nodeId: d.data.id })
           focusNodeIdRef.current = d.data.id
@@ -1412,7 +1429,7 @@ export const MindMapCanvas = forwardRef<MindMapCanvasHandle, MindMapCanvasProps>
         }
       }
 
-    }, [doc, collapsedIds, dispatch, onContextMenu, onHoverNode, notePath, expandedEmbeds, handleToggleEmbed])
+    }, [doc, collapsedIds, dispatch, onContextMenu, onHoverNode, notePath, expandedEmbeds, handleToggleEmbed, onNavigateToCode])
     // NOTE: selectedNodeId intentionally NOT in deps — selection highlight is
     // applied via the separate useEffect below, avoiding full D3 rebuild on click
 

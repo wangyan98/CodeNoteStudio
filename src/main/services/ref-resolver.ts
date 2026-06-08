@@ -55,7 +55,14 @@ export function parseRefs(content: string): RefSpec[] {
 function classifyRef(raw: string): RefSpec {
   // Support new '#' separator (mermaid-safe) and legacy ':' separator
   const sep = raw.includes('#') ? '#' : ':'
-  const parts = raw.split(sep)
+
+  // When using ':' separator, protect '::' (C++ namespace) from being split.
+  // Replace '::' with a placeholder, split, then restore.
+  let sanitized = raw
+  if (sep === ':') {
+    sanitized = raw.replace(/::/g, '\x00DC\x00')
+  }
+  const parts = sanitized.split(sep).map(p => p.replace(/\x00DC\x00/g, '::'))
 
   let repo: string | undefined
   let filePath: string | undefined
@@ -75,7 +82,7 @@ function classifyRef(raw: string): RefSpec {
       filePath = part
     } else if (/^\d+$/.test(part)) {
       line = parseInt(part, 10)
-    } else {
+    } else if (part.length > 0) {
       name = part
     }
   }
@@ -101,6 +108,7 @@ async function extractCodeSnippet(
 
 function getRepoPath(
   symbols: (CodeSymbol & { repoPath?: string })[],
+  allSymbols: (CodeSymbol & { repoPath?: string })[],
   targetRepo?: string,
   activeRepo?: string
 ): string | undefined {
@@ -109,8 +117,13 @@ function getRepoPath(
       (s) => s.repoPath && (s.repoPath.endsWith('/' + targetRepo) || s.repoPath === targetRepo)
     )
     if (match?.repoPath) return match.repoPath
+    // Fallback: search all symbols (unfiltered) for the target repo
+    const globalMatch = allSymbols.find(
+      (s) => s.repoPath && (s.repoPath.endsWith('/' + targetRepo) || s.repoPath === targetRepo)
+    )
+    if (globalMatch?.repoPath) return globalMatch.repoPath
   }
-  const any = symbols.find((s) => s.repoPath)
+  const any = allSymbols.find((s) => s.repoPath)
   if (any?.repoPath) return any.repoPath
   return activeRepo
 }
@@ -212,7 +225,7 @@ export async function resolveRefs(
         }
       }
       // Fallback B: file not in symbol index. Construct path from repo root.
-      const repoPath = getRepoPath(candidateSymbols, targetRepo, activeRepo)
+      const repoPath = getRepoPath(candidateSymbols, symbols, targetRepo, activeRepo)
       if (repoPath) {
         const absPath = repoPath + '/' + ref.filePath
         const mapping: CodeMapping = {
@@ -255,7 +268,7 @@ export async function resolveRefs(
         }
       }
       // Fallback: file not in index. Construct path from repo root.
-      const repoPath = getRepoPath(candidateSymbols, targetRepo, activeRepo)
+      const repoPath = getRepoPath(candidateSymbols, symbols, targetRepo, activeRepo)
       if (repoPath) {
         mappings.push({
           raw: ref.raw,
@@ -307,10 +320,10 @@ export async function resolveRefs(
 function symbolMatchesName(sym: CodeSymbol, refName: string): boolean {
   if (sym.name === refName) return true
 
-  const lastDot = refName.lastIndexOf('.')
-  if (lastDot > 0) {
-    const className = refName.slice(0, lastDot)
-    const methodName = refName.slice(lastDot + 1)
+  const { parentSep, parentIdx } = findLastNameSeparator(refName)
+  if (parentIdx > 0) {
+    const className = refName.slice(0, parentIdx)
+    const methodName = refName.slice(parentIdx + parentSep.length)
     return sym.name === methodName && sym.parentName === className
   }
 
@@ -321,14 +334,24 @@ function symbolMatchesName(sym: CodeSymbol, refName: string): boolean {
  * Find a symbol by name in a list, trying direct match first,
  * then Class.method resolution.
  */
+function findLastNameSeparator(refName: string): { parentSep: string; parentIdx: number } {
+  const lastDoubleColon = refName.lastIndexOf('::')
+  const lastDot = refName.lastIndexOf('.')
+
+  if (lastDoubleColon > lastDot) {
+    return { parentSep: '::', parentIdx: lastDoubleColon }
+  }
+  return { parentSep: '.', parentIdx: lastDot }
+}
+
 function findSymbolByName(symbols: CodeSymbol[], refName: string): CodeSymbol | undefined {
   const direct = symbols.find((s) => s.name === refName)
   if (direct) return direct
 
-  const lastDot = refName.lastIndexOf('.')
-  if (lastDot > 0) {
-    const className = refName.slice(0, lastDot)
-    const methodName = refName.slice(lastDot + 1)
+  const { parentSep, parentIdx } = findLastNameSeparator(refName)
+  if (parentIdx > 0) {
+    const className = refName.slice(0, parentIdx)
+    const methodName = refName.slice(parentIdx + parentSep.length)
     return symbols.find(
       (s) => s.name === methodName && s.parentName === className
     )
@@ -339,7 +362,7 @@ function findSymbolByName(symbols: CodeSymbol[], refName: string): CodeSymbol | 
 
 function toMapping(ref: RefSpec, sym: CodeSymbol): CodeMapping {
   let displayName: string
-  if (ref.name && ref.name.includes('.')) {
+  if (ref.name && (ref.name.includes('.') || ref.name.includes('::'))) {
     displayName = ref.name
   } else {
     displayName = sym.name

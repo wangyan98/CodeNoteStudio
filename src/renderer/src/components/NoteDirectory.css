@@ -96,35 +96,6 @@
   color: var(--text-color);
 }
 
-.note-actions {
-  display: none;
-  margin-left: auto;
-  gap: 2px;
-}
-
-.tree-item:hover .note-actions {
-  display: flex;
-}
-
-.note-action-btn {
-  padding: 1px 4px;
-  font-size: 10px;
-  background: transparent;
-  border: none;
-  color: var(--header-color);
-  cursor: pointer;
-  border-radius: 2px;
-}
-
-.note-action-btn:hover {
-  background: rgba(255, 255, 255, 0.1);
-  color: var(--text-color);
-}
-
-.note-action-btn.delete:hover {
-  color: #f44747;
-}
-
 .new-note-input-group {
   display: flex;
   flex-direction: column;

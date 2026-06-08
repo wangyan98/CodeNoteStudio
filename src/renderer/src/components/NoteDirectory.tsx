@@ -170,30 +170,6 @@ function TreeItem({
         ) : (
           <span>{node.name}</span>
         )}
-        {isNote && !isRenaming && (
-          <span className="note-actions">
-            <button
-              className="note-action-btn"
-              onClick={(e) => {
-                e.stopPropagation()
-                onRename(node)
-              }}
-              title="Rename"
-            >
-              {'✎'}
-            </button>
-            <button
-              className="note-action-btn delete"
-              onClick={(e) => {
-                e.stopPropagation()
-                onDelete(node)
-              }}
-              title="Delete"
-            >
-              {'✕'}
-            </button>
-          </span>
-        )}
       </div>
       {isFolder && expanded && (
         <>
