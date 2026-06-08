@@ -37,6 +37,21 @@ function getGit(repoPath: string): SimpleGit | null {
   return simpleGit(repoPath)
 }
 
+export async function getRemoteUrl(repoPath: string): Promise<string | null> {
+  const git = getGit(repoPath)
+  if (!git) return null
+
+  try {
+    const remotes = await git.getRemotes(true)
+    const origin = remotes.find((r) => r.name === 'origin')
+    if (!origin) return null
+    // Strip trailing .git for cleaner display
+    return origin.refs.fetch.replace(/\.git$/, '')
+  } catch {
+    return null
+  }
+}
+
 export async function getCommitInfo(repoPath: string): Promise<CommitInfo> {
   const git = getGit(repoPath)
   if (!git) {

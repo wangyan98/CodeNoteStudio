@@ -5,7 +5,7 @@ import { join } from 'node:path'
 import { tmpdir } from 'node:os'
 import { execSync } from 'node:child_process'
 import { writeTextFile } from '../../src/main/services/file-system'
-import { getCommitInfo, getFileBlame, getRecentCommits } from '../../src/main/services/git-service'
+import { getCommitInfo, getFileBlame, getRecentCommits, getRemoteUrl } from '../../src/main/services/git-service'
 
 describe('git-service', () => {
   let testDir: string
@@ -69,6 +69,26 @@ describe('git-service', () => {
       expect(blame).toHaveLength(1)
       expect(blame[0].line).toBe(1)
       expect(blame[0].commit).toBeTruthy()
+    })
+  })
+
+  describe('getRemoteUrl', () => {
+    it('returns null for repo without remote', async () => {
+      const url = await getRemoteUrl(testDir)
+      expect(url).toBeNull()
+    })
+
+    it('returns remote url after git remote add', async () => {
+      execSync('git remote add origin https://github.com/user/repo.git', { cwd: testDir })
+      const url = await getRemoteUrl(testDir)
+      expect(url).toBe('https://github.com/user/repo')
+    })
+
+    it('returns null for non-git directory', async () => {
+      const nonGitDir = mkdtempSync(join(tmpdir(), 'cns-nogit-'))
+      const url = await getRemoteUrl(nonGitDir)
+      expect(url).toBeNull()
+      rmSync(nonGitDir, { recursive: true, force: true })
     })
   })
 })
