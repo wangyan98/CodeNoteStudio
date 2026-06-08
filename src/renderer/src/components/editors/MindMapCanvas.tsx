@@ -1194,6 +1194,10 @@ export const MindMapCanvas = forwardRef<MindMapCanvasHandle, MindMapCanvasProps>
             if (inEdgeZone && !autoPanRafId) {
               let lastTime = performance.now()
               const panStep = () => {
+                if (!containerRef.current) {
+                  autoPanRafId = null
+                  return
+                }
                 const now = performance.now()
                 const dt = Math.min((now - lastTime) / 1000, 0.1)
                 lastTime = now
