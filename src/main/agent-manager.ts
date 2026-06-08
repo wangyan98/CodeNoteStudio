@@ -1,6 +1,8 @@
 import { spawn, ChildProcess } from 'child_process'
+import fs from 'fs'
 import net from 'net'
 import path from 'path'
+import { app } from 'electron'
 
 let agentProcess: ChildProcess | null = null
 let agentPort: number | null = null
@@ -36,6 +38,30 @@ async function waitForHealth(port: number, timeoutMs: number = 5000): Promise<bo
   return false
 }
 
+function getAgentScriptPath(): string {
+  const candidates = [
+    path.join(process.resourcesPath, 'agent', 'server.py'),
+    path.join(process.cwd(), 'agent', 'server.py'),
+    path.join(__dirname, '..', '..', '..', 'agent', 'server.py'),
+  ]
+  for (const p of candidates) {
+    if (fs.existsSync(p)) return p
+  }
+  return candidates[0]
+}
+
+function getDepsPath(): string {
+  const candidates = [
+    path.join(process.resourcesPath, 'agent', '.deps'),
+    path.join(process.cwd(), 'agent', '.deps'),
+    path.join(__dirname, '..', '..', '..', 'agent', '.deps'),
+  ]
+  for (const p of candidates) {
+    if (fs.existsSync(p)) return p
+  }
+  return candidates[0]
+}
+
 export async function startAgent(): Promise<{ port: number }> {
   if (agentProcess && agentPort) {
     try {
@@ -48,12 +74,17 @@ export async function startAgent(): Promise<{ port: number }> {
   }
 
   const port = await getRandomPort()
-  const serverScript = path.join(__dirname, '..', '..', '..', 'agent', 'server.py')
+  const serverScript = getAgentScriptPath()
+  const depsPath = getDepsPath()
 
   let stderrLog = ''
   try {
     agentProcess = spawn('python3', [serverScript, '--port', String(port), '--host', '127.0.0.1'], {
       stdio: ['ignore', 'pipe', 'pipe'],
+      env: {
+        ...process.env,
+        PYTHONPATH: `${depsPath}${process.env.PYTHONPATH ? ':' + process.env.PYTHONPATH : ''}`,
+      },
     })
   } catch (e: any) {
     throw new Error(`Failed to spawn python3: ${e.message}. Is python3 installed?`)

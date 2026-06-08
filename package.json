@@ -9,7 +9,46 @@
     "preview": "electron-vite preview",
     "test": "vitest run",
     "test:watch": "vitest",
-    "postinstall": "electron-rebuild -f -w better-sqlite3 && node scripts/copy-grammars.js"
+    "postinstall": "electron-rebuild -f -w better-sqlite3 && node scripts/copy-grammars.js",
+    "bundle:python": "bash scripts/bundle-agent-python.sh",
+    "package:mac": "npm run bundle:python && electron-vite build && electron-builder --mac"
+  },
+  "build": {
+    "appId": "com.codenote.studio",
+    "productName": "Code Note Studio",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "out/**/*",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "assets",
+        "to": "assets"
+      },
+      {
+        "from": "agent",
+        "to": "agent"
+      },
+      {
+        "from": "skills",
+        "to": "skills"
+      }
+    ],
+    "mac": {
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "x64",
+            "arm64"
+          ]
+        }
+      ],
+      "category": "public.app-category.utilities"
+    }
   },
   "dependencies": {
     "@monaco-editor/react": "^4.7.0",
@@ -53,6 +92,7 @@
     "@types/ws": "^8.18.1",
     "@vitejs/plugin-react": "^4.3.4",
     "electron": "^33.2.1",
+    "electron-builder": "^26.15.2",
     "electron-vite": "^2.3.0",
     "jsdom": "^25.0.1",
     "typescript": "^5.6.3",
