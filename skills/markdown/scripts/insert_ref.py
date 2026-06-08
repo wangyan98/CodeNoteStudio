@@ -23,10 +23,6 @@ def main():
     with open(args.path, 'r', encoding='utf-8') as f:
         content = f.read()
 
-    if ref_line.strip() in content:
-        print(json.dumps({"ok": False, "error": f"Reference already exists: {args.ref}"}))
-        sys.exit(1)
-
     with open(args.path, 'a', encoding='utf-8') as f:
         if not content.endswith('\n'):
             f.write('\n')
