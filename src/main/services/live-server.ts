@@ -246,6 +246,7 @@ function createApp(projectPath: string): Express {
     try {
       const { parseRefs, resolveRefs } = await import('./ref-resolver')
       const { saveRefCache } = await import('./ref-cache')
+      const { loadConfig } = await import('./notebook-config')
       const content = req.query.content as string
       const notePath = req.query.notePath as string | undefined
       const activeRepo = req.query.repo as string | undefined
@@ -261,9 +262,10 @@ function createApp(projectPath: string): Express {
         return
       }
 
+      const config = await loadConfig(projectPath)
       const db = getDb(projectPath)
       const allSymbols = querySymbols(db)
-      const mappings = await resolveRefs(refs, allSymbols, activeRepo)
+      const mappings = await resolveRefs(refs, allSymbols, activeRepo, config.codeRepos)
       if (notePath) {
         saveRefCache(projectPath, notePath, mappings)
       }

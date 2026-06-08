@@ -125,11 +125,11 @@ describe('resolveRefs', () => {
   ]
 
   // Tier 1: file + line + name
-  it('T1: resolves @ref(file:line:name) to exact symbol', () => {
+  it('T1: resolves @ref(file:line:name) to exact symbol', async () => {
     const refs: RefSpec[] = [
       { raw: 'src/utils.cpp:42:parse', filePath: 'src/utils.cpp', line: 42, name: 'parse' }
     ]
-    const mappings = resolveRefs(refs, mockSymbols)
+    const mappings = await resolveRefs(refs, mockSymbols)
     expect(mappings).toHaveLength(1)
     expect(mappings[0].raw).toBe('src/utils.cpp:42:parse')
     expect(mappings[0].filePath).toBe('src/utils.cpp')
@@ -137,93 +137,97 @@ describe('resolveRefs', () => {
   })
 
   // Tier 1: file+line+name with Class.method name
-  it('T1: resolves @ref(file:line:Class.method)', () => {
+  it('T1: resolves @ref(file:line:Class.method)', async () => {
     const refs: RefSpec[] = [
       { raw: 'src/api.ts:25:MyClass.getValue', filePath: 'src/api.ts', line: 25, name: 'MyClass.getValue' }
     ]
-    const mappings = resolveRefs(refs, mockSymbols)
+    const mappings = await resolveRefs(refs, mockSymbols)
     expect(mappings).toHaveLength(1)
     expect(mappings[0].functionName).toBe('MyClass.getValue')
     expect(mappings[0].filePath).toBe('src/api.ts')
   })
 
   // Tier 2: file + line
-  it('T2: resolves @ref(file:line) to symbol at that line', () => {
+  it('T2: resolves @ref(file:line) to symbol at that line', async () => {
     const refs: RefSpec[] = [
       { raw: 'src/utils.cpp:42', filePath: 'src/utils.cpp', line: 42 }
     ]
-    const mappings = resolveRefs(refs, mockSymbols)
+    const mappings = await resolveRefs(refs, mockSymbols)
     expect(mappings).toHaveLength(1)
     expect(mappings[0].functionName).toBe('parse')
   })
 
-  // Tier 2: file+line with no symbol at that line => no match
-  it('T2: returns empty for @ref(file:line) with no symbol at that line', () => {
+  // Tier 2: file+line with no symbol at that line => still resolves via fallback
+  it('T2: resolves @ref(file:line) via fallback when no symbol at that line', async () => {
     const refs: RefSpec[] = [
       { raw: 'src/utils.cpp:999', filePath: 'src/utils.cpp', line: 999 }
     ]
-    const mappings = resolveRefs(refs, mockSymbols)
-    expect(mappings).toHaveLength(0)
+    const mappings = await resolveRefs(refs, mockSymbols)
+    expect(mappings).toHaveLength(1)
+    expect(mappings[0].filePath).toBe('src/utils.cpp')
+    expect(mappings[0].startLine).toBe(999)
   })
 
   // Tier 3: file + name
-  it('T3: resolves @ref(file:name) to named symbol in file', () => {
+  it('T3: resolves @ref(file:name) to named symbol in file', async () => {
     const refs: RefSpec[] = [
       { raw: 'src/parser.cpp:parse', filePath: 'src/parser.cpp', name: 'parse' }
     ]
-    const mappings = resolveRefs(refs, mockSymbols)
+    const mappings = await resolveRefs(refs, mockSymbols)
     expect(mappings).toHaveLength(1)
     expect(mappings[0].filePath).toBe('src/parser.cpp')
     expect(mappings[0].startLine).toBe(100)
   })
 
   // Tier 3: file+name with Class.method in file
-  it('T3: resolves @ref(file:Class.method) within file', () => {
+  it('T3: resolves @ref(file:Class.method) within file', async () => {
     const refs: RefSpec[] = [
       { raw: 'src/api.ts:MyClass.getValue', filePath: 'src/api.ts', name: 'MyClass.getValue' }
     ]
-    const mappings = resolveRefs(refs, mockSymbols)
+    const mappings = await resolveRefs(refs, mockSymbols)
     expect(mappings).toHaveLength(1)
     expect(mappings[0].functionName).toBe('MyClass.getValue')
     expect(mappings[0].filePath).toBe('src/api.ts')
   })
 
-  // Tier 3: file+name with no match
-  it('T3: returns empty for @ref(file:name) with no match', () => {
+  // Tier 3: file+name with no match => resolves via fallback to file start
+  it('T3: resolves @ref(file:name) via fallback when symbol not found in file', async () => {
     const refs: RefSpec[] = [
       { raw: 'src/api.ts:nonexistent', filePath: 'src/api.ts', name: 'nonexistent' }
     ]
-    const mappings = resolveRefs(refs, mockSymbols)
-    expect(mappings).toHaveLength(0)
+    const mappings = await resolveRefs(refs, mockSymbols)
+    expect(mappings).toHaveLength(1)
+    expect(mappings[0].filePath).toBe('src/api.ts')
+    expect(mappings[0].startLine).toBe(1)
   })
 
   // Tier 4: Class.method across all files
-  it('T4: resolves @ref(Class.method) across all files', () => {
+  it('T4: resolves @ref(Class.method) across all files', async () => {
     const refs: RefSpec[] = [
       { raw: 'MyClass.getValue', name: 'MyClass.getValue' }
     ]
-    const mappings = resolveRefs(refs, mockSymbols)
+    const mappings = await resolveRefs(refs, mockSymbols)
     expect(mappings).toHaveLength(1)
     expect(mappings[0].functionName).toBe('MyClass.getValue')
     expect(mappings[0].filePath).toBe('src/api.ts')
   })
 
   // Tier 5: name only across all files (first match)
-  it('T5: resolves @ref(name) to first matching symbol', () => {
+  it('T5: resolves @ref(name) to first matching symbol', async () => {
     const refs: RefSpec[] = [
       { raw: 'main', name: 'main' }
     ]
-    const mappings = resolveRefs(refs, mockSymbols)
+    const mappings = await resolveRefs(refs, mockSymbols)
     expect(mappings).toHaveLength(1)
     expect(mappings[0].functionName).toBe('main')
   })
 
   // Tier 5: duplicate name returns first match (stable by symbol iteration order)
-  it('T5: resolves duplicate name to first match', () => {
+  it('T5: resolves duplicate name to first match', async () => {
     const refs: RefSpec[] = [
       { raw: 'parse', name: 'parse' }
     ]
-    const mappings = resolveRefs(refs, mockSymbols)
+    const mappings = await resolveRefs(refs, mockSymbols)
     expect(mappings).toHaveLength(1)
     expect(mappings[0].filePath).toBe('src/utils.cpp')
     expect(mappings[0].startLine).toBe(42)
@@ -231,41 +235,41 @@ describe('resolveRefs', () => {
   })
 
   // Tier 6: no match at all
-  it('returns empty for completely unmatched ref', () => {
+  it('returns empty for completely unmatched ref', async () => {
     const refs: RefSpec[] = [
       { raw: 'nonexistent', name: 'nonexistent' }
     ]
-    const mappings = resolveRefs(refs, mockSymbols)
+    const mappings = await resolveRefs(refs, mockSymbols)
     expect(mappings).toHaveLength(0)
   })
 
   // Fallthrough: T1 fails file+line+name match, falls to T2 (file+line)
-  it('falls through T1->T2 when file+line+name name mismatch but file+line matches', () => {
+  it('falls through T1->T2 when file+line+name name mismatch but file+line matches', async () => {
     const refs: RefSpec[] = [
       { raw: 'src/utils.cpp:50:wrongName', filePath: 'src/utils.cpp', line: 50, name: 'wrongName' }
     ]
-    const mappings = resolveRefs(refs, mockSymbols)
+    const mappings = await resolveRefs(refs, mockSymbols)
     expect(mappings).toHaveLength(1)
     expect(mappings[0].functionName).toBe('parse')
   })
 
   // Mixed: some match, some don't
-  it('handles mixed matched/unmatched refs', () => {
+  it('handles mixed matched/unmatched refs', async () => {
     const refs: RefSpec[] = [
       { raw: 'main', name: 'main' },
       { raw: 'nonexistent', name: 'nonexistent' }
     ]
-    const mappings = resolveRefs(refs, mockSymbols)
+    const mappings = await resolveRefs(refs, mockSymbols)
     expect(mappings).toHaveLength(1)
     expect(mappings[0].raw).toBe('main')
   })
 
   // Backward compat: old-style Class.method format
-  it('resolves old-style Class.method format', () => {
+  it('resolves old-style Class.method format', async () => {
     const refs: RefSpec[] = [
       { raw: 'MyClass.getValue', name: 'MyClass.getValue' }
     ]
-    const mappings = resolveRefs(refs, mockSymbols)
+    const mappings = await resolveRefs(refs, mockSymbols)
     expect(mappings).toHaveLength(1)
     expect(mappings[0]).toMatchObject({
       functionName: 'MyClass.getValue',
@@ -275,7 +279,98 @@ describe('resolveRefs', () => {
     })
   })
 
-  it('returns empty for empty refs', () => {
-    expect(resolveRefs([], mockSymbols)).toEqual([])
+  // Repo prefix: resolves when target repo symbols exist in index
+  it('resolves @ref(repo#file#line#name) when target repo is in symbol index', async () => {
+    const symbolsWithRepo: (CodeSymbol & { repoPath: string })[] = [
+      {
+        name: 'UpdateWaveEquation',
+        kind: 'function',
+        filePath: 'Core_Source_Preview/HanPiWater/FluidDynamics/HPWaterWaveEquation.compute',
+        startLine: 40,
+        endLine: 50,
+        startColumn: 1,
+        endColumn: 1,
+        repoPath: '/Users/user/Engine/HPWater'
+      },
+      {
+        name: 'main',
+        kind: 'function',
+        filePath: 'src/index.ts',
+        startLine: 1,
+        endLine: 10,
+        startColumn: 1,
+        endColumn: 1,
+        repoPath: '/Users/user/Engine/Nilou-main'
+      }
+    ]
+    const refs: RefSpec[] = [{
+      raw: 'HPWater#Core_Source_Preview/HanPiWater/FluidDynamics/HPWaterWaveEquation.compute#42#UpdateWaveEquation',
+      repo: 'HPWater',
+      filePath: 'Core_Source_Preview/HanPiWater/FluidDynamics/HPWaterWaveEquation.compute',
+      line: 42,
+      name: 'UpdateWaveEquation'
+    }]
+    const mappings = await resolveRefs(refs, symbolsWithRepo)
+    expect(mappings).toHaveLength(1)
+    expect(mappings[0].filePath).toBe('Core_Source_Preview/HanPiWater/FluidDynamics/HPWaterWaveEquation.compute')
+    expect(mappings[0].functionName).toBe('UpdateWaveEquation')
+  })
+
+  // Repo prefix: does NOT fall back to unrelated repo when target repo not in index and no codeRepos config
+  it('returns empty when target repo not in symbol index and no codeRepos config', async () => {
+    const symbolsWithNilou: (CodeSymbol & { repoPath: string })[] = [
+      {
+        name: 'main',
+        kind: 'function',
+        filePath: 'src/index.ts',
+        startLine: 1,
+        endLine: 10,
+        startColumn: 1,
+        endColumn: 1,
+        repoPath: '/Users/user/Engine/Nilou-main'
+      }
+    ]
+    const refs: RefSpec[] = [{
+      raw: 'HPWater#Core_Source_Preview/HanPiWater/FluidDynamics/HPWaterWaveEquation.compute#42#UpdateWaveEquation',
+      repo: 'HPWater',
+      filePath: 'Core_Source_Preview/HanPiWater/FluidDynamics/HPWaterWaveEquation.compute',
+      line: 42,
+      name: 'UpdateWaveEquation'
+    }]
+    const mappings = await resolveRefs(refs, symbolsWithNilou)
+    // Should NOT resolve to Nilou-main/.../HPWaterWaveEquation.compute
+    expect(mappings).toHaveLength(0)
+  })
+
+  // Repo prefix: resolves via codeRepos config when target repo not in symbol index
+  it('resolves via codeRepos config when target repo not in symbol index', async () => {
+    const symbolsWithNilou: (CodeSymbol & { repoPath: string })[] = [
+      {
+        name: 'main',
+        kind: 'function',
+        filePath: 'src/index.ts',
+        startLine: 1,
+        endLine: 10,
+        startColumn: 1,
+        endColumn: 1,
+        repoPath: '/Users/user/Engine/Nilou-main'
+      }
+    ]
+    const refs: RefSpec[] = [{
+      raw: 'HPWater#Core_Source_Preview/HanPiWater/FluidDynamics/HPWaterWaveEquation.compute#42#UpdateWaveEquation',
+      repo: 'HPWater',
+      filePath: 'Core_Source_Preview/HanPiWater/FluidDynamics/HPWaterWaveEquation.compute',
+      line: 42,
+      name: 'UpdateWaveEquation'
+    }]
+    const codeRepos = [{ path: '/Users/user/Engine/HPWater', commit: 'abc123' }]
+    const mappings = await resolveRefs(refs, symbolsWithNilou, undefined, codeRepos)
+    expect(mappings).toHaveLength(1)
+    expect(mappings[0].filePath).toBe('/Users/user/Engine/HPWater/Core_Source_Preview/HanPiWater/FluidDynamics/HPWaterWaveEquation.compute')
+    expect(mappings[0].startLine).toBe(42)
+  })
+
+  it('returns empty for empty refs', async () => {
+    expect(await resolveRefs([], mockSymbols)).toEqual([])
   })
 })

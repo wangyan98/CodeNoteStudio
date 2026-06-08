@@ -1,5 +1,6 @@
 import type { CodeSymbol } from './code-parser'
 import { readTextFile } from './file-system'
+import path from 'node:path'
 
 const CONTEXT_LINES = 10
 
@@ -110,7 +111,8 @@ function getRepoPath(
   symbols: (CodeSymbol & { repoPath?: string })[],
   allSymbols: (CodeSymbol & { repoPath?: string })[],
   targetRepo?: string,
-  activeRepo?: string
+  activeRepo?: string,
+  codeRepos?: { path: string }[]
 ): string | undefined {
   if (targetRepo) {
     const match = symbols.find(
@@ -122,6 +124,12 @@ function getRepoPath(
       (s) => s.repoPath && (s.repoPath.endsWith('/' + targetRepo) || s.repoPath === targetRepo)
     )
     if (globalMatch?.repoPath) return globalMatch.repoPath
+    // Fallback: look up repo path from notebook config (match by basename)
+    if (codeRepos) {
+      const cfgRepo = codeRepos.find((r) => path.basename(r.path) === targetRepo)
+      if (cfgRepo) return cfgRepo.path
+    }
+    return undefined
   }
   const any = allSymbols.find((s) => s.repoPath)
   if (any?.repoPath) return any.repoPath
@@ -141,7 +149,8 @@ function getRepoPath(
 export async function resolveRefs(
   refs: RefSpec[],
   symbols: (CodeSymbol & { repoPath?: string })[],
-  activeRepo?: string
+  activeRepo?: string,
+  codeRepos?: { path: string }[]
 ): Promise<CodeMapping[]> {
   const mappings: CodeMapping[] = []
 
@@ -225,7 +234,7 @@ export async function resolveRefs(
         }
       }
       // Fallback B: file not in symbol index. Construct path from repo root.
-      const repoPath = getRepoPath(candidateSymbols, symbols, targetRepo, activeRepo)
+      const repoPath = getRepoPath(candidateSymbols, symbols, targetRepo, activeRepo, codeRepos)
       if (repoPath) {
         const absPath = repoPath + '/' + ref.filePath
         const mapping: CodeMapping = {
@@ -268,7 +277,7 @@ export async function resolveRefs(
         }
       }
       // Fallback: file not in index. Construct path from repo root.
-      const repoPath = getRepoPath(candidateSymbols, symbols, targetRepo, activeRepo)
+      const repoPath = getRepoPath(candidateSymbols, symbols, targetRepo, activeRepo, codeRepos)
       if (repoPath) {
         mappings.push({
           raw: ref.raw,

@@ -263,9 +263,10 @@ export function registerIpcHandlers(projectPath: string): void {
     const refs = parseRefs(content)
     if (refs.length === 0) return []
 
+    const config = await loadConfig(currentProjectPath!)
     const db = initSymbolDatabase(currentProjectPath!)
     const allSymbols = querySymbols(db)
-    const mappings = await resolveRefs(refs, allSymbols, activeRepoPath)
+    const mappings = await resolveRefs(refs, allSymbols, activeRepoPath, config.codeRepos)
     saveRefCache(currentProjectPath!, notePath, mappings)
     return mappings
   })
