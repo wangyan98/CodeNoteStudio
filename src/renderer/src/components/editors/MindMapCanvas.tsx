@@ -1267,6 +1267,8 @@ export const MindMapCanvas = forwardRef<MindMapCanvasHandle, MindMapCanvasProps>
             cancelAnimationFrame(autoPanRafId)
             autoPanRafId = null
           }
+          autoPanDraggedNode = null
+          autoPanDescendantIds = new Set()
 
           clearDragHighlight()
 
