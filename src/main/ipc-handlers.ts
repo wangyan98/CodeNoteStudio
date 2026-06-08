@@ -203,6 +203,11 @@ export function registerIpcHandlers(projectPath: string): void {
     return getCommitInfo(repoPath)
   })
 
+  ipcMain.handle('code:get-remote-url', async (_event, repoPath: string) => {
+    const { getRemoteUrl } = await import('./services/git-service')
+    return getRemoteUrl(repoPath)
+  })
+
   ipcMain.handle('code:parse-symbols', async (_event, filePaths: string[]) => {
     try {
       const { extractSymbols } = await import('./services/code-parser')
@@ -320,6 +325,16 @@ export function registerIpcHandlers(projectPath: string): void {
       port = result.port
     }
     return port
+  })
+
+  ipcMain.handle('shell:open-external', async (_event, url: string) => {
+    const { shell } = await import('electron')
+    return shell.openExternal(url)
+  })
+
+  ipcMain.handle('shell:open-path', async (_event, dirPath: string) => {
+    const { shell } = await import('electron')
+    return shell.openPath(dirPath)
   })
 }
 

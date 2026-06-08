@@ -45,6 +45,7 @@ const api = {
   readCodeFile: (absolutePath: string) => ipcRenderer.invoke('code:read-file', absolutePath),
   readBinaryFile: (absolutePath: string) => ipcRenderer.invoke('code:read-binary-file', absolutePath),
   getGitCommit: (repoPath: string) => ipcRenderer.invoke('code:get-git-commit', repoPath),
+  getRemoteUrl: (repoPath: string) => ipcRenderer.invoke('code:get-remote-url', repoPath),
   parseSymbols: (filePaths: string[]) => ipcRenderer.invoke('code:parse-symbols', filePaths),
   indexSymbols: (repoPath: string) => ipcRenderer.invoke('code:index-symbols', repoPath),
   resolveRefs: (notePath: string, content: string, activeRepoPath?: string) =>
@@ -61,6 +62,8 @@ const api = {
   startServer: (port?: number) => ipcRenderer.invoke('server:start', port),
   stopServer: () => ipcRenderer.invoke('server:stop'),
   getServerStatus: () => ipcRenderer.invoke('server:status'),
+  openExternal: (url: string) => ipcRenderer.invoke('shell:open-external', url),
+  openPath: (dirPath: string) => ipcRenderer.invoke('shell:open-path', dirPath),
 
   // UI state
   loadUiState: () => ipcRenderer.invoke('ui-state:load'),
