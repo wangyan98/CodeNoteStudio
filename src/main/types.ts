@@ -3,6 +3,7 @@ export type { MindMapDocument, DerivationDocument, MindMapNode, DerivationNode, 
 export interface CodeRepo {
   path: string
   commit: string
+  color?: string
 }
 
 export interface NotebookConfig {

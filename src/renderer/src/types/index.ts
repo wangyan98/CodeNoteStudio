@@ -19,6 +19,7 @@ export interface CodeFile {
 export interface CodeRepo {
   path: string
   commit: string
+  color?: string
 }
 
 export interface CodeSnippet {
