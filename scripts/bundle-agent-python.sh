@@ -15,7 +15,7 @@ rm -rf "$DEPS_DIR"
 mkdir -p "$DEPS_DIR"
 
 # Try pip first
-if python3 -m pip install --target "$DEPS_DIR" --no-cache-dir -r "$AGENT_DIR/requirements.txt" 2>/dev/null; then
+if python3 -m pip install --target "$DEPS_DIR" --no-cache-dir -i https://pypi.tuna.tsinghua.edu.cn/simple -r "$AGENT_DIR/requirements.txt" 2>/dev/null; then
   echo "==> Installed via pip"
 else
   echo "==> pip unavailable (offline?), copying from local site-packages"
