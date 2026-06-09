@@ -149,6 +149,7 @@ def grep(
     context_after: int = 0,
     max_results: int = 50,
 ) -> dict:
+    """Search for a regex pattern in files under a directory. Returns matching lines with optional context."""
     import fnmatch
 
     if not os.path.isdir(directory):
