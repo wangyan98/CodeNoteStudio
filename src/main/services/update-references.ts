@@ -131,8 +131,8 @@ export async function updateReferencesOnRename(
   const targetNotes = allNotes.filter((n) => n.type === 'md' || n.type === 'mind')
 
   for (const note of targetNotes) {
-    // Skip the renamed file itself
-    if (note.relativePath === oldRelativePath) continue
+    // Skip the renamed file itself (both old and new paths)
+    if (note.relativePath === oldRelativePath || note.relativePath === newRelativePath) continue
 
     const fileDir = path.dirname(note.relativePath) || '.'
 
