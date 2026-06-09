@@ -11,7 +11,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from memory import ConversationMemory
 from tools.registry import ToolRegistry
-from tools.file_ops import read_file, list_files, search_in_files
+from tools.file_ops import read_file, list_files, search_in_files, grep
 from tools.mindmap_tools import register_mindmap_tools
 from tools.derive_tools import register_derive_tools
 from tools.network_tools import register_network_tools
@@ -79,6 +79,47 @@ def build_registry() -> ToolRegistry:
             "required": ["directory", "query"],
         },
         handler=search_in_files,
+    )
+
+    registry.register(
+        name="grep",
+        description=(
+            "Search for a regex pattern in files under a directory. "
+            "Returns matching lines with optional context before and after. "
+            "Use for finding function signatures, class definitions, imports, "
+            "and other code patterns."
+        ),
+        parameters={
+            "type": "object",
+            "properties": {
+                "directory": {
+                    "type": "string",
+                    "description": "Directory to search in (absolute path)",
+                },
+                "pattern": {
+                    "type": "string",
+                    "description": "Regex pattern to search for",
+                },
+                "file_pattern": {
+                    "type": "string",
+                    "description": "File glob filter, e.g. '*.py' or '*.ts' (default '*')",
+                },
+                "context_before": {
+                    "type": "integer",
+                    "description": "Lines to show before each match (default 0)",
+                },
+                "context_after": {
+                    "type": "integer",
+                    "description": "Lines to show after each match (default 0)",
+                },
+                "max_results": {
+                    "type": "integer",
+                    "description": "Max matches to return (default 50)",
+                },
+            },
+            "required": ["directory", "pattern"],
+        },
+        handler=grep,
     )
 
     # Skill tools
