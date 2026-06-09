@@ -1,4 +1,5 @@
 import os
+import re
 
 
 def read_file(path: str, start_line: int = 1, end_line: int = -1, max_lines: int = 500) -> dict:
@@ -137,4 +138,82 @@ def search_in_files(directory: str, query: str, file_pattern: str = "*.py", max_
     if truncated:
         result["truncated"] = True
         result["hint"] = f"Results truncated at {max_results}. Use a more specific directory or query to narrow down."
+    return result
+
+
+def grep(
+    directory: str,
+    pattern: str,
+    file_pattern: str = "*",
+    context_before: int = 0,
+    context_after: int = 0,
+    max_results: int = 50,
+) -> dict:
+    import fnmatch
+
+    if not os.path.isdir(directory):
+        return {"ok": False, "error": f"Not a directory: {directory}"}
+
+    try:
+        compiled = re.compile(pattern)
+    except re.error as e:
+        return {"ok": False, "error": f"Invalid regex: {e}"}
+
+    matches = []
+    truncated = False
+
+    for root, dirs, filenames in os.walk(directory):
+        dirs[:] = [d for d in dirs if not d.startswith(".") and d != "__pycache__"]
+        for fname in filenames:
+            if fname.startswith("."):
+                continue
+            if file_pattern != "*" and not fnmatch.fnmatch(fname, file_pattern):
+                continue
+            fpath = os.path.join(root, fname)
+            try:
+                with open(fpath, "r", encoding="utf-8", errors="replace") as f:
+                    lines = f.readlines()
+            except Exception:
+                continue
+
+            for i, line in enumerate(lines):
+                line_stripped = line.rstrip("\n").rstrip("\r")
+                if compiled.search(line_stripped):
+                    match_entry = {
+                        "file": fpath,
+                        "line_number": i + 1,
+                        "line": line_stripped[:200],
+                    }
+                    if context_before > 0:
+                        ctx_before = []
+                        for j in range(i - 1, max(i - 1 - context_before, -1), -1):
+                            ctx_before.append({
+                                "line_number": j + 1,
+                                "line": lines[j].rstrip("\n").rstrip("\r")[:200],
+                            })
+                        match_entry["context_before"] = ctx_before
+                    if context_after > 0:
+                        ctx_after = []
+                        for j in range(i + 1, min(i + 1 + context_after, len(lines))):
+                            ctx_after.append({
+                                "line_number": j + 1,
+                                "line": lines[j].rstrip("\n").rstrip("\r")[:200],
+                            })
+                        match_entry["context_after"] = ctx_after
+                    matches.append(match_entry)
+                    if len(matches) >= max_results:
+                        truncated = True
+                        break
+            if truncated:
+                break
+        if truncated:
+            break
+
+    result: dict = {"ok": True, "matches": matches, "count": len(matches)}
+    if truncated:
+        result["truncated"] = True
+        result["hint"] = (
+            f"Results truncated at {max_results}. "
+            "Use a more specific directory or pattern to narrow down."
+        )
     return result
