@@ -191,9 +191,13 @@ export function CodeDirectory() {
         if (el) {
           el.scrollIntoView({ block: 'center', behavior: 'smooth' })
           el.classList.add('code-file-item-highlight')
-          timer = setTimeout(() => el.classList.remove('code-file-item-highlight'), 2000)
+          timer = setTimeout(() => {
+            el.classList.remove('code-file-item-highlight')
+            dispatch({ type: 'CLEAR_REVEAL_FILE_IN_TREE' })
+          }, 2000)
+        } else {
+          dispatch({ type: 'CLEAR_REVEAL_FILE_IN_TREE' })
         }
-        dispatch({ type: 'CLEAR_REVEAL_FILE_IN_TREE' })
       })
     })
 
