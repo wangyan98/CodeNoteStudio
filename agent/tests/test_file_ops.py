@@ -72,7 +72,7 @@ class TestGrep:
 
             result = grep(tmpdir, r"def\s+\w+")
             assert result["ok"] is True
-            assert len(result["matches"]) >= 1
+            assert len(result["matches"]) == 1
             assert "sky_atmosphere" in result["matches"][0]["line"]
             assert result["matches"][0]["line_number"] == 1
 
@@ -132,7 +132,8 @@ class TestGrep:
 
             result = grep(tmpdir, r"anything")
             assert result["ok"] is True
-            # Should not crash, matches may be 0 for binary content
+            assert "matches" in result
+            assert isinstance(result["matches"], list)
 
     def test_no_match(self):
         with tempfile.TemporaryDirectory() as tmpdir:
