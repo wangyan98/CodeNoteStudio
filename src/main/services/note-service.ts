@@ -159,6 +159,9 @@ export async function renameNote(
     saveRefCache(projectPath, newRelativePath, cached)
     deleteRefCache(projectPath, oldRelativePath)
   }
+  // Update ![[path]] and [text](path) references in other notes
+  const { updateReferencesOnRename } = await import('./update-references')
+  await updateReferencesOnRename(projectPath, oldRelativePath, newRelativePath)
 }
 
 export async function noteExists(
