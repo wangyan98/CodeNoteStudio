@@ -10,8 +10,17 @@ function useAppDispatch() {
   }
 }
 
+function useAppState() {
+  try {
+    return useAppContext().state
+  } catch {
+    return undefined
+  }
+}
+
 export function useCodeNavigation() {
   const dispatch = useAppDispatch()
+  const appState = useAppState()
 
   const navigateToCode = useCallback((filePath: string, startLine: number, repoPath?: string) => {
     if (!dispatch) return
@@ -32,9 +41,25 @@ export function useCodeNavigation() {
       repoPath: repoPath
     }
 
+    // Determine repo and switch if needed so file tree reveals the right location
+    let fileRepoPath = repoPath
+    if (!fileRepoPath && appState) {
+      for (const repo of appState.codeRepos) {
+        const prefix = repo.path.endsWith('/') ? repo.path : repo.path + '/'
+        if (filePath.startsWith(prefix)) {
+          fileRepoPath = repo.path
+          break
+        }
+      }
+    }
+    if (fileRepoPath && fileRepoPath !== appState?.codeRepoPath) {
+      dispatch({ type: 'SET_CODE_REPO', path: fileRepoPath })
+    }
+
+    dispatch({ type: 'REVEAL_FILE_IN_TREE', filePath })
     dispatch({ type: 'OPEN_CODE_FILE', file: codeFile })
     dispatch({ type: 'SET_PENDING_SCROLL', filePath, line: startLine })
-  }, [dispatch])
+  }, [dispatch, appState])
 
   return { navigateToCode }
 }

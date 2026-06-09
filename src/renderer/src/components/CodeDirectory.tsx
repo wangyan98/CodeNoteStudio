@@ -176,7 +176,7 @@ export function CodeDirectory() {
   }, [codeRepoPath])
 
   useEffect(() => {
-    if (!state.revealFilePath) return
+    if (!state.revealFilePath || loading) return
     const filePath = state.revealFilePath
     let raf1: number
     let raf2: number
@@ -203,7 +203,7 @@ export function CodeDirectory() {
       cancelAnimationFrame(raf2)
       clearTimeout(timer)
     }
-  }, [state.revealFilePath, dispatch])
+  }, [state.revealFilePath, loading, dispatch])
 
   const handleFileSelect = useCallback((file: RepoFileNode) => {
     if (file.isDirectory) return
