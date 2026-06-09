@@ -1,6 +1,12 @@
 import * as monaco from 'monaco-editor'
 
 export function registerRefCompletionProvider(): monaco.IDisposable {
+  // Cache codeRepos for repo prefix detection in completions
+  let codeRepos: Array<{ path: string }> = []
+  window.electronAPI.loadConfig().then((cfg) => {
+    codeRepos = cfg?.codeRepos || []
+  }).catch(() => {})
+
   return monaco.languages.registerCompletionItemProvider('markdown', {
     triggerCharacters: ['('],
 
@@ -29,13 +35,32 @@ export function registerRefCompletionProvider(): monaco.IDisposable {
           return absPath
         }
 
+        // Refresh codeRepos in case config changed
+        try {
+          const cfg = await window.electronAPI.loadConfig()
+          codeRepos = cfg?.codeRepos || []
+        } catch {}
+
         const suggestions: monaco.languages.CompletionItem[] = []
 
         for (const sym of symbols) {
           const relPath = toRelPath(sym.filePath)
           const fileName = relPath.split('/').pop() || relPath
           const displayName = sym.parentName ? `${sym.parentName}.${sym.name}` : sym.name
-          const fullRef = `${relPath}:${sym.startLine}:${displayName}`
+
+          // Include repo prefix when the symbol belongs to a configured repo
+          let repoPrefix = ''
+          let refRelPath = relPath
+          for (const repo of codeRepos) {
+            const prefix = repo.path.endsWith('/') ? repo.path : repo.path + '/'
+            if (sym.filePath.startsWith(prefix)) {
+              repoPrefix = (repo.path.split('/').pop() || repo.path) + ':'
+              refRelPath = sym.filePath.slice(prefix.length)
+              break
+            }
+          }
+
+          const fullRef = `${repoPrefix}${refRelPath}:${sym.startLine}:${displayName}`
 
           const detail = sym.parentName
             ? `${sym.kind} · ${sym.parentName} · ${fileName}:${sym.startLine}`

@@ -90,13 +90,13 @@ def register_markdown_tools(registry: ToolRegistry):
 
     registry.register(
         name="insert_ref",
-        description="Insert an @ref() code reference into a .md file. Links to specific code locations with #-separated segments: @ref(repo#file#line#name). All segments are optional. Without repo prefix, scoped to current repo.",
+        description="Insert an @ref() code reference into a .md file. Links to specific code locations with colon-separated segments: @ref(repo:file:line:name). Always include the repo prefix even when there is only one repo configured.",
         skill="markdown",
         parameters={
             "type": "object",
             "properties": {
                 "path": {"type": "string", "description": "Path to the .md file"},
-                "ref": {"type": "string", "description": "Reference string (e.g. 'repo#file.h#287' or 'MyClass.getValue')"},
+                "ref": {"type": "string", "description": "Reference string (e.g. 'myrepo:src/main.py:42:MyClass.getValue')"},
             },
             "required": ["path", "ref"],
         },

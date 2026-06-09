@@ -139,6 +139,9 @@ export function CodeViewport() {
         break
       }
     }
+    if (!repoName && state.codeRepos.length > 0) {
+      repoName = state.codeRepos[0].path.split('/').pop() || state.codeRepos[0].path
+    }
 
     const displayName = sym.parentName ? `${sym.parentName}.${sym.name}` : sym.name
     const refText = repoName
@@ -404,6 +407,9 @@ export function CodeViewport() {
                 repoName = repo.path.split('/').pop() || repo.path
                 break
               }
+            }
+            if (!repoName && state.codeRepos.length > 0) {
+              repoName = state.codeRepos[0].path.split('/').pop() || state.codeRepos[0].path
             }
             const displayName = sym.parentName ? `${sym.parentName}.${sym.name}` : sym.name
             const refText = repoName
