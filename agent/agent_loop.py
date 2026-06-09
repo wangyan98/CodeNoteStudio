@@ -16,6 +16,7 @@ class AgentLoop:
         repos: list[str],
         output_dir: str,
         max_steps: int = 80,
+        active_file: str = "",
     ):
         self.provider = provider
         self.registry = registry
@@ -24,6 +25,7 @@ class AgentLoop:
         self.repos = repos
         self.output_dir = output_dir
         self.max_steps = max_steps
+        self.active_file = active_file
         self._activated_skills: set[str] = set()
 
     async def run(self, user_message: str) -> AsyncIterator[dict]:
@@ -39,6 +41,7 @@ class AgentLoop:
                     repos=self.repos,
                     output_dir=self.output_dir,
                     tools_summary=tools_summary,
+                    active_file=self.active_file,
                 )
                 self.memory.add_message("system", system_msg)
 

@@ -128,6 +128,7 @@ def create_app(agent_factory=None, memory=None):
         provider_id = body.get("provider_id")
         workspace = body.get("workspace", "") or os.getcwd()
         repos = body.get("repos", [])
+        active_file = body.get("active_file", "")
         default_output = workspace if workspace else os.getcwd()
         output_dir = body.get("output_dir", default_output)
 
@@ -158,6 +159,7 @@ def create_app(agent_factory=None, memory=None):
                 workspace=workspace,
                 repos=repos,
                 output_dir=output_dir,
+                active_file=active_file,
             )
 
         async def event_stream():

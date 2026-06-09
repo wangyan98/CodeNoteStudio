@@ -8,6 +8,7 @@ SYSTEM_TEMPLATE = """You are a code analysis assistant. You help users understan
 - Workspace: {workspace}
 - Code Repositories: {repos}
 - Output directory for generated docs: {output_dir}
+- Active file in Code Viewport: {active_file}
 
 ## Available Tools
 {tools_section}
@@ -117,6 +118,7 @@ def build_system_message(
     repos: list[str],
     output_dir: str,
     tools_summary: list[dict] | None = None,
+    active_file: str = "",
 ) -> str:
     tools_section = _build_tools_section(tools_summary) if tools_summary else _FALLBACK_TOOLS
     return SYSTEM_TEMPLATE.format(
@@ -124,6 +126,7 @@ def build_system_message(
         repos=", ".join(repos) if repos else "(none)",
         output_dir=output_dir,
         tools_section=tools_section,
+        active_file=active_file or "(none)",
     )
 
 
@@ -131,6 +134,7 @@ def build_context(
     workspace: str,
     repos: list[str],
     output_dir: str | None = None,
+    active_file: str = "",
 ) -> dict:
     if output_dir is None:
         output_dir = workspace
@@ -138,4 +142,5 @@ def build_context(
         "workspace": workspace,
         "repos": repos,
         "output_dir": output_dir,
+        "active_file": active_file,
     }

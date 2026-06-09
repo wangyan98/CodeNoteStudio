@@ -110,6 +110,10 @@ export function AgentDialog({ visible, onClose }: AgentDialogProps) {
           provider_id: selectedProvider,
           workspace: state.workspacePath || '',
           repos: state.codeRepoPath ? [state.codeRepoPath] : [],
+          active_file:
+            state.activeCodeFileIndex >= 0
+              ? state.openCodeFiles[state.activeCodeFileIndex]?.path || ''
+              : '',
         }),
       })
 
