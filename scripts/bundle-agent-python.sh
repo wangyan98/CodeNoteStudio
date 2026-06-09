@@ -42,6 +42,20 @@ if [ -n "$PBS_ARCH" ]; then
     rm -rf "$TMP_DIR"
     PYTHON_BIN="$PYTHON_DIR/bin/python3"
     echo "==> Python runtime installed at $PYTHON_BIN"
+
+    # python-build-standalone install_only tarballs are missing some stdlib
+    # modules. Copy any missing .py files from the system Python's stdlib.
+    SYSTEM_STDLIB="$(python3 -c 'import os, sys; print(os.path.dirname(os.__file__))' 2>/dev/null)" || true
+    BUNDLED_STDLIB="$PYTHON_DIR/lib/python${PYTHON_VERSION%.*}"
+    if [ -n "$SYSTEM_STDLIB" ] && [ -d "$SYSTEM_STDLIB" ]; then
+      for pyfile in "$SYSTEM_STDLIB"/*.py; do
+        name="$(basename "$pyfile")"
+        if [ ! -f "$BUNDLED_STDLIB/$name" ]; then
+          cp "$pyfile" "$BUNDLED_STDLIB/"
+          echo "==> Patched: copied $name into bundled Python"
+        fi
+      done
+    fi
   else
     rm -rf "$TMP_DIR"
     echo "==> Failed to download Python runtime, falling back to system python3"
