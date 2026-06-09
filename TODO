@@ -6,3 +6,6 @@
 
 21. 各个编辑文件的渲染页面可以全屏
 22. 记录上一次打开的项目文件也转到 user目录下的.code-note-studio
+23. ref打开跳转文件时，也要展示在file tree
+24. ref只有一个repo时也要写入repo
+25. 当前打开的code文件也传入prompt
