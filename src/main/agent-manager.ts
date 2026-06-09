@@ -62,6 +62,18 @@ function getDepsPath(): string {
   return candidates[0]
 }
 
+function getPythonPath(): string {
+  const candidates = [
+    path.join(process.resourcesPath, 'agent', '.python', 'bin', 'python3'),
+    path.join(process.cwd(), 'agent', '.python', 'bin', 'python3'),
+    path.join(__dirname, '..', '..', '..', 'agent', '.python', 'bin', 'python3'),
+  ]
+  for (const p of candidates) {
+    if (fs.existsSync(p)) return p
+  }
+  return 'python3'
+}
+
 export async function startAgent(): Promise<{ port: number }> {
   if (agentProcess && agentPort) {
     try {
@@ -78,8 +90,10 @@ export async function startAgent(): Promise<{ port: number }> {
   const depsPath = getDepsPath()
 
   let stderrLog = ''
+  const pythonBin = getPythonPath()
+
   try {
-    agentProcess = spawn('python3', [serverScript, '--port', String(port), '--host', '127.0.0.1'], {
+    agentProcess = spawn(pythonBin, [serverScript, '--port', String(port), '--host', '127.0.0.1'], {
       stdio: ['ignore', 'pipe', 'pipe'],
       env: {
         ...process.env,
@@ -87,7 +101,7 @@ export async function startAgent(): Promise<{ port: number }> {
       },
     })
   } catch (e: any) {
-    throw new Error(`Failed to spawn python3: ${e.message}. Is python3 installed?`)
+    throw new Error(`Failed to spawn ${pythonBin}: ${e.message}. Is Python installed?`)
   }
 
   agentProcess.stdout?.on('data', (data: Buffer) => {
