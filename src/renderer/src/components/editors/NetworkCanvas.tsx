@@ -236,118 +236,94 @@ export function NetworkCanvas({
 
     // --- Cross-block child alignment ---
     // For skip edges connecting children in different blocks, shift the
-    // target child AND all forward-connected neighbors by the same delta.
-    // This keeps internal edge geometry intact while aligning skip endpoints.
+    // target node AND all forward-reachable descendants by the delta.
+    //
+    // Downstream-only propagation: shifting only along edge.source→edge.target
+    // direction avoids pulling shared upstream nodes (which would fight
+    // other skip edges). Nodes with multiple incoming forward edges
+    // naturally end up at the sum of upstream deltas — a reasonable
+    // compromise for convergent paths.
+    //
+    // Process edges in topological order (P4 before P3) so that a node
+    // shifted by an earlier edge's delta gets re-shifted by later ones
+    // whose sources are further downstream.
 
-    // Step 1: Build connected-component index for each block
-    // Two children are in the same component if a forward edge connects them
-    // (undirected — both upstream and downstream nodes shift together).
-    type BlockComponentInfo = Map<string, Set<string>>
-    const blockComponents = new Map<string, BlockComponentInfo>() // blockId → (childId → component)
+    // Build downstream adjacency for each block's internal forward edges
+    const blockDownstream = new Map<string, Map<string, string[]>>()
     for (const node of topNodes) {
       if (node.kind !== 'block' || !node.children?.length) continue
-      const bl = blockLayouts.get(node.id)
-      if (!bl) continue
-
-      // Build undirected adjacency from FORWARD internal edges only
-      // (skip edges within a block connect different branches — we don't
-      //  want those to drag unrelated branches when shifting components)
-      const adj = new Map<string, Set<string>>()
+      const down = new Map<string, string[]>()
       for (const child of node.children) {
-        adj.set(child.id, new Set())
+        down.set(child.id, [])
       }
       for (const ie of (node.internalEdges ?? [])) {
         if (ie.style !== 'forward') continue
-        adj.get(ie.source)?.add(ie.target)
-        adj.get(ie.target)?.add(ie.source)
+        down.get(ie.source)?.push(ie.target)
       }
-
-      // BFS to find components
-      const visited = new Set<string>()
-      const components = new Array<Set<string>>()
-      for (const child of node.children) {
-        if (visited.has(child.id)) continue
-        const comp = new Set<string>()
-        const queue = [child.id]
-        while (queue.length) {
-          const cur = queue.shift()!
-          if (visited.has(cur)) continue
-          visited.add(cur)
-          comp.add(cur)
-          for (const nb of adj.get(cur) ?? []) {
-            if (!visited.has(nb)) queue.push(nb)
-          }
-        }
-        components.push(comp)
-      }
-
-      // Map: childId → its component set
-      const compMap = new Map<string, Set<string>>()
-      for (const comp of components) {
-        for (const cid of comp) {
-          compMap.set(cid, comp)
-        }
-      }
-      blockComponents.set(node.id, compMap)
+      blockDownstream.set(node.id, down)
     }
 
-    // Step 2: Average delta per component. Multiple skip edges may hit the
-    // same forward-connected chain at different nodes. We average their
-    // desired deltas to find a good compromise position for the whole chain.
-    const compDeltaAcc = new Map<string, { sum: number; count: number; comp: Set<string> }>()
+    // Build ordered list of cross-block skip edges, sorted so that edges
+    // targeting "earlier" nodes in the forward chain are processed first.
+    // "Earlier" = smaller y-position in the target block's layout (closer
+    // to the block top). This ensures earlier shifts cascade to downstream
+    // nodes which may then be further adjusted by later edges.
+    type XBlockEdge = { source: string; target: string; srcParentId: string; tgtParentId: string }
+    const crossBlockEdges: XBlockEdge[] = []
     for (const edge of topEdges) {
       if (topNodeIds.has(edge.source) || topNodeIds.has(edge.target)) continue
-      const srcParentId = childParentMap.get(edge.source)
-      const tgtParentId = childParentMap.get(edge.target)
-      if (!srcParentId || !tgtParentId || srcParentId === tgtParentId) continue
+      const srcP = childParentMap.get(edge.source)
+      const tgtP = childParentMap.get(edge.target)
+      if (!srcP || !tgtP || srcP === tgtP) continue
+      crossBlockEdges.push({ source: edge.source, target: edge.target, srcParentId: srcP, tgtParentId: tgtP })
+    }
+    // Sort by target child's y-position in its block (top-to-bottom)
+    crossBlockEdges.sort((a, b) => {
+      const blA = blockLayouts.get(a.tgtParentId)
+      const blB = blockLayouts.get(b.tgtParentId)
+      const yA = blA?.positions.get(a.target)?.y ?? 0
+      const yB = blB?.positions.get(b.target)?.y ?? 0
+      return yA - yB
+    })
 
-      const srcBl = blockLayouts.get(srcParentId)
-      const tgtBl = blockLayouts.get(tgtParentId)
-      const srcBlPos = positions.get(srcParentId)
-      const tgtBlPos = positions.get(tgtParentId)
+    for (const cbe of crossBlockEdges) {
+      const srcBl = blockLayouts.get(cbe.srcParentId)
+      const tgtBl = blockLayouts.get(cbe.tgtParentId)
+      const srcBlPos = positions.get(cbe.srcParentId)
+      const tgtBlPos = positions.get(cbe.tgtParentId)
       if (!srcBl || !tgtBl || !srcBlPos || !tgtBlPos) continue
 
-      const srcCPos = srcBl.positions.get(edge.source)
-      const tgtCPos = tgtBl.positions.get(edge.target)
+      const srcCPos = srcBl.positions.get(cbe.source)
+      const tgtCPos = tgtBl.positions.get(cbe.target)
       if (!srcCPos || !tgtCPos) continue
 
+      // Source global x center (uses current block dimensions)
       const srcBlLeft = srcBlPos.x - srcBl.width / 2
       const srcGlobalX = srcBlLeft + srcBl.childOffsetX + srcCPos.x
+
+      // Target global x center (uses current position, may have been shifted)
+      const tgtCPosCur = tgtBl.positions.get(cbe.target)!
       const tgtBlLeft = tgtBlPos.x - tgtBl.width / 2
-      const tgtGlobalX = tgtBlLeft + tgtBl.childOffsetX + tgtCPos.x
+      const tgtGlobalX = tgtBlLeft + tgtBl.childOffsetX + tgtCPosCur.x
+
       const delta = srcGlobalX - tgtGlobalX
+      if (Math.abs(delta) < 0.5) continue
 
-      const compMap = blockComponents.get(tgtParentId)
-      const comp = compMap?.get(edge.target)
-      if (!comp || comp.size === 0) continue
-
-      // Use first child's id as stable key for this component
-      const compKey = tgtParentId + '|' + edge.target
-      const existing = compDeltaAcc.get(compKey)
-      if (existing) {
-        existing.sum += delta
-        existing.count++
-      } else {
-        compDeltaAcc.set(compKey, { sum: delta, count: 1, comp })
-      }
-    }
-
-    // Apply averaged delta
-    // Deduplicate: same component may have multiple keys; shift only once
-    const shiftedComps = new Set<Set<string>>()
-    for (const [compKey, acc] of compDeltaAcc) {
-      if (shiftedComps.has(acc.comp)) continue
-      shiftedComps.add(acc.comp)
-      if (acc.count === 0) continue
-      const avgDelta = acc.sum / acc.count
-      const blockId = compKey.split('|')[0]
-      const tgtBl = blockLayouts.get(blockId)
-      if (!tgtBl) continue
-
-      for (const cid of acc.comp) {
-        const cp = tgtBl.positions.get(cid)
-        if (!cp) continue
-        tgtBl.positions.set(cid, { x: cp.x + avgDelta, y: cp.y })
+      // BFS downstream from target node, shifting all reachable descendants
+      const down = blockDownstream.get(cbe.tgtParentId)
+      const queue = [cbe.target]
+      const visited = new Set<string>()
+      while (queue.length) {
+        const cur = queue.shift()!
+        if (visited.has(cur)) continue
+        visited.add(cur)
+        const cp = tgtBl.positions.get(cur)
+        if (cp) {
+          tgtBl.positions.set(cur, { x: cp.x + delta, y: cp.y })
+        }
+        for (const next of down?.get(cur) ?? []) {
+          if (!visited.has(next)) queue.push(next)
+        }
       }
     }
 
