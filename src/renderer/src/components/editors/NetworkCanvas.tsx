@@ -445,6 +445,14 @@ export function NetworkCanvas({
       const ti = inIdx.get(edge.target) ?? 0
       inIdx.set(edge.target, ti + 1)
 
+      // Determine direction for top-level source/target nodes
+      const srcDir = srcNode?.kind === 'block'
+        ? (srcNode.direction ?? blockLayouts.get(edge.source)?.direction ?? 'vertical')
+        : 'vertical'
+      const tgtDir = tgtNode?.kind === 'block'
+        ? (tgtNode.direction ?? blockLayouts.get(edge.target)?.direction ?? 'vertical')
+        : 'vertical'
+
       // If target node has a merge bar, edge hits the bar, not the node
       let targetPosY = offsetY + tgtPos.y
       const mergeInfo = mergeBarNodes.get(edge.target)
@@ -459,7 +467,8 @@ export function NetworkCanvas({
         { x: offsetX + tgtPos.x, y: targetPosY },
         srcW, srcH, tgtW, tgtH, g,
         si, outDegree.get(edge.source) ?? 1,
-        ti, inDegree.get(edge.target) ?? 1)
+        ti, inDegree.get(edge.target) ?? 1,
+        srcDir, tgtDir)
     }
 
     // --- Render nodes ---
