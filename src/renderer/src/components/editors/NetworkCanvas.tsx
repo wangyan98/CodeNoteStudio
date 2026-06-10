@@ -263,6 +263,30 @@ export function NetworkCanvas({
       svg.call(zoom.transform as any, d3.zoomIdentity.translate(initTx, initTy).scale(fitScale))
     }
 
+    // Compute port XY on a node boundary for a given direction
+    const getPortXY = (
+      cx: number, cy: number,
+      w: number, h: number,
+      idx: number, total: number,
+      edge: 'in' | 'out',
+      direction: BlockDirection
+    ): { x: number; y: number } => {
+      if (direction === 'horizontal') {
+        // Ports on left (in) or right (out), spread vertically
+        const py = total > 1
+          ? cy - h / 2 + 12 + (h - 24) * (idx + 0.5) / total
+          : cy
+        const px = edge === 'in' ? cx - w / 2 : cx + w / 2
+        return { x: px, y: py }
+      }
+      // Vertical: ports on top (in) or bottom (out), spread horizontally
+      const px = total > 1
+        ? cx - w / 2 + 12 + (w - 24) * (idx + 0.5) / total
+        : cx
+      const py = edge === 'in' ? cy - h / 2 : cy + h / 2
+      return { x: px, y: py }
+    }
+
     // Helper to render a single edge (used for both top-level and internal edges)
     const renderEdge = (
       edge: GraphEdge,
@@ -276,14 +300,16 @@ export function NetworkCanvas({
       srcPortIdx = 0,
       srcPortTotal = 1,
       tgtPortIdx = 0,
-      tgtPortTotal = 1
+      tgtPortTotal = 1,
+      srcDirection?: BlockDirection,
+      tgtDirection?: BlockDirection
     ) => {
-      const portX = (cx: number, w: number, idx: number, total: number) =>
-        total > 1 ? cx - w / 2 + 12 + (w - 24) * (idx + 0.5) / total : cx
-      const x1 = portX(srcPos.x, srcW, srcPortIdx, srcPortTotal)
-      const y1 = srcPos.y + srcH / 2
-      const x2 = portX(tgtPos.x, tgtW, tgtPortIdx, tgtPortTotal)
-      const y2 = tgtPos.y - tgtH / 2
+      const srcDir = srcDirection ?? 'vertical'
+      const tgtDir = tgtDirection ?? 'vertical'
+      const srcPort = getPortXY(srcPos.x, srcPos.y, srcW, srcH, srcPortIdx, srcPortTotal, 'out', srcDir)
+      const tgtPort = getPortXY(tgtPos.x, tgtPos.y, tgtW, tgtH, tgtPortIdx, tgtPortTotal, 'in', tgtDir)
+      const { x: x1, y: y1 } = srcPort
+      const { x: x2, y: y2 } = tgtPort
       const isSelected = edge.id === selectedEdgeId
       const strokeColor = isSelected ? '#4a90d9' : '#888'
       const skipColor = isSelected ? '#4a90d9' : '#34a853'
@@ -376,7 +402,9 @@ export function NetworkCanvas({
         { x: offsetX + tgtPos.x, y: offsetY + tgtPos.y },
         srcW, srcH, tgtW, tgtH, g,
         si, outDegree.get(edge.source) ?? 1,
-        ti, inDegree.get(edge.target) ?? 1)
+        ti, inDegree.get(edge.target) ?? 1,
+        srcNode?.direction,
+        tgtNode?.direction)
     }
 
     // --- Render nodes ---
@@ -467,7 +495,9 @@ export function NetworkCanvas({
               { x: childOffsetX + cpTgt.x, y: childOffsetY + cpTgt.y },
               cSrcW, cSrcH, cTgtW, cTgtH, nodeG,
               si, intOutDeg.get(ie.source) ?? 1,
-              ti, intInDeg.get(ie.target) ?? 1)
+              ti, intInDeg.get(ie.target) ?? 1,
+              cSrcNode?.direction,
+              cTgtNode?.direction)
           }
 
           // Children
