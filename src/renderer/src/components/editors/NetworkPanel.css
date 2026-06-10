@@ -116,6 +116,48 @@
   font-size: 12px;
 }
 
+.network-panel-shape-computed {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex: 1;
+}
+
+.network-panel-shape-computed-value {
+  flex: 1;
+  padding: 2px 4px;
+  font-size: 10px;
+  background: var(--input-bg, #2a2a2a);
+  color: var(--placeholder-color, #888);
+  border: 1px solid var(--border-color, #444);
+  border-radius: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.network-panel-shape-toggle {
+  background: none;
+  border: none;
+  color: #888;
+  cursor: pointer;
+  padding: 2px;
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.network-panel-shape-toggle:hover {
+  color: #ccc;
+}
+
+.network-panel-shape-manual {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex: 1;
+}
+
 .network-panel-kv-list {
   display: flex;
   flex-direction: column;
