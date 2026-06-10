@@ -196,8 +196,43 @@ export function NetworkCanvas({
       nodeSizes.set(id, { width: bl.width, height: bl.height })
     }
 
+    // Build simple child→parent lookup (needed before runLayout for edge synthesis)
+    const childParentMap = new Map<string, string>()
+    for (const node of topNodes) {
+      if (node.kind === 'block' && node.children) {
+        for (const child of node.children) {
+          childParentMap.set(child.id, node.id)
+        }
+      }
+    }
+
     // Run main layout with actual block sizes
-    const positions = runLayout(topNodes, topEdges, nodeSizes)
+    // Build set of top-level node IDs (excludes children inside blocks)
+    const topNodeIds = new Set(topNodes.map(n => n.id))
+
+    // Build synthetic edge list: only top-level→top-level edges for dagre.
+    // Child→top-level edges (e.g. head-layer → Detect) are synthesized as
+    // parent-block → target so dagre places the target below the block.
+    const layoutEdges: GraphEdge[] = []
+    for (const e of topEdges) {
+      const srcTop = topNodeIds.has(e.source)
+      const tgtTop = topNodeIds.has(e.target)
+      if (srcTop && tgtTop) {
+        layoutEdges.push(e)
+      } else if (!srcTop && tgtTop) {
+        const parentId = childParentMap.get(e.source)
+        if (parentId) {
+          layoutEdges.push({ ...e, source: parentId })
+        }
+      } else if (srcTop && !tgtTop) {
+        const parentId = childParentMap.get(e.target)
+        if (parentId) {
+          layoutEdges.push({ ...e, target: parentId })
+        }
+      }
+      // Both children: skip (dagre has no node for either)
+    }
+    const positions = runLayout(topNodes, layoutEdges, nodeSizes)
 
     // Compute bounding box for centering
     let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity
