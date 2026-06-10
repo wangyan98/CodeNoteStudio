@@ -12,6 +12,8 @@ def main():
     parser.add_argument("path", help="Path to the .net.json file")
     parser.add_argument("name", help="Block name")
     parser.add_argument("--repeat", type=int, default=None, help="Repeat count")
+    parser.add_argument("--direction", choices=["horizontal", "vertical"],
+                        default=None, help="Block layout direction")
     args = parser.parse_args()
 
     args.path = resolve_path(args.path, ".net.json")
@@ -19,7 +21,7 @@ def main():
     doc = load_network(args.path)
     block = GraphNode(
         id=str(uuid.uuid4()), kind="block", label=args.name,
-        repeat=args.repeat, children=[]
+        repeat=args.repeat, children=[], direction=args.direction
     )
     doc.nodes.append(block)
     save_network(args.path, doc)

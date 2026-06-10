@@ -56,6 +56,21 @@ Represents a reusable sub-network (e.g. ResBlock, C2f, Bottleneck). A block **co
 - Use **block** only when a group of layers forms a reusable sub-component (ResBlock, C2f, TransformerBlock…)
 - Do NOT set `layerType` or `params` on a block node — those fields belong on `kind: "layer"` only
 - Do NOT set `inputShape`/`outputShape` on a block node — shapes go on individual layer nodes
+- `direction`: Optional layout hint — `"horizontal"` (left→right) or `"vertical"` (top→bottom). When omitted, auto-detected from topology (multi-output nodes → horizontal). Use `--direction horizontal` on `add_block.py` for pipelines with fan-out branches (e.g., backbones with skip connections). Use `--direction vertical` (the default if omitted) for sequential feed-forward flows.
+
+### Block direction reference
+
+| Direction | Layout | Best for |
+|-----------|--------|----------|
+| `"horizontal"` | Left→right (dagre `LR`) | Backbones with multi-output skip connections, encoders, stem stages |
+| `"vertical"` | Top→bottom (dagre `TB`) | Sequential feed-forward, FPN necks, head modules |
+| `undefined` | Auto-detect | Let the heuristics decide — nodes with ≥2 outgoing internal edges → horizontal |
+
+Block direction controls how dagre lays out children within the block:
+- **Horizontal**: children flow left-to-right, ports spread vertically on left/right edges, skip edges exit via the bottom
+- **Vertical**: children flow top-to-bottom, ports spread horizontally on top/bottom edges
+
+The top-level document layout is always vertical (blocks stack top-to-bottom). Direction only affects sub-layout within each block.
 
 ### `kind: "input"` / `kind: "output"` — Entry/exit points
 
@@ -96,12 +111,13 @@ Edge styles: forward, skip.
 | `scripts/create_network.py <path> [--name]` | Create .net.json with input/output |
 | `scripts/list_preset_layers.py` | List all available preset layer types and their parameters. Call this BEFORE add_layer to see valid layer types. |
 | `scripts/add_layer.py <path> <type> [--name] [--params JSON]` | Insert layer before output |
-| `scripts/add_block.py <path> <name> [--repeat N]` | Create block node |
+| `scripts/add_block.py <path> <name> [--repeat N] [--direction horizontal|vertical]` | Create block node with optional direction |
 | `scripts/add_node_to_block.py <path> <block-id> <node-id>` | Move node into block |
 | `scripts/add_connection.py <path> <from-id> <to-id> [--style] [--label]` | Add edge |
-| `scripts/update_node.py <path> <node-id> [--label] [--params] [--input-shape] [--output-shape] [--code-mapping] <value>` | Update node |
+| `scripts/update_node.py <path> <node-id> [--label] [--params] [--input-shape] [--output-shape] [--code-mapping] [--direction horizontal|vertical] <value>` | Update node |
 | `scripts/delete_node.py <path> <node-id>` | Delete node + incident edges |
 | `scripts/delete_connection.py <path> <edge-id>` | Delete single edge |
+| `scripts/build_yolov5n.py <path> [--name]` | Build a complete YOLOv5n net.json with direction-aware blocks (horizontal backbone, vertical neck) |
 
 ### create_network.py
 
@@ -145,3 +161,30 @@ python scripts/update_node.py model.net.json <node-id> --code-mapping '{"raw":".
 ```
 
 Flags can be combined in a single call. Shapes only apply to `kind: "layer"` and `kind: "input"`/`"output"` nodes — do NOT set shapes on `kind: "block"` nodes.
+
+### update_node.py (direction)
+
+```bash
+# Set block layout direction
+python scripts/update_node.py model.net.json <block-id> --direction horizontal
+python scripts/update_node.py model.net.json <block-id> --direction vertical
+```
+
+### build_yolov5n.py
+
+```bash
+python scripts/build_yolov5n.py yolov5n-direction-aware.net.json --name "YOLOv5n (direction-aware)"
+# => {"ok": true, "path": "...", "backboneId": "...", "neckId": "...", "detectId": "..."}
+```
+
+Creates a complete YOLOv5n net.json with direction-aware blocks for visual clarity.
+
+### add_block.py (direction)
+
+```bash
+# Create a horizontal block (good for backbones with skip connections)
+python scripts/add_block.py model.net.json "MyBackbone" --direction horizontal
+
+# Create a vertical block (default if omitted)
+python scripts/add_block.py model.net.json "MyNeck" --direction vertical
+```

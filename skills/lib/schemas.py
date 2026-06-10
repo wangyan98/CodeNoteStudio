@@ -139,6 +139,7 @@ class GraphNode:
     children: list['GraphNode'] | None = None
     internalEdges: list['GraphEdge'] | None = None
     codeMapping: CodeMapping | None = None
+    direction: Literal['horizontal', 'vertical'] | None = None
 
 
 @dataclass

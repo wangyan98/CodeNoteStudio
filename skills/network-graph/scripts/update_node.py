@@ -16,6 +16,8 @@ def main():
     parser.add_argument("--input-shape", help="Input tensor shape (e.g. 3×640×640)")
     parser.add_argument("--output-shape", help="Output tensor shape (e.g. 16×320×320)")
     parser.add_argument("--code-mapping", help="JSON code mapping object")
+    parser.add_argument("--direction", choices=["horizontal", "vertical"],
+                        default=None, help="Block layout direction")
     args = parser.parse_args()
 
     args.path = resolve_path(args.path, ".net.json")
@@ -40,6 +42,11 @@ def main():
         except ValueError as e:
             print(json.dumps({"ok": False, "error": str(e)}))
             sys.exit(1)
+    if args.direction is not None:
+        if isinstance(node, dict):
+            node["direction"] = args.direction
+        else:
+            node.direction = args.direction
 
     save_network(args.path, doc)
     print(json.dumps({"ok": True}))
