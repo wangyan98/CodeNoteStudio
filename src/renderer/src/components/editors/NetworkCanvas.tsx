@@ -436,26 +436,35 @@ export function NetworkCanvas({
     const inIdx = new Map<string, number>()
 
     // Build child position lookup for cross-block edge resolution
-    // Maps childId => { blockId, parentPos, childPos (in layout coords), direction }
+    // Maps childId => global center position and direction
     const childLookup = new Map<string, {
-      parentId: string
-      parentPos: { x: number; y: number }
-      childPos: { x: number; y: number }
+      pos: { x: number; y: number }
       direction: BlockDirection
+      w: number
+      h: number
     }>()
     for (const node of topNodes) {
       if (node.kind === 'block' && node.children) {
         const bl = blockLayouts.get(node.id)
         const parentPos = positions.get(node.id)
         if (!bl || !parentPos) continue
+        const parentSize = getNodeSize(node)
+        // Block rect top-left (same as nodeG.append('rect') uses)
+        const bx = offsetX + parentPos.x - parentSize.w / 2
+        const by = offsetY + parentPos.y - parentSize.h / 2
+        // childOffsetX/Y: same translation as when rendering children inside block
+        const cox = bx + bl.childOffsetX
+        const coy = by + bl.childOffsetY
         for (const child of node.children) {
           const cp = bl.positions.get(child.id)
           if (!cp) continue
+          // Global child center = childOffset + dagre position
+          const cw = child.kind === 'input' || child.kind === 'output' ? INPUT_W : NODE_W
+          const ch = child.kind === 'input' || child.kind === 'output' ? INPUT_H : NODE_H
           childLookup.set(child.id, {
-            parentId: node.id,
-            parentPos,
-            childPos: cp,
+            pos: { x: cox + cp.x, y: coy + cp.y },
             direction: bl.direction,
+            w: cw, h: ch,
           })
         }
       }
@@ -477,15 +486,7 @@ export function NetworkCanvas({
       // Then try child lookup
       const child = childLookup.get(nodeId)
       if (child) {
-        return {
-          pos: {
-            x: offsetX + child.parentPos.x + child.childPos.x,
-            y: offsetY + child.parentPos.y + child.childPos.y,
-          },
-          w: NODE_W,
-          h: NODE_H,
-          direction: child.direction,
-        }
+        return { pos: child.pos, w: child.w, h: child.h, direction: child.direction }
       }
       return null
     }
