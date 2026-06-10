@@ -159,21 +159,6 @@ export function NetworkCanvas({
         const blockDirection = node.direction ?? autoDetectDirection(internalEdges)
         const childPositions = runLayout(children, internalEdges, undefined, blockDirection)
 
-        // For horizontal blocks: snap all children to the same y baseline
-        // so they form a straight line instead of a jagged row.
-        if (blockDirection === 'horizontal') {
-          let baseY = 0
-          const ys: number[] = []
-          for (const cp of childPositions.values()) ys.push(cp.y)
-          if (ys.length > 0) {
-            ys.sort((a, b) => a - b)
-            baseY = ys[Math.floor(ys.length / 2)] // median y
-          }
-          for (const [id, cp] of childPositions) {
-            childPositions.set(id, { x: cp.x, y: baseY })
-          }
-        }
-
         // Compute bounding box of children (positions are node centers)
         let cMinX = Infinity, cMaxX = -Infinity, cMinY = Infinity, cMaxY = -Infinity
         for (const cp of childPositions.values()) {
@@ -250,8 +235,8 @@ export function NetworkCanvas({
     const positions = runLayout(topNodes, layoutEdges, nodeSizes)
 
 
-    // Center the first node in each vertical block, and snap all children
-    // to the same x column so they form a straight vertical line.
+    // Center the first node in each vertical block after all shifts.
+    // The first node is the one with no incoming forward edges.
     for (const node of topNodes) {
       if (node.kind !== 'block' || !node.children?.length) continue
       const bl = blockLayouts.get(node.id)
@@ -265,7 +250,7 @@ export function NetworkCanvas({
           inDeg.set(ie.target, (inDeg.get(ie.target) ?? 0) + 1)
         }
       }
-      // First node = one with in-degree 0 (entry point)
+      // First node = one with in-degree 0
       let firstId: string | null = null
       for (const child of node.children) {
         if ((inDeg.get(child.id) ?? 0) === 0) {
@@ -274,12 +259,15 @@ export function NetworkCanvas({
         }
       }
       if (!firstId) continue
+      const firstPos = bl.positions.get(firstId)
+      if (!firstPos) continue
 
-      // Snap ALL children to x=0 (centered) — the first node's column
+      // Shift all children so the first node centers at x=0
+      const offset = -firstPos.x
       for (const child of node.children) {
         const cp = bl.positions.get(child.id)
         if (!cp) continue
-        bl.positions.set(child.id, { x: 0, y: cp.y })
+        bl.positions.set(child.id, { x: cp.x + offset, y: cp.y })
       }
     }
 
