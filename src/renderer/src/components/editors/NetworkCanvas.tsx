@@ -254,11 +254,17 @@ export function NetworkCanvas({
       srcH: number,
       tgtW: number,
       tgtH: number,
-      parentG: d3.Selection<SVGGElement, unknown, null, undefined>
+      parentG: d3.Selection<SVGGElement, unknown, null, undefined>,
+      srcPortIdx = 0,
+      srcPortTotal = 1,
+      tgtPortIdx = 0,
+      tgtPortTotal = 1
     ) => {
-      const x1 = srcPos.x
+      const portX = (cx: number, w: number, idx: number, total: number) =>
+        total > 1 ? cx - w / 2 + 12 + (w - 24) * (idx + 0.5) / total : cx
+      const x1 = portX(srcPos.x, srcW, srcPortIdx, srcPortTotal)
       const y1 = srcPos.y + srcH / 2
-      const x2 = tgtPos.x
+      const x2 = portX(tgtPos.x, tgtW, tgtPortIdx, tgtPortTotal)
       const y2 = tgtPos.y - tgtH / 2
       const isSelected = edge.id === selectedEdgeId
       const strokeColor = isSelected ? '#4a90d9' : '#888'
@@ -322,6 +328,16 @@ export function NetworkCanvas({
     }
 
     // --- Render top-level edges (behind nodes) ---
+    // Count outgoing/incoming ports per node for multi-edge distribution
+    const outDegree = new Map<string, number>()
+    const inDegree = new Map<string, number>()
+    for (const edge of topEdges) {
+      outDegree.set(edge.source, (outDegree.get(edge.source) ?? 0) + 1)
+      inDegree.set(edge.target, (inDegree.get(edge.target) ?? 0) + 1)
+    }
+    const outIdx = new Map<string, number>()
+    const inIdx = new Map<string, number>()
+
     for (const edge of topEdges) {
       const srcPos = positions.get(edge.source)
       const tgtPos = positions.get(edge.target)
@@ -332,10 +348,17 @@ export function NetworkCanvas({
       const { w: srcW, h: srcH } = getNodeSize(srcNode)
       const { w: tgtW, h: tgtH } = getNodeSize(tgtNode)
 
+      const si = outIdx.get(edge.source) ?? 0
+      outIdx.set(edge.source, si + 1)
+      const ti = inIdx.get(edge.target) ?? 0
+      inIdx.set(edge.target, ti + 1)
+
       renderEdge(edge,
         { x: offsetX + srcPos.x, y: offsetY + srcPos.y },
         { x: offsetX + tgtPos.x, y: offsetY + tgtPos.y },
-        srcW, srcH, tgtW, tgtH, g)
+        srcW, srcH, tgtW, tgtH, g,
+        si, outDegree.get(edge.source) ?? 1,
+        ti, inDegree.get(edge.target) ?? 1)
     }
 
     // --- Render nodes ---
@@ -394,8 +417,18 @@ export function NetworkCanvas({
           const childOffsetX = nx + blockLayout.childOffsetX
           const childOffsetY = ny + blockLayout.childOffsetY
 
-          // Internal edges first
-          for (const ie of (node.internalEdges ?? [])) {
+          // Internal edges first — count ports for multi-edge distribution
+          const intEdges = node.internalEdges ?? []
+          const intOutDeg = new Map<string, number>()
+          const intInDeg = new Map<string, number>()
+          for (const ie of intEdges) {
+            intOutDeg.set(ie.source, (intOutDeg.get(ie.source) ?? 0) + 1)
+            intInDeg.set(ie.target, (intInDeg.get(ie.target) ?? 0) + 1)
+          }
+          const intOutIdx = new Map<string, number>()
+          const intInIdx = new Map<string, number>()
+
+          for (const ie of intEdges) {
             const cpSrc = blockLayout.positions.get(ie.source)
             const cpTgt = blockLayout.positions.get(ie.target)
             if (!cpSrc || !cpTgt) continue
@@ -405,10 +438,18 @@ export function NetworkCanvas({
             const cSrcH = cSrcNode?.kind === 'input' || cSrcNode?.kind === 'output' ? INPUT_H : NODE_H
             const cTgtW = cTgtNode?.kind === 'input' || cTgtNode?.kind === 'output' ? INPUT_W : NODE_W
             const cTgtH = cTgtNode?.kind === 'input' || cTgtNode?.kind === 'output' ? INPUT_H : NODE_H
+
+            const si = intOutIdx.get(ie.source) ?? 0
+            intOutIdx.set(ie.source, si + 1)
+            const ti = intInIdx.get(ie.target) ?? 0
+            intInIdx.set(ie.target, ti + 1)
+
             renderEdge(ie,
               { x: childOffsetX + cpSrc.x, y: childOffsetY + cpSrc.y },
               { x: childOffsetX + cpTgt.x, y: childOffsetY + cpTgt.y },
-              cSrcW, cSrcH, cTgtW, cTgtH, nodeG)
+              cSrcW, cSrcH, cTgtW, cTgtH, nodeG,
+              si, intOutDeg.get(ie.source) ?? 1,
+              ti, intInDeg.get(ie.target) ?? 1)
           }
 
           // Children
