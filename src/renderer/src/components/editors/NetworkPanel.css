@@ -99,12 +99,6 @@
   margin: 0;
 }
 
-.network-panel-no-params {
-  font-size: 10px;
-  color: var(--placeholder-color, #666);
-  font-style: italic;
-}
-
 .network-panel-resolved-ref {
   font-size: 9px;
   color: var(--accent-color, #4a90d9);

@@ -1,3 +1,4 @@
+import { useRef } from 'react'
 import type { LayerDef } from '../../../../main/schemas/layer-catalog'
 import type { GraphNode } from '../../../../main/schemas/note-types'
 import { CodeMappingField } from '../CodeMappingField'
@@ -51,6 +52,8 @@ export function NetworkPanel({
   node, nodeDef, onUpdateNode, onAddEdge, notePath
 }: NetworkPanelProps) {
 
+  const paramIdsRef = useRef<Map<string, string>>(new Map())
+
   if (!node) {
     return (
       <div className="network-panel">
@@ -86,12 +89,24 @@ export function NetworkPanel({
           </div>
         )}
 
-        {node.kind === 'layer' && params.length === 0 && (
+        {node.kind === 'layer' && params.length === 0 && (() => {
+          // Stable IDs for React keys — avoids focus loss when renaming params
+          const entries = Object.entries(node.params ?? {})
+          const stableIds: string[] = []
+          for (const [k] of entries) {
+            let sid = paramIdsRef.current.get(k)
+            if (!sid) {
+              sid = k
+              paramIdsRef.current.set(k, sid)
+            }
+            stableIds.push(sid)
+          }
+          return (
           <div className="network-panel-params">
             <div className="network-panel-section-title">Parameters</div>
             <div className="network-panel-kv-list">
-              {Object.entries(node.params ?? {}).map(([key, value]) => (
-                <div key={key} className="network-panel-kv-row">
+              {entries.map(([key, value], idx) => (
+                <div key={stableIds[idx]} className="network-panel-kv-row">
                   <input
                     className="network-panel-input network-panel-kv-key"
                     type="text"
@@ -101,7 +116,11 @@ export function NetworkPanel({
                       const currentParams = { ...node.params }
                       const oldValue = currentParams[key]
                       delete currentParams[key]
-                      currentParams[newKey] = oldValue
+                      if (newKey) {
+                        currentParams[newKey] = oldValue
+                        paramIdsRef.current.set(newKey, paramIdsRef.current.get(key) ?? key)
+                      }
+                      paramIdsRef.current.delete(key)
                       onUpdateNode(node.id, 'params', currentParams)
                     }}
                     placeholder="key"
@@ -120,6 +139,7 @@ export function NetworkPanel({
                     onClick={() => {
                       const next = { ...node.params }
                       delete next[key]
+                      paramIdsRef.current.delete(key)
                       onUpdateNode(node.id, 'params', next)
                     }}
                     title="Remove parameter"
@@ -133,15 +153,19 @@ export function NetworkPanel({
               className="network-panel-kv-add"
               onClick={() => {
                 const next = { ...node.params }
-                const newKey = `param${Object.keys(next).length + 1}`
+                let n = Object.keys(next).length + 1
+                while (`param${n}` in next) n++
+                const newKey = `param${n}`
                 next[newKey] = ''
+                paramIdsRef.current.set(newKey, newKey)
                 onUpdateNode(node.id, 'params', next)
               }}
             >
               + Add param
             </button>
           </div>
-        )}
+          )
+        })()}
 
         {/* Block settings */}
         {node.kind === 'block' && (
