@@ -1,6 +1,7 @@
-import { useRef } from 'react'
+import { useRef, useEffect, useMemo, useState } from 'react'
 import type { LayerDef } from '../../../../main/schemas/layer-catalog'
 import type { GraphNode } from '../../../../main/schemas/note-types'
+import { computeOutputShape } from '../../../../main/utils/shape-computation'
 import { CodeMappingField } from '../CodeMappingField'
 import './NetworkPanel.css'
 
@@ -53,6 +54,27 @@ export function NetworkPanel({
 }: NetworkPanelProps) {
 
   const paramIdsRef = useRef<Map<string, string>>(new Map())
+
+  // Auto-compute output shape from layer params + input shape
+  const [outputAutoMode, setOutputAutoMode] = useState(true)
+
+  const computedOutput = useMemo(() => {
+    if (!node || node.kind !== 'layer' || !node.layerType || !node.inputShape) return null
+    return computeOutputShape(node.layerType, node.inputShape, node.params ?? {})
+  }, [node?.layerType, node?.inputShape, JSON.stringify(node?.params)])
+
+  // Reset to auto mode when switching nodes
+  useEffect(() => {
+    setOutputAutoMode(true)
+  }, [node?.id])
+
+  // Auto-update node's outputShape when computed value changes
+  useEffect(() => {
+    if (!node || !computedOutput || !outputAutoMode) return
+    if (node.outputShape !== computedOutput) {
+      onUpdateNode(node.id, 'outputShape', computedOutput)
+    }
+  }, [computedOutput, outputAutoMode])
 
   if (!node) {
     return (
@@ -252,15 +274,39 @@ export function NetworkPanel({
               className="network-panel-input"
               value={node.inputShape || ''}
               onChange={(e) => onUpdateNode(node.id, 'inputShape', e.target.value)}
-              placeholder="input (e.g., 64x56x56)"
+              placeholder="input (e.g., 3×640×640)"
             />
             <span className="network-panel-shape-arrow">→</span>
-            <input
-              className="network-panel-input"
-              value={node.outputShape || ''}
-              onChange={(e) => onUpdateNode(node.id, 'outputShape', e.target.value)}
-              placeholder="output"
-            />
+            {outputAutoMode && computedOutput ? (
+              <div className="network-panel-shape-computed">
+                <span className="network-panel-shape-computed-value">{computedOutput}</span>
+                <button
+                  className="network-panel-shape-toggle"
+                  onClick={() => setOutputAutoMode(false)}
+                  title="Edit manually"
+                >
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
+                </button>
+              </div>
+            ) : (
+              <div className="network-panel-shape-manual">
+                <input
+                  className="network-panel-input"
+                  value={node.outputShape || ''}
+                  onChange={(e) => onUpdateNode(node.id, 'outputShape', e.target.value)}
+                  placeholder="output"
+                />
+                {computedOutput && (
+                  <button
+                    className="network-panel-shape-toggle"
+                    onClick={() => setOutputAutoMode(true)}
+                    title="Auto-compute from params"
+                  >
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M9 11V7a3 3 0 016 0v4"/></svg>
+                  </button>
+                )}
+              </div>
+            )}
           </div>
         </div>
       )}
