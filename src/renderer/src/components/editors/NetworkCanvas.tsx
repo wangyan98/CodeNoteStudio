@@ -234,6 +234,74 @@ export function NetworkCanvas({
     }
     const positions = runLayout(topNodes, layoutEdges, nodeSizes)
 
+    // --- Cross-block child alignment ---
+    // For skip edges connecting children in different blocks, adjust the
+    // target child's x-position to align with the source child. This makes
+    // skip edges go straight down/up instead of diagonally across.
+    // Work in dagre coordinate space (before offsetX/Y shift).
+    for (const edge of topEdges) {
+      if (topNodeIds.has(edge.source) || topNodeIds.has(edge.target)) continue
+      const srcParentId = childParentMap.get(edge.source)
+      const tgtParentId = childParentMap.get(edge.target)
+      if (!srcParentId || !tgtParentId || srcParentId === tgtParentId) continue
+
+      const srcBl = blockLayouts.get(srcParentId)
+      const tgtBl = blockLayouts.get(tgtParentId)
+      const srcBlPos = positions.get(srcParentId)
+      const tgtBlPos = positions.get(tgtParentId)
+      if (!srcBl || !tgtBl || !srcBlPos || !tgtBlPos) continue
+
+      const srcCPos = srcBl.positions.get(edge.source)
+      const tgtCPos = tgtBl.positions.get(edge.target)
+      if (!srcCPos || !tgtCPos) continue
+
+      // Source child center in dagre coords (relative to block top-left)
+      const srcBlLeft = srcBlPos.x - srcBl.width / 2
+      const srcGlobalX = srcBlLeft + srcBl.childOffsetX + srcCPos.x
+
+      // Compute local x for target child to land at the same global x
+      const tgtBlLeft = tgtBlPos.x - tgtBl.width / 2
+      const newTgtLocalX = srcGlobalX - tgtBlLeft - tgtBl.childOffsetX
+
+      tgtBl.positions.set(edge.target, { x: newTgtLocalX, y: tgtCPos.y })
+    }
+
+    // Recompute block bounding boxes for blocks whose children moved
+    for (const node of topNodes) {
+      if (node.kind !== 'block' || !node.children?.length) continue
+      const bl = blockLayouts.get(node.id)
+      if (!bl) continue
+
+      let cMinX = Infinity, cMaxX = -Infinity, cMinY = Infinity, cMaxY = -Infinity
+      for (const cp of bl.positions.values()) {
+        cMinX = Math.min(cMinX, cp.x - NODE_W / 2)
+        cMaxX = Math.max(cMaxX, cp.x + NODE_W / 2)
+        cMinY = Math.min(cMinY, cp.y - NODE_H / 2)
+        cMaxY = Math.max(cMaxY, cp.y + NODE_H / 2)
+      }
+      if (!isFinite(cMinX)) {
+        cMinX = -NODE_W / 2; cMaxX = NODE_W / 2
+        cMinY = -NODE_H / 2; cMaxY = NODE_H / 2
+      }
+
+      const contentW = cMaxX - cMinX
+      const contentH = cMaxY - cMinY
+      const padX = bl.direction === 'horizontal' ? BLOCK_PAD * 2 : BLOCK_PAD
+      const padY = bl.direction === 'vertical' ? BLOCK_PAD * 2 : BLOCK_PAD
+      const newW = Math.max(BLOCK_MIN_W, contentW + padX * 2)
+      const newH = BLOCK_HEADER_H + contentH + padY + BLOCK_BOTTOM_PAD
+
+      bl.width = newW
+      bl.height = newH
+      bl.childOffsetX = padX - cMinX
+      bl.childOffsetY = BLOCK_HEADER_H + padY - cMinY
+    }
+
+    // Update nodeSizes so bounding box computation below sees new sizes
+    for (const [id, bl] of blockLayouts) {
+      nodeSizes.set(id, { width: bl.width, height: bl.height })
+    }
+
     // Compute bounding box for centering
     let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity
     const DEFAULT_BLOCK_H = NODE_H + BLOCK_HEADER_H
