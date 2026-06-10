@@ -451,7 +451,7 @@ export function NetworkCanvas({
       if (mergeInfo && mergeInfo.count >= 3) {
         const barGap = 20
         const barH = 10
-        targetPosY = offsetY + tgtPos.y - tgtH / 2 - barGap - barH / 2
+        targetPosY = offsetY + tgtPos.y - barGap - barH / 2
       }
 
       renderEdge(edge,
