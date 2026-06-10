@@ -402,9 +402,7 @@ export function NetworkCanvas({
         { x: offsetX + tgtPos.x, y: offsetY + tgtPos.y },
         srcW, srcH, tgtW, tgtH, g,
         si, outDegree.get(edge.source) ?? 1,
-        ti, inDegree.get(edge.target) ?? 1,
-        srcNode?.direction,
-        tgtNode?.direction)
+        ti, inDegree.get(edge.target) ?? 1)
     }
 
     // --- Render nodes ---
@@ -495,9 +493,7 @@ export function NetworkCanvas({
               { x: childOffsetX + cpTgt.x, y: childOffsetY + cpTgt.y },
               cSrcW, cSrcH, cTgtW, cTgtH, nodeG,
               si, intOutDeg.get(ie.source) ?? 1,
-              ti, intInDeg.get(ie.target) ?? 1,
-              cSrcNode?.direction,
-              cTgtNode?.direction)
+              ti, intInDeg.get(ie.target) ?? 1)
           }
 
           // Children
