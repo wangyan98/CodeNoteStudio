@@ -145,6 +145,7 @@ function getRepoPath(
  * T3: file + name         — named symbol in that file (with Class.method support)
  * T4: Class.method        — split by last ".", match across all files
  * T5: name only           — first match across all files
+ * T6: filePath only       — navigate to file start (line 1)
  */
 export async function resolveRefs(
   refs: RefSpec[],
@@ -312,6 +313,32 @@ export async function resolveRefs(
           mapping.codeSnippet = await extractCodeSnippet(mapping.filePath, mapping.startLine)
         }
         mappings.push(mapping)
+        continue
+      }
+    }
+
+    // T6: filePath only (no line, no name) — navigate to file start
+    if (ref.filePath) {
+      const fileSymbols = getFileSymbols(ref.filePath)
+      if (fileSymbols && fileSymbols[0]?.filePath) {
+        mappings.push({
+          raw: ref.raw,
+          functionName: ref.filePath,
+          filePath: fileSymbols[0].filePath,
+          startLine: 1,
+          endLine: 1,
+        })
+        continue
+      }
+      const repoPath = getRepoPath(candidateSymbols, symbols, targetRepo, activeRepo, codeRepos)
+      if (repoPath) {
+        mappings.push({
+          raw: ref.raw,
+          functionName: ref.filePath,
+          filePath: repoPath + '/' + ref.filePath,
+          startLine: 1,
+          endLine: 1,
+        })
         continue
       }
     }

@@ -61,6 +61,15 @@ describe('parseRefs', () => {
     })
   })
 
+  it('parses @ref(repo#filePath) with # separator', () => {
+    const refs = parseRefs('see @ref(claude-code-sourcemap-main#restored-src/src/components/PromptInput/PromptInput.tsx) here')
+    expect(refs).toEqual([{
+      raw: 'claude-code-sourcemap-main#restored-src/src/components/PromptInput/PromptInput.tsx',
+      repo: 'claude-code-sourcemap-main',
+      filePath: 'restored-src/src/components/PromptInput/PromptInput.tsx'
+    }])
+  })
+
   it('extracts @ref from JSON content', () => {
     const content = JSON.stringify({
       root: { title: 'Auth', content: 'See @ref(src/login.cpp:42) for impl' }
@@ -368,6 +377,77 @@ describe('resolveRefs', () => {
     expect(mappings).toHaveLength(1)
     expect(mappings[0].filePath).toBe('/Users/user/Engine/HPWater/Core_Source_Preview/HanPiWater/FluidDynamics/HPWaterWaveEquation.compute')
     expect(mappings[0].startLine).toBe(42)
+  })
+
+  // T6: filePath only (no line, no name) — navigate to file start
+  it('T6: resolves @ref(repo#filePath) to file start when file is in symbol index', async () => {
+    const symbolsWithRepo: (CodeSymbol & { repoPath: string })[] = [
+      {
+        name: 'PromptInput',
+        kind: 'function',
+        filePath: 'restored-src/src/components/PromptInput/PromptInput.tsx',
+        startLine: 42,
+        endLine: 80,
+        startColumn: 1,
+        endColumn: 1,
+        repoPath: '/Users/user/projects/claude-code-sourcemap-main'
+      }
+    ]
+    const refs: RefSpec[] = [{
+      raw: 'claude-code-sourcemap-main#restored-src/src/components/PromptInput/PromptInput.tsx',
+      repo: 'claude-code-sourcemap-main',
+      filePath: 'restored-src/src/components/PromptInput/PromptInput.tsx'
+    }]
+    const mappings = await resolveRefs(refs, symbolsWithRepo)
+    expect(mappings).toHaveLength(1)
+    expect(mappings[0].filePath).toBe('restored-src/src/components/PromptInput/PromptInput.tsx')
+    expect(mappings[0].startLine).toBe(1)
+  })
+
+  it('T6: resolves @ref(repo#filePath) via codeRepos when file not in index', async () => {
+    const symbolsWithNilou: (CodeSymbol & { repoPath: string })[] = [
+      {
+        name: 'main',
+        kind: 'function',
+        filePath: 'src/index.ts',
+        startLine: 1,
+        endLine: 10,
+        startColumn: 1,
+        endColumn: 1,
+        repoPath: '/Users/user/Engine/Nilou-main'
+      }
+    ]
+    const refs: RefSpec[] = [{
+      raw: 'HPWater#Core_Source_Preview/HanPiWater/FluidDynamics/HPWaterWaveEquation.compute',
+      repo: 'HPWater',
+      filePath: 'Core_Source_Preview/HanPiWater/FluidDynamics/HPWaterWaveEquation.compute'
+    }]
+    const codeRepos = [{ path: '/Users/user/Engine/HPWater', commit: 'abc123' }]
+    const mappings = await resolveRefs(refs, symbolsWithNilou, undefined, codeRepos)
+    expect(mappings).toHaveLength(1)
+    expect(mappings[0].filePath).toBe('/Users/user/Engine/HPWater/Core_Source_Preview/HanPiWater/FluidDynamics/HPWaterWaveEquation.compute')
+    expect(mappings[0].startLine).toBe(1)
+  })
+
+  it('T6: resolves @ref(filePath) without repo to file start', async () => {
+    const refs: RefSpec[] = [{
+      raw: 'src/utils.cpp',
+      filePath: 'src/utils.cpp'
+    }]
+    const mappings = await resolveRefs(refs, mockSymbols)
+    expect(mappings).toHaveLength(1)
+    expect(mappings[0].filePath).toBe('src/utils.cpp')
+    expect(mappings[0].startLine).toBe(1)
+  })
+
+  it('returns empty when T6 file not in index and no repo path available', async () => {
+    const refs: RefSpec[] = [{
+      raw: 'unknown-repo#some/file.ts',
+      repo: 'unknown-repo',
+      filePath: 'some/file.ts'
+    }]
+    const mappings = await resolveRefs(refs, mockSymbols)
+    expect(mappings).toHaveLength(0)
   })
 
   it('returns empty for empty refs', async () => {
