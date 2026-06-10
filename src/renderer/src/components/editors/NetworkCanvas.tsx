@@ -410,10 +410,61 @@ export function NetworkCanvas({
         ti, inDegree.get(edge.target) ?? 1)
     }
 
+    // Compute which nodes get a merge bar (3+ incoming edges)
+    const mergeBarNodes = new Map<string, { count: number }>()
+    for (const edge of topEdges) {
+      let entry = mergeBarNodes.get(edge.target)
+      if (!entry) {
+        entry = { count: 0 }
+        mergeBarNodes.set(edge.target, entry)
+      }
+      entry.count++
+    }
+
     // --- Render nodes ---
     for (const node of topNodes) {
       const pos = positions.get(node.id)
       if (!pos) continue
+
+      // Render merge bar if this node has 3+ incoming edges
+      const mergeInfo = mergeBarNodes.get(node.id)
+      if (mergeInfo && mergeInfo.count >= 3) {
+        const nodeSize = getNodeSize(node)
+        const barW = nodeSize.w
+        const barH = 10
+        const barGap = 20
+        const nTop = offsetY + pos.y - nodeSize.h / 2
+        const barX = offsetX + pos.x - barW / 2
+        const barY = nTop - barGap - barH
+
+        const barG = g.append('g').attr('class', 'net-merge-bar')
+
+        // Bar rectangle
+        barG.append('rect')
+          .attr('x', barX).attr('y', barY).attr('width', barW).attr('height', barH)
+          .attr('rx', 5).attr('fill', '#ffeb3b').attr('opacity', 0.3)
+          .attr('stroke', '#ffeb3b').attr('stroke-width', 0.5)
+
+        // Port dots on bar (one per incoming edge, evenly spaced)
+        const portCount = mergeInfo.count
+        for (let i = 0; i < portCount; i++) {
+          const px = portCount > 1
+            ? barX + 6 + (barW - 12) * (i + 0.5) / portCount
+            : barX + barW / 2
+          barG.append('circle')
+            .attr('cx', px).attr('cy', barY + barH / 2)
+            .attr('r', 3).attr('fill', '#4a90d9').attr('stroke', '#333').attr('stroke-width', 0.5)
+        }
+
+        // Single thick edge from bar center down to node top
+        barG.append('line')
+          .attr('x1', barX + barW / 2).attr('y1', barY + barH)
+          .attr('x2', offsetX + pos.x).attr('y2', nTop)
+          .attr('stroke', '#673ab7').attr('stroke-width', 2)
+        barG.append('polygon')
+          .attr('points', `${offsetX + pos.x - 4},${nTop - 4} ${offsetX + pos.x},${nTop} ${offsetX + pos.x + 4},${nTop - 4}`)
+          .attr('fill', '#673ab7')
+      }
 
       const isSelected = node.id === selectedNodeId
       let nw = NODE_W, nh = NODE_H, color = '#888', fill = '#2a2a2a'
