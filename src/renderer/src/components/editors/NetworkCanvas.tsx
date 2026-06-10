@@ -147,6 +147,7 @@ export function NetworkCanvas({
       height: number
       childOffsetX: number
       childOffsetY: number
+      direction: BlockDirection
     }
     const blockLayouts = new Map<string, BlockLayout>()
     const BLOCK_PAD = 20
@@ -156,7 +157,8 @@ export function NetworkCanvas({
       if (node.kind === 'block' && node.children && node.children.length > 0) {
         const children = node.children
         const internalEdges = node.internalEdges ?? []
-        const childPositions = runLayout(children, internalEdges)
+        const blockDirection = node.direction ?? autoDetectDirection(children, internalEdges)
+        const childPositions = runLayout(children, internalEdges, undefined, blockDirection)
 
         // Compute bounding box of children (positions are node centers)
         let cMinX = Infinity, cMaxX = -Infinity, cMinY = Infinity, cMaxY = -Infinity
@@ -173,15 +175,18 @@ export function NetworkCanvas({
 
         const contentW = cMaxX - cMinX
         const contentH = cMaxY - cMinY
-        const bw = Math.max(BLOCK_MIN_W, contentW + BLOCK_PAD * 2)
-        const bh = BLOCK_HEADER_H + contentH + BLOCK_PAD + BLOCK_BOTTOM_PAD
+        const padX = blockDirection === 'horizontal' ? BLOCK_PAD * 2 : BLOCK_PAD
+        const padY = blockDirection === 'vertical' ? BLOCK_PAD * 2 : BLOCK_PAD
+        const bw = Math.max(BLOCK_MIN_W, contentW + padX * 2)
+        const bh = BLOCK_HEADER_H + contentH + padY + BLOCK_BOTTOM_PAD
 
         blockLayouts.set(node.id, {
           positions: childPositions,
           width: bw,
           height: bh,
-          childOffsetX: BLOCK_PAD - cMinX,
-          childOffsetY: BLOCK_HEADER_H + BLOCK_PAD - cMinY,
+          childOffsetX: padX - cMinX,
+          childOffsetY: BLOCK_HEADER_H + padY - cMinY,
+          direction: blockDirection,
         })
       }
     }
@@ -493,7 +498,8 @@ export function NetworkCanvas({
               { x: childOffsetX + cpTgt.x, y: childOffsetY + cpTgt.y },
               cSrcW, cSrcH, cTgtW, cTgtH, nodeG,
               si, intOutDeg.get(ie.source) ?? 1,
-              ti, intInDeg.get(ie.target) ?? 1)
+              ti, intInDeg.get(ie.target) ?? 1,
+              blockLayout.direction, blockLayout.direction)
           }
 
           // Children
