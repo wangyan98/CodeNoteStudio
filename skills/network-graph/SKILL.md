@@ -16,25 +16,78 @@ Typical use cases:
 - Auto-generating architecture diagrams from PyTorch/TensorFlow code
 - Tracing forward/backward data flow through skip connections and blocks
 
+## Node Kind Reference
+
+### `kind: "layer"` — Individual network operation
+
+Represents a single layer/operation: Conv2d, ReLU, BatchNorm, MaxPool, etc.
+
+**Properties:** `id`, `kind`, `label`, `layerType`, `params`, `inputShape`, `outputShape`, `codeMapping`
+
+```json
+{"id": "uuid", "kind": "layer", "label": "conv1", "layerType": "Conv2d",
+ "params": {"in_channels": 3, "out_channels": 16, "kernel_size": 3, "stride": 2},
+ "inputShape": "3×640×640", "outputShape": "16×320×320"}
+```
+
+- `layerType` MUST match a key in `layer-catalog.json` (e.g. Conv2d, ReLU, BatchNorm2d, Linear, MaxPool2d…)
+- `inputShape` / `outputShape`: tensor dimensions in `C×H×W` format (2D), `C×L` (1D), `C×D×H×W` (3D), or `N` (flat). **Always set both when known** — the UI renders them above/below the node box.
+- Use `scripts/update_node.py --input-shape "3×640×640" --output-shape "16×320×320"` to set shapes after creating a layer.
+
+### `kind: "block"` — Container for sub-operations
+
+Represents a reusable sub-network (e.g. ResBlock, C2f, Bottleneck). A block **contains** child nodes (layers and internal edges) but does NOT have its own `layerType`, `params`, `inputShape`, or `outputShape`.
+
+**Properties:** `id`, `kind`, `label`, `repeat`, `children`, `internalEdges`, `codeMapping`
+
+```json
+{"id": "uuid", "kind": "block", "label": "ResBlock", "repeat": 3,
+ "children": [
+   {"id": "uuid", "kind": "layer", "label": "conv1", "layerType": "Conv2d", ...},
+   {"id": "uuid", "kind": "layer", "label": "conv2", "layerType": "Conv2d", ...}
+ ],
+ "internalEdges": [
+   {"id": "uuid", "source": "<conv1-id>", "target": "<conv2-id>", "style": "forward"}
+ ]}
+```
+
+**When to use block vs layer:**
+- Use **layer** for individual operations (Conv2d, ReLU, MaxPool, Linear…)
+- Use **block** only when a group of layers forms a reusable sub-component (ResBlock, C2f, TransformerBlock…)
+- Do NOT set `layerType` or `params` on a block node — those fields belong on `kind: "layer"` only
+- Do NOT set `inputShape`/`outputShape` on a block node — shapes go on individual layer nodes
+
+### `kind: "input"` / `kind: "output"` — Entry/exit points
+
+```json
+{"id": "uuid", "kind": "input", "label": "Input", "inputShape": "3×640×640"}
+{"id": "uuid", "kind": "output", "label": "Output"}
+```
+
 ## Document Structure (v2)
 
 ```json
 {
   "type": "net", "version": 2, "name": "MyNetwork",
   "nodes": [
-    {"id": "uuid", "kind": "input", "label": "Input"},
-    {"id": "uuid", "kind": "layer", "label": "conv1", "layerType": "Conv2d", "params": {"in_channels": 3}},
-    {"id": "uuid", "kind": "block", "label": "ResBlock", "repeat": 3, "children": [...]},
+    {"id": "uuid", "kind": "input", "label": "Input", "inputShape": "3×640×640"},
+    {"id": "uuid", "kind": "layer", "label": "conv1", "layerType": "Conv2d",
+     "params": {"in_channels": 3, "out_channels": 16, "kernel_size": 3, "stride": 2},
+     "inputShape": "3×640×640", "outputShape": "16×320×320"},
+    {"id": "uuid", "kind": "block", "label": "C2f", "repeat": 1, "children": [
+      {"id": "uuid", "kind": "layer", "label": "conv1", "layerType": "Conv2d", "params": {...},
+       "inputShape": "16×320×320", "outputShape": "16×320×320"}
+    ], "internalEdges": [...]},
     {"id": "uuid", "kind": "output", "label": "Output"}
   ],
   "edges": [
-    {"id": "uuid", "source": "...", "target": "...", "style": "forward", "label": null},
+    {"id": "uuid", "source": "...", "target": "...", "style": "forward"},
     {"id": "uuid", "source": "...", "target": "...", "style": "skip", "label": "residual"}
   ]
 }
 ```
 
-Node kinds: input, output, layer, block. Edge styles: forward, skip.
+Edge styles: forward, skip.
 
 ## Scripts
 
@@ -46,7 +99,7 @@ Node kinds: input, output, layer, block. Edge styles: forward, skip.
 | `scripts/add_block.py <path> <name> [--repeat N]` | Create block node |
 | `scripts/add_node_to_block.py <path> <block-id> <node-id>` | Move node into block |
 | `scripts/add_connection.py <path> <from-id> <to-id> [--style] [--label]` | Add edge |
-| `scripts/update_node.py <path> <node-id> (--label|--params|--code-mapping) <value>` | Update node |
+| `scripts/update_node.py <path> <node-id> [--label] [--params] [--input-shape] [--output-shape] [--code-mapping] <value>` | Update node |
 | `scripts/delete_node.py <path> <node-id>` | Delete node + incident edges |
 | `scripts/delete_connection.py <path> <edge-id>` | Delete single edge |
 
@@ -74,3 +127,21 @@ python scripts/add_connection.py model.net.json <from-id> <to-id> --style skip -
 ```
 
 Deduplicates: returns existing edge if same source->target pair already exists.
+
+### update_node.py
+
+```bash
+# Update label
+python scripts/update_node.py model.net.json <node-id> --label "conv_better_name"
+
+# Update params (JSON)
+python scripts/update_node.py model.net.json <node-id> --params '{"in_channels":3,"out_channels":64,"kernel_size":7}'
+
+# Set tensor shapes (use × separator, C×H×W format)
+python scripts/update_node.py model.net.json <node-id> --input-shape "3×640×640" --output-shape "16×320×320"
+
+# Code mapping
+python scripts/update_node.py model.net.json <node-id> --code-mapping '{"raw":"...","functionName":"...","filePath":"...","startLine":1,"endLine":10}'
+```
+
+Flags can be combined in a single call. Shapes only apply to `kind: "layer"` and `kind: "input"`/`"output"` nodes — do NOT set shapes on `kind: "block"` nodes.

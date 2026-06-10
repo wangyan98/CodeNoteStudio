@@ -13,6 +13,8 @@ def main():
     parser.add_argument("node_id", help="ID of the node to update")
     parser.add_argument("--label")
     parser.add_argument("--params", help="JSON params object")
+    parser.add_argument("--input-shape", help="Input tensor shape (e.g. 3×640×640)")
+    parser.add_argument("--output-shape", help="Output tensor shape (e.g. 16×320×320)")
     parser.add_argument("--code-mapping", help="JSON code mapping object")
     args = parser.parse_args()
 
@@ -28,6 +30,10 @@ def main():
         node.label = args.label
     if args.params is not None:
         node.params = json.loads(args.params)
+    if args.input_shape is not None:
+        node.inputShape = args.input_shape
+    if args.output_shape is not None:
+        node.outputShape = args.output_shape
     if args.code_mapping is not None:
         try:
             node.codeMapping = parse_code_mapping(args.code_mapping)
