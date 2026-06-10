@@ -89,7 +89,57 @@ export function NetworkPanel({
         {node.kind === 'layer' && params.length === 0 && (
           <div className="network-panel-params">
             <div className="network-panel-section-title">Parameters</div>
-            <span className="network-panel-no-params">This layer has no parameters</span>
+            <div className="network-panel-kv-list">
+              {Object.entries(node.params ?? {}).map(([key, value]) => (
+                <div key={key} className="network-panel-kv-row">
+                  <input
+                    className="network-panel-input network-panel-kv-key"
+                    type="text"
+                    value={key}
+                    onChange={(e) => {
+                      const newKey = e.target.value
+                      const currentParams = { ...node.params }
+                      const oldValue = currentParams[key]
+                      delete currentParams[key]
+                      currentParams[newKey] = oldValue
+                      onUpdateNode(node.id, 'params', currentParams)
+                    }}
+                    placeholder="key"
+                  />
+                  <input
+                    className="network-panel-input network-panel-kv-value"
+                    type="text"
+                    value={String(value ?? '')}
+                    onChange={(e) => {
+                      onUpdateNode(node.id, 'params', { ...node.params, [key]: e.target.value })
+                    }}
+                    placeholder="value"
+                  />
+                  <button
+                    className="network-panel-kv-remove"
+                    onClick={() => {
+                      const next = { ...node.params }
+                      delete next[key]
+                      onUpdateNode(node.id, 'params', next)
+                    }}
+                    title="Remove parameter"
+                  >
+                    ✕
+                  </button>
+                </div>
+              ))}
+            </div>
+            <button
+              className="network-panel-kv-add"
+              onClick={() => {
+                const next = { ...node.params }
+                const newKey = `param${Object.keys(next).length + 1}`
+                next[newKey] = ''
+                onUpdateNode(node.id, 'params', next)
+              }}
+            >
+              + Add param
+            </button>
           </div>
         )}
 
