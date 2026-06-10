@@ -1,7 +1,7 @@
 import { useRef, useEffect, useCallback, useState } from 'react'
 import * as d3 from 'd3'
 import dagre from 'dagre'
-import type { NetworkDocument, GraphNode, GraphEdge } from '../../../../main/schemas/note-types'
+import type { NetworkDocument, GraphNode, GraphEdge, BlockDirection } from '../../../../main/schemas/note-types'
 import type { LayerDef } from '../../../../main/schemas/layer-catalog'
 import { LocateButton } from './LocateButton'
 import './NetworkCanvas.css'
@@ -30,10 +30,14 @@ const BLOCK_HEADER_H = 24
 function runLayout(
   nodes: GraphNode[],
   edges: GraphEdge[],
-  nodeSizes?: Map<string, { width: number; height: number }>
+  nodeSizes?: Map<string, { width: number; height: number }>,
+  direction: BlockDirection = 'vertical'
 ): Map<string, { x: number; y: number }> {
   const g = new dagre.graphlib.Graph()
-  g.setGraph({ rankdir: 'TB', nodesep: 40, edgesep: 20, ranksep: 60, marginx: 40, marginy: 30 })
+  g.setGraph({
+    rankdir: direction === 'horizontal' ? 'LR' : 'TB',
+    nodesep: 40, edgesep: 20, ranksep: 60, marginx: 40, marginy: 30
+  })
   g.setDefaultEdgeLabel(() => ({}))
 
   for (const n of nodes) {
