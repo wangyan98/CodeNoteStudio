@@ -255,8 +255,10 @@ def main():
         edge(input_node.id, backbone.id),
         # backbone → neck (SPPF output → neck entry)
         edge(backbone.id, neck.id),
-        # neck → detect
-        edge(neck.id, detect.id),
+        # Three heads (inside neck block) → Detect (cross-block edges)
+        edge(l17.id, detect.id),  # P3/8 head → Detect
+        edge(l20.id, detect.id),  # P4/16 head → Detect
+        edge(l23.id, detect.id),  # P5/32 head → Detect
         # detect → output
         edge(detect.id, output_node.id),
     ]

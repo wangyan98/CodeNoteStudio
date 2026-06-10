@@ -435,45 +435,87 @@ export function NetworkCanvas({
     const outIdx = new Map<string, number>()
     const inIdx = new Map<string, number>()
 
-    for (const edge of topEdges) {
-      const srcPos = positions.get(edge.source)
-      const tgtPos = positions.get(edge.target)
-      if (!srcPos || !tgtPos) continue
+    // Build child position lookup for cross-block edge resolution
+    // Maps childId => { blockId, parentPos, childPos (in layout coords), direction }
+    const childLookup = new Map<string, {
+      parentId: string
+      parentPos: { x: number; y: number }
+      childPos: { x: number; y: number }
+      direction: BlockDirection
+    }>()
+    for (const node of topNodes) {
+      if (node.kind === 'block' && node.children) {
+        const bl = blockLayouts.get(node.id)
+        const parentPos = positions.get(node.id)
+        if (!bl || !parentPos) continue
+        for (const child of node.children) {
+          const cp = bl.positions.get(child.id)
+          if (!cp) continue
+          childLookup.set(child.id, {
+            parentId: node.id,
+            parentPos,
+            childPos: cp,
+            direction: bl.direction,
+          })
+        }
+      }
+    }
 
-      const srcNode = topNodes.find(n => n.id === edge.source)
-      const tgtNode = topNodes.find(n => n.id === edge.target)
-      const { w: srcW, h: srcH } = getNodeSize(srcNode)
-      const { w: tgtW, h: tgtH } = getNodeSize(tgtNode)
+    // Helper to resolve a node ID to its global position and direction
+    const resolveGlobalPos = (nodeId: string):
+      { pos: { x: number; y: number }; w: number; h: number; direction: BlockDirection } | null => {
+      // First try top-level
+      const topPos = positions.get(nodeId)
+      if (topPos) {
+        const node = topNodes.find(n => n.id === nodeId)
+        const size = getNodeSize(node)
+        const dir = node?.kind === 'block'
+          ? (node.direction ?? blockLayouts.get(nodeId)?.direction ?? 'vertical')
+          : 'vertical'
+        return { pos: { x: offsetX + topPos.x, y: offsetY + topPos.y }, w: size.w, h: size.h, direction: dir }
+      }
+      // Then try child lookup
+      const child = childLookup.get(nodeId)
+      if (child) {
+        return {
+          pos: {
+            x: offsetX + child.parentPos.x + child.childPos.x,
+            y: offsetY + child.parentPos.y + child.childPos.y,
+          },
+          w: NODE_W,
+          h: NODE_H,
+          direction: child.direction,
+        }
+      }
+      return null
+    }
+
+    for (const edge of topEdges) {
+      const srcInfo = resolveGlobalPos(edge.source)
+      const tgtInfo = resolveGlobalPos(edge.target)
+      if (!srcInfo || !tgtInfo) continue
 
       const si = outIdx.get(edge.source) ?? 0
       outIdx.set(edge.source, si + 1)
       const ti = inIdx.get(edge.target) ?? 0
       inIdx.set(edge.target, ti + 1)
 
-      // Determine direction for top-level source/target nodes
-      const srcDir = srcNode?.kind === 'block'
-        ? (srcNode.direction ?? blockLayouts.get(edge.source)?.direction ?? 'vertical')
-        : 'vertical'
-      const tgtDir = tgtNode?.kind === 'block'
-        ? (tgtNode.direction ?? blockLayouts.get(edge.target)?.direction ?? 'vertical')
-        : 'vertical'
-
       // If target node has a merge bar, edge hits the bar, not the node
-      let targetPosY = offsetY + tgtPos.y
-      const mergeInfo = mergeBarNodes.get(edge.target)
-      if (mergeInfo && mergeInfo.count >= 3) {
+      let targetPosY = tgtInfo.pos.y
+      const tgtMergeInfo = mergeBarNodes.get(edge.target)
+      if (tgtMergeInfo && tgtMergeInfo.count >= 3) {
         const barGap = 20
         const barH = 10
-        targetPosY = offsetY + tgtPos.y - barGap - barH / 2
+        targetPosY = tgtInfo.pos.y - tgtInfo.h / 2 - barGap - barH / 2
       }
 
       renderEdge(edge,
-        { x: offsetX + srcPos.x, y: offsetY + srcPos.y },
-        { x: offsetX + tgtPos.x, y: targetPosY },
-        srcW, srcH, tgtW, tgtH, g,
+        srcInfo.pos,
+        { x: tgtInfo.pos.x, y: targetPosY },
+        srcInfo.w, srcInfo.h, tgtInfo.w, tgtInfo.h, g,
         si, outDegree.get(edge.source) ?? 1,
         ti, inDegree.get(edge.target) ?? 1,
-        srcDir, tgtDir)
+        srcInfo.direction, tgtInfo.direction)
     }
 
     // --- Render nodes ---
