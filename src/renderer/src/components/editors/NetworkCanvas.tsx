@@ -271,18 +271,18 @@ export function NetworkCanvas({
         .style('cursor', 'pointer')
 
       if (edge.style === 'skip') {
-        const my = (y1 + y2) / 2
-        const dx = Math.abs(x2 - x1) * 0.5
-        const path = d3.path()
-        path.moveTo(x1, y1)
-        path.bezierCurveTo(x1 - dx, my, x2 - dx, my, x2, y2)
-        edgeG.append('path')
-          .attr('d', path.toString())
-          .attr('fill', 'none').attr('stroke', skipColor).attr('stroke-width', strokeW)
+        // Wider invisible hit area for easier clicking
+        edgeG.append('line')
+          .attr('x1', x1).attr('y1', y1).attr('x2', x2).attr('y2', y2)
+          .attr('stroke', 'transparent').attr('stroke-width', 12)
+          .style('cursor', 'pointer')
+        edgeG.append('line')
+          .attr('x1', x1).attr('y1', y1).attr('x2', x2).attr('y2', y2)
+          .attr('stroke', skipColor).attr('stroke-width', strokeW)
           .attr('stroke-dasharray', '4,3')
         edgeG.append('polygon')
-          .attr('points', `${x2-4},${y2-6} ${x2},${y2} ${x2+4},${y2-6}`)
-          .attr('fill', 'none').attr('stroke', skipColor).attr('stroke-width', strokeW)
+          .attr('points', `${x2-4},${y2-4} ${x2},${y2} ${x2+4},${y2-4}`)
+          .attr('fill', skipColor)
       } else {
         // Wider invisible hit area for easier clicking
         edgeG.append('line')
