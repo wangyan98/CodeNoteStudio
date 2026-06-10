@@ -41,3 +41,18 @@ def test_adds_layer_with_params():
         loaded = load_network(path)
         layer = loaded.nodes[1]
         assert layer.params == {"in_features": 512, "out_features": 256}
+
+def test_adds_custom_layer_with_kv_params():
+    with tempfile.TemporaryDirectory() as tmp:
+        path = os.path.join(tmp, "test.net.json")
+        _make_doc(path)
+        code, out = run_script(path, "Custom", "--name", "my_custom_op", "--params", '{"activation": "silu", "groups": 16}')
+        assert code == 0
+        result = json.loads(out)
+        assert result["ok"] is True
+        loaded = load_network(path)
+        layer = loaded.nodes[1]
+        assert layer.kind == "layer"
+        assert layer.layerType == "Custom"
+        assert layer.label == "my_custom_op"
+        assert layer.params == {"activation": "silu", "groups": 16}
