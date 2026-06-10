@@ -66,7 +66,6 @@ function runLayout(
 }
 
 function autoDetectDirection(
-  children: GraphNode[],
   internalEdges?: GraphEdge[]
 ): BlockDirection {
   const outDegree = new Map<string, number>()
@@ -157,7 +156,7 @@ export function NetworkCanvas({
       if (node.kind === 'block' && node.children && node.children.length > 0) {
         const children = node.children
         const internalEdges = node.internalEdges ?? []
-        const blockDirection = node.direction ?? autoDetectDirection(children, internalEdges)
+        const blockDirection = node.direction ?? autoDetectDirection(internalEdges)
         const childPositions = runLayout(children, internalEdges, undefined, blockDirection)
 
         // Compute bounding box of children (positions are node centers)
@@ -340,9 +339,12 @@ export function NetworkCanvas({
           .attr('stroke', skipColor).attr('stroke-width', strokeW)
           .attr('stroke-dasharray', '4,3').attr('fill', 'none')
 
-        // Arrow at end
+        // Arrow at end — direction-aware
+        const arrowPoints = (tgtDir ?? 'vertical') === 'horizontal'
+          ? `${x2-4},${y2-4} ${x2},${y2} ${x2-4},${y2+4}`
+          : `${x2-4},${y2-4} ${x2},${y2} ${x2+4},${y2-4}`
         edgeG.append('polygon')
-          .attr('points', `${x2-4},${y2-4} ${x2},${y2} ${x2+4},${y2-4}`)
+          .attr('points', arrowPoints)
           .attr('fill', skipColor)
       } else {
         // Wider invisible hit area for easier clicking
@@ -353,8 +355,11 @@ export function NetworkCanvas({
         edgeG.append('line')
           .attr('x1', x1).attr('y1', y1).attr('x2', x2).attr('y2', y2 - 4)
           .attr('stroke', strokeColor).attr('stroke-width', strokeW)
+        const arrowPoints = (tgtDir ?? 'vertical') === 'horizontal'
+          ? `${x2-4},${y2-4} ${x2},${y2} ${x2-4},${y2+4}`
+          : `${x2-4},${y2-4} ${x2},${y2} ${x2+4},${y2-4}`
         edgeG.append('polygon')
-          .attr('points', `${x2-4},${y2-4} ${x2},${y2} ${x2+4},${y2-4}`)
+          .attr('points', arrowPoints)
           .attr('fill', strokeColor)
       }
 
@@ -766,12 +771,14 @@ export function NetworkCanvas({
               childG.call(childDrag as any)
             }
 
+            // Child ports — direction-aware positioning
+            const isH = blockLayout.direction === 'horizontal'
             // Child output port (unless block — block uses its own outer ports)
             if (!readOnly && child.kind !== 'output') {
               childG.append('circle')
                 .attr('class', 'net-port-out')
-                .attr('cx', cx + NODE_W / 2)
-                .attr('cy', cy + NODE_H)
+                .attr('cx', isH ? cx + NODE_W : cx + NODE_W / 2)
+                .attr('cy', isH ? cy + NODE_H / 2 : cy + NODE_H)
                 .attr('r', 5)
                 .attr('fill', cc)
                 .attr('stroke', '#333')
@@ -784,8 +791,8 @@ export function NetworkCanvas({
             if (!readOnly && child.kind !== 'input') {
               childG.append('circle')
                 .attr('class', 'net-port-in')
-                .attr('cx', cx + NODE_W / 2)
-                .attr('cy', cy)
+                .attr('cx', isH ? cx : cx + NODE_W / 2)
+                .attr('cy', isH ? cy + NODE_H / 2 : cy)
                 .attr('r', 5)
                 .attr('fill', cc)
                 .attr('stroke', '#333')
