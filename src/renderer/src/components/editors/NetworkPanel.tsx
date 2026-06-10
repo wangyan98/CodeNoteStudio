@@ -214,6 +214,24 @@ export function NetworkPanel({
                     onChange={(e) => onUpdateNode(node.id, 'repeat', Math.max(1, Number(e.target.value)))}
                   />
                 </div>
+                <div className="network-panel-field" style={{ gridColumn: 'span 2' }}>
+                  <label className="network-panel-field-label">Direction</label>
+                  <select
+                    className="network-panel-input"
+                    value={node.direction ?? 'auto'}
+                    onChange={(e) => {
+                      onUpdateNode(
+                        node.id,
+                        'direction',
+                        e.target.value === 'auto' ? undefined : e.target.value
+                      )
+                    }}
+                  >
+                    <option value="auto">Auto (detect)</option>
+                    <option value="vertical">Vertical (top→bottom)</option>
+                    <option value="horizontal">Horizontal (left→right)</option>
+                  </select>
+                </div>
               </div>
             </div>
             {(node.children ?? []).length > 0 && (
