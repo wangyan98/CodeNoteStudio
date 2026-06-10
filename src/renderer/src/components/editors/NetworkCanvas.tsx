@@ -308,10 +308,18 @@ export function NetworkCanvas({
       srcDirection?: BlockDirection,
       tgtDirection?: BlockDirection
     ) => {
+      const isSkip = edge.style === 'skip'
       const srcDir = srcDirection ?? 'vertical'
       const tgtDir = tgtDirection ?? 'vertical'
-      const srcPort = getPortXY(srcPos.x, srcPos.y, srcW, srcH, srcPortIdx, srcPortTotal, 'out', srcDir)
-      const tgtPort = getPortXY(tgtPos.x, tgtPos.y, tgtW, tgtH, tgtPortIdx, tgtPortTotal, 'in', tgtDir)
+
+      // For skip edges: ports go on the perpendicular edge
+      // Horizontal block (LR) → skip exits top/bottom
+      // Vertical block (TB)   → skip exits left/right
+      const srcPortDir = isSkip ? (srcDir === 'horizontal' ? 'vertical' : 'horizontal') : srcDir
+      const tgtPortDir = isSkip ? (tgtDir === 'horizontal' ? 'vertical' : 'horizontal') : tgtDir
+
+      const srcPort = getPortXY(srcPos.x, srcPos.y, srcW, srcH, srcPortIdx, srcPortTotal, 'out', srcPortDir)
+      const tgtPort = getPortXY(tgtPos.x, tgtPos.y, tgtW, tgtH, tgtPortIdx, tgtPortTotal, 'in', tgtPortDir)
       const { x: x1, y: y1 } = srcPort
       const { x: x2, y: y2 } = tgtPort
       const isSelected = edge.id === selectedEdgeId
@@ -325,7 +333,7 @@ export function NetworkCanvas({
         .style('cursor', 'pointer')
 
       if (edge.style === 'skip') {
-        const ortho = makeOrthogonalPath(x1, y1, x2, y2, srcDir ?? 'vertical')
+        const ortho = makeOrthogonalPath(x1, y1, x2, y2, srcPortDir)
 
         // Invisible polyline for wider hit area
         edgeG.append('polyline')
@@ -339,8 +347,8 @@ export function NetworkCanvas({
           .attr('stroke', skipColor).attr('stroke-width', strokeW)
           .attr('stroke-dasharray', '4,3').attr('fill', 'none')
 
-        // Arrow at end — direction-aware
-        const arrowPoints = (tgtDir ?? 'vertical') === 'horizontal'
+        // Arrow at end — direction-aware based on target PORT edge
+        const arrowPoints = tgtPortDir === 'horizontal'
           ? `${x2-4},${y2-4} ${x2},${y2} ${x2-4},${y2+4}`
           : `${x2-4},${y2-4} ${x2},${y2} ${x2+4},${y2-4}`
         edgeG.append('polygon')
