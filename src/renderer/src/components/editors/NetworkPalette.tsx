@@ -5,7 +5,7 @@ interface NetworkPaletteProps {
   catalog: Record<string, LayerDef>
 }
 
-const CATEGORY_ORDER = ['convolution', 'normalization', 'activation', 'pooling', 'linear', 'dropout', 'recurrent', 'embedding', 'attention']
+const CATEGORY_ORDER = ['convolution', 'normalization', 'activation', 'pooling', 'linear', 'dropout', 'recurrent', 'embedding', 'attention', 'custom']
 
 const CATEGORY_LABELS: Record<string, string> = {
   convolution: 'Conv',
@@ -16,7 +16,8 @@ const CATEGORY_LABELS: Record<string, string> = {
   dropout: 'Drop',
   recurrent: 'RNN',
   embedding: 'Emb',
-  attention: 'Attn'
+  attention: 'Attn',
+  custom: 'Custom'
 }
 
 export function NetworkPalette({ catalog }: NetworkPaletteProps) {
