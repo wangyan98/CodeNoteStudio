@@ -235,10 +235,66 @@ export function NetworkCanvas({
     const positions = runLayout(topNodes, layoutEdges, nodeSizes)
 
     // --- Cross-block child alignment ---
-    // For skip edges connecting children in different blocks, adjust the
-    // target child's x-position to align with the source child. This makes
-    // skip edges go straight down/up instead of diagonally across.
-    // Work in dagre coordinate space (before offsetX/Y shift).
+    // For skip edges connecting children in different blocks, shift the
+    // target child AND all forward-connected neighbors by the same delta.
+    // This keeps internal edge geometry intact while aligning skip endpoints.
+
+    // Step 1: Build connected-component index for each block
+    // Two children are in the same component if a forward edge connects them
+    // (undirected — both upstream and downstream nodes shift together).
+    type BlockComponentInfo = Map<string, Set<string>>
+    const blockComponents = new Map<string, BlockComponentInfo>() // blockId → (childId → component)
+    for (const node of topNodes) {
+      if (node.kind !== 'block' || !node.children?.length) continue
+      const bl = blockLayouts.get(node.id)
+      if (!bl) continue
+
+      // Build undirected adjacency from FORWARD internal edges only
+      // (skip edges within a block connect different branches — we don't
+      //  want those to drag unrelated branches when shifting components)
+      const adj = new Map<string, Set<string>>()
+      for (const child of node.children) {
+        adj.set(child.id, new Set())
+      }
+      for (const ie of (node.internalEdges ?? [])) {
+        if (ie.style !== 'forward') continue
+        adj.get(ie.source)?.add(ie.target)
+        adj.get(ie.target)?.add(ie.source)
+      }
+
+      // BFS to find components
+      const visited = new Set<string>()
+      const components = new Array<Set<string>>()
+      for (const child of node.children) {
+        if (visited.has(child.id)) continue
+        const comp = new Set<string>()
+        const queue = [child.id]
+        while (queue.length) {
+          const cur = queue.shift()!
+          if (visited.has(cur)) continue
+          visited.add(cur)
+          comp.add(cur)
+          for (const nb of adj.get(cur) ?? []) {
+            if (!visited.has(nb)) queue.push(nb)
+          }
+        }
+        components.push(comp)
+      }
+
+      // Map: childId → its component set
+      const compMap = new Map<string, Set<string>>()
+      for (const comp of components) {
+        for (const cid of comp) {
+          compMap.set(cid, comp)
+        }
+      }
+      blockComponents.set(node.id, compMap)
+    }
+
+    // Step 2: Average delta per component. Multiple skip edges may hit the
+    // same forward-connected chain at different nodes. We average their
+    // desired deltas to find a good compromise position for the whole chain.
+    const compDeltaAcc = new Map<string, { sum: number; count: number; comp: Set<string> }>()
     for (const edge of topEdges) {
       if (topNodeIds.has(edge.source) || topNodeIds.has(edge.target)) continue
       const srcParentId = childParentMap.get(edge.source)
@@ -255,15 +311,44 @@ export function NetworkCanvas({
       const tgtCPos = tgtBl.positions.get(edge.target)
       if (!srcCPos || !tgtCPos) continue
 
-      // Source child center in dagre coords (relative to block top-left)
       const srcBlLeft = srcBlPos.x - srcBl.width / 2
       const srcGlobalX = srcBlLeft + srcBl.childOffsetX + srcCPos.x
-
-      // Compute local x for target child to land at the same global x
       const tgtBlLeft = tgtBlPos.x - tgtBl.width / 2
-      const newTgtLocalX = srcGlobalX - tgtBlLeft - tgtBl.childOffsetX
+      const tgtGlobalX = tgtBlLeft + tgtBl.childOffsetX + tgtCPos.x
+      const delta = srcGlobalX - tgtGlobalX
 
-      tgtBl.positions.set(edge.target, { x: newTgtLocalX, y: tgtCPos.y })
+      const compMap = blockComponents.get(tgtParentId)
+      const comp = compMap?.get(edge.target)
+      if (!comp || comp.size === 0) continue
+
+      // Use first child's id as stable key for this component
+      const compKey = tgtParentId + '|' + edge.target
+      const existing = compDeltaAcc.get(compKey)
+      if (existing) {
+        existing.sum += delta
+        existing.count++
+      } else {
+        compDeltaAcc.set(compKey, { sum: delta, count: 1, comp })
+      }
+    }
+
+    // Apply averaged delta
+    // Deduplicate: same component may have multiple keys; shift only once
+    const shiftedComps = new Set<Set<string>>()
+    for (const [compKey, acc] of compDeltaAcc) {
+      if (shiftedComps.has(acc.comp)) continue
+      shiftedComps.add(acc.comp)
+      if (acc.count === 0) continue
+      const avgDelta = acc.sum / acc.count
+      const blockId = compKey.split('|')[0]
+      const tgtBl = blockLayouts.get(blockId)
+      if (!tgtBl) continue
+
+      for (const cid of acc.comp) {
+        const cp = tgtBl.positions.get(cid)
+        if (!cp) continue
+        tgtBl.positions.set(cid, { x: cp.x + avgDelta, y: cp.y })
+      }
     }
 
     // Recompute block bounding boxes for blocks whose children moved
