@@ -132,6 +132,8 @@ export interface NetworkBlock {
 
 export type NodeKind = 'input' | 'output' | 'layer' | 'block'
 
+export type BlockDirection = 'horizontal' | 'vertical'
+
 export interface GraphNode {
   id: string
   kind: NodeKind
@@ -144,6 +146,7 @@ export interface GraphNode {
   children?: GraphNode[]
   internalEdges?: GraphEdge[]
   codeMapping?: CodeMapping
+  direction?: BlockDirection
 }
 
 export type EdgeStyle = 'forward' | 'skip'
