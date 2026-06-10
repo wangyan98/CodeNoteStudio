@@ -65,6 +65,20 @@ function runLayout(
   return positions
 }
 
+function autoDetectDirection(
+  children: GraphNode[],
+  internalEdges?: GraphEdge[]
+): BlockDirection {
+  const outDegree = new Map<string, number>()
+  for (const e of (internalEdges ?? [])) {
+    outDegree.set(e.source, (outDegree.get(e.source) ?? 0) + 1)
+  }
+  for (const [, count] of outDegree) {
+    if (count >= 2) return 'horizontal'
+  }
+  return 'vertical'
+}
+
 export function NetworkCanvas({
   doc, catalog, selectedNodeId, selectedEdgeId,
   onSelectNode, onSelectEdge, onDropLayer, onDeleteNode, onAddEdge,
