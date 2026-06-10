@@ -234,96 +234,40 @@ export function NetworkCanvas({
     }
     const positions = runLayout(topNodes, layoutEdges, nodeSizes)
 
-    // --- Cross-block child alignment ---
-    // For skip edges connecting children in different blocks, shift the
-    // target node AND all forward-reachable descendants by the delta.
-    //
-    // Downstream-only propagation: shifting only along edge.source→edge.target
-    // direction avoids pulling shared upstream nodes (which would fight
-    // other skip edges). Nodes with multiple incoming forward edges
-    // naturally end up at the sum of upstream deltas — a reasonable
-    // compromise for convergent paths.
-    //
-    // Process edges in topological order (P4 before P3) so that a node
-    // shifted by an earlier edge's delta gets re-shifted by later ones
-    // whose sources are further downstream.
 
-    // Build downstream adjacency for each block's internal forward edges
-    const blockDownstream = new Map<string, Map<string, string[]>>()
+    // Center the first node in each vertical block after all shifts.
+    // The first node is the one with no incoming forward edges.
     for (const node of topNodes) {
       if (node.kind !== 'block' || !node.children?.length) continue
-      const down = new Map<string, string[]>()
-      for (const child of node.children) {
-        down.set(child.id, [])
-      }
+      const bl = blockLayouts.get(node.id)
+      if (!bl || bl.direction === 'horizontal') continue
+
+      // Find in-degree for each child
+      const inDeg = new Map<string, number>()
+      for (const child of node.children) inDeg.set(child.id, 0)
       for (const ie of (node.internalEdges ?? [])) {
-        if (ie.style !== 'forward') continue
-        down.get(ie.source)?.push(ie.target)
+        if (ie.style === 'forward') {
+          inDeg.set(ie.target, (inDeg.get(ie.target) ?? 0) + 1)
+        }
       }
-      blockDownstream.set(node.id, down)
-    }
-
-    // Build ordered list of cross-block skip edges, sorted so that edges
-    // targeting "earlier" nodes in the forward chain are processed first.
-    // "Earlier" = smaller y-position in the target block's layout (closer
-    // to the block top). This ensures earlier shifts cascade to downstream
-    // nodes which may then be further adjusted by later edges.
-    type XBlockEdge = { source: string; target: string; srcParentId: string; tgtParentId: string }
-    const crossBlockEdges: XBlockEdge[] = []
-    for (const edge of topEdges) {
-      if (topNodeIds.has(edge.source) || topNodeIds.has(edge.target)) continue
-      const srcP = childParentMap.get(edge.source)
-      const tgtP = childParentMap.get(edge.target)
-      if (!srcP || !tgtP || srcP === tgtP) continue
-      crossBlockEdges.push({ source: edge.source, target: edge.target, srcParentId: srcP, tgtParentId: tgtP })
-    }
-    // Sort by target child's y-position in its block (top-to-bottom)
-    crossBlockEdges.sort((a, b) => {
-      const blA = blockLayouts.get(a.tgtParentId)
-      const blB = blockLayouts.get(b.tgtParentId)
-      const yA = blA?.positions.get(a.target)?.y ?? 0
-      const yB = blB?.positions.get(b.target)?.y ?? 0
-      return yA - yB
-    })
-
-    for (const cbe of crossBlockEdges) {
-      const srcBl = blockLayouts.get(cbe.srcParentId)
-      const tgtBl = blockLayouts.get(cbe.tgtParentId)
-      const srcBlPos = positions.get(cbe.srcParentId)
-      const tgtBlPos = positions.get(cbe.tgtParentId)
-      if (!srcBl || !tgtBl || !srcBlPos || !tgtBlPos) continue
-
-      const srcCPos = srcBl.positions.get(cbe.source)
-      const tgtCPos = tgtBl.positions.get(cbe.target)
-      if (!srcCPos || !tgtCPos) continue
-
-      // Source global x center (uses current block dimensions)
-      const srcBlLeft = srcBlPos.x - srcBl.width / 2
-      const srcGlobalX = srcBlLeft + srcBl.childOffsetX + srcCPos.x
-
-      // Target global x center (uses current position, may have been shifted)
-      const tgtCPosCur = tgtBl.positions.get(cbe.target)!
-      const tgtBlLeft = tgtBlPos.x - tgtBl.width / 2
-      const tgtGlobalX = tgtBlLeft + tgtBl.childOffsetX + tgtCPosCur.x
-
-      const delta = srcGlobalX - tgtGlobalX
-      if (Math.abs(delta) < 0.5) continue
-
-      // BFS downstream from target node, shifting all reachable descendants
-      const down = blockDownstream.get(cbe.tgtParentId)
-      const queue = [cbe.target]
-      const visited = new Set<string>()
-      while (queue.length) {
-        const cur = queue.shift()!
-        if (visited.has(cur)) continue
-        visited.add(cur)
-        const cp = tgtBl.positions.get(cur)
-        if (cp) {
-          tgtBl.positions.set(cur, { x: cp.x + delta, y: cp.y })
+      // First node = one with in-degree 0
+      let firstId: string | null = null
+      for (const child of node.children) {
+        if ((inDeg.get(child.id) ?? 0) === 0) {
+          firstId = child.id
+          break
         }
-        for (const next of down?.get(cur) ?? []) {
-          if (!visited.has(next)) queue.push(next)
-        }
+      }
+      if (!firstId) continue
+      const firstPos = bl.positions.get(firstId)
+      if (!firstPos) continue
+
+      // Shift all children so the first node centers at x=0
+      const offset = -firstPos.x
+      for (const child of node.children) {
+        const cp = bl.positions.get(child.id)
+        if (!cp) continue
+        bl.positions.set(child.id, { x: cp.x + offset, y: cp.y })
       }
     }
 
