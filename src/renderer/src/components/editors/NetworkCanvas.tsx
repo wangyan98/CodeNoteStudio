@@ -326,15 +326,21 @@ export function NetworkCanvas({
         .style('cursor', 'pointer')
 
       if (edge.style === 'skip') {
-        // Wider invisible hit area for easier clicking
-        edgeG.append('line')
-          .attr('x1', x1).attr('y1', y1).attr('x2', x2).attr('y2', y2)
-          .attr('stroke', 'transparent').attr('stroke-width', 12)
+        const ortho = makeOrthogonalPath(x1, y1, x2, y2, srcDir ?? 'vertical')
+
+        // Invisible polyline for wider hit area
+        edgeG.append('polyline')
+          .attr('points', ortho.points)
+          .attr('stroke', 'transparent').attr('stroke-width', 12).attr('fill', 'none')
           .style('cursor', 'pointer')
-        edgeG.append('line')
-          .attr('x1', x1).attr('y1', y1).attr('x2', x2).attr('y2', y2)
+
+        // Visible dashed polyline
+        edgeG.append('polyline')
+          .attr('points', ortho.points)
           .attr('stroke', skipColor).attr('stroke-width', strokeW)
-          .attr('stroke-dasharray', '4,3')
+          .attr('stroke-dasharray', '4,3').attr('fill', 'none')
+
+        // Arrow at end
         edgeG.append('polygon')
           .attr('points', `${x2-4},${y2-4} ${x2},${y2} ${x2+4},${y2-4}`)
           .attr('fill', skipColor)
@@ -376,7 +382,44 @@ export function NetworkCanvas({
       return { w: NODE_W, h: NODE_H }
     }
 
+    // Generate orthogonal path points for inter-block skip edges
+    const makeOrthogonalPath = (
+      x1: number, y1: number,
+      x2: number, y2: number,
+      srcDir: BlockDirection
+    ): { points: string } => {
+      const midY = (y1 + y2) / 2
+      const points: Array<[number, number]> = [[x1, y1]]
+
+      if (srcDir === 'horizontal') {
+        // Source in horizontal block: go right → down → across → into target
+        const bendX = x1 + 30
+        points.push([bendX, y1])
+        points.push([bendX, midY])
+        points.push([x2, midY])
+      } else {
+        // Source in vertical block: go down → across → down into target
+        const bendY = y1 + 30
+        points.push([x1, bendY])
+        points.push([x1 + (x2 - x1) / 2, bendY])
+        points.push([x1 + (x2 - x1) / 2, y2])
+      }
+      points.push([x2, y2])
+      return { points: points.map(p => p.join(',')).join(' ') }
+    }
+
     // --- Render top-level edges (behind nodes) ---
+    // Compute which nodes get a merge bar (3+ incoming edges)
+    const mergeBarNodes = new Map<string, { count: number }>()
+    for (const edge of topEdges) {
+      let entry = mergeBarNodes.get(edge.target)
+      if (!entry) {
+        entry = { count: 0 }
+        mergeBarNodes.set(edge.target, entry)
+      }
+      entry.count++
+    }
+
     // Count outgoing/incoming ports per node for multi-edge distribution
     const outDegree = new Map<string, number>()
     const inDegree = new Map<string, number>()
@@ -402,23 +445,21 @@ export function NetworkCanvas({
       const ti = inIdx.get(edge.target) ?? 0
       inIdx.set(edge.target, ti + 1)
 
+      // If target node has a merge bar, edge hits the bar, not the node
+      let targetPosY = offsetY + tgtPos.y
+      const mergeInfo = mergeBarNodes.get(edge.target)
+      if (mergeInfo && mergeInfo.count >= 3) {
+        const barGap = 20
+        const barH = 10
+        targetPosY = offsetY + tgtPos.y - tgtH / 2 - barGap - barH / 2
+      }
+
       renderEdge(edge,
         { x: offsetX + srcPos.x, y: offsetY + srcPos.y },
-        { x: offsetX + tgtPos.x, y: offsetY + tgtPos.y },
+        { x: offsetX + tgtPos.x, y: targetPosY },
         srcW, srcH, tgtW, tgtH, g,
         si, outDegree.get(edge.source) ?? 1,
         ti, inDegree.get(edge.target) ?? 1)
-    }
-
-    // Compute which nodes get a merge bar (3+ incoming edges)
-    const mergeBarNodes = new Map<string, { count: number }>()
-    for (const edge of topEdges) {
-      let entry = mergeBarNodes.get(edge.target)
-      if (!entry) {
-        entry = { count: 0 }
-        mergeBarNodes.set(edge.target, entry)
-      }
-      entry.count++
     }
 
     // --- Render nodes ---
