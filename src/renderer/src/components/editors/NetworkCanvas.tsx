@@ -109,6 +109,10 @@ export function NetworkCanvas({
     const container = containerRef.current
     if (!container) return
 
+    // Preserve user zoom/pan across re-renders triggered by node selection etc.
+    const prevTransform = svgRef.current ? d3.zoomTransform(svgRef.current) : d3.zoomIdentity
+    const hasUserView = prevTransform.k !== 1 || prevTransform.x !== 0 || prevTransform.y !== 0
+
     const W = dims.w || container.clientWidth || 800
     const H = dims.h || container.clientHeight || 500
     svg.attr('width', W).attr('height', H)
@@ -231,11 +235,15 @@ export function NetworkCanvas({
     svg.call(zoom as any)
     zoomRef.current = zoom
 
-    // Apply initial fit transform (centered in viewport)
+    // Preserve user zoom/pan across re-renders, otherwise use fit-to-content
     const initTx = (W - contentW * fitScale) / 2
     const initTy = (H - contentH * fitScale) / 2
     fitTransformRef.current = { x: initTx, y: initTy, k: fitScale }
-    svg.call(zoom.transform as any, d3.zoomIdentity.translate(initTx, initTy).scale(fitScale))
+    if (hasUserView && prevTransform.k >= 0.3 && prevTransform.k <= 3) {
+      svg.call(zoom.transform as any, prevTransform)
+    } else {
+      svg.call(zoom.transform as any, d3.zoomIdentity.translate(initTx, initTy).scale(fitScale))
+    }
 
     // Helper to render a single edge (used for both top-level and internal edges)
     const renderEdge = (
@@ -423,6 +431,13 @@ export function NetworkCanvas({
               .attr('data-node-kind', child.kind)
               .style('cursor', 'pointer')
 
+            if (child.inputShape) {
+              childG.append('text')
+                .attr('x', cx + NODE_W / 2).attr('y', cy - 4)
+                .attr('text-anchor', 'middle').attr('fill', '#888')
+                .attr('font-size', '9px')
+                .text(child.inputShape)
+            }
             childG.append('rect')
               .attr('x', cx).attr('y', cy).attr('width', NODE_W).attr('height', NODE_H)
               .attr('rx', 6).attr('fill', cf)
@@ -433,6 +448,13 @@ export function NetworkCanvas({
               .attr('text-anchor', 'middle').attr('fill', '#d4d4d4')
               .attr('font-size', '10px').attr('font-weight', 'bold')
               .text(child.label)
+            if (child.outputShape) {
+              childG.append('text')
+                .attr('x', cx + NODE_W / 2).attr('y', cy + NODE_H + 12)
+                .attr('text-anchor', 'middle').attr('fill', '#bbb')
+                .attr('font-size', '9px')
+                .text(child.outputShape)
+            }
             if (child.codeMapping && onNavigateToCode && child.codeMapping.filePath) {
               childG.append('text')
                 .attr('x', cx + NODE_W - 14).attr('y', cy + NODE_H / 2 + 4)
@@ -595,7 +617,14 @@ export function NetworkCanvas({
           .attr('font-size', '11px').attr('font-weight', 'bold')
           .text(node.label + (node.inputShape ? ` ${node.inputShape}` : ''))
       } else {
-        // layer
+        // layer — render input/output shapes outside the node box
+        if (node.inputShape) {
+          nodeG.append('text')
+            .attr('x', nx + nw / 2).attr('y', ny - 4)
+            .attr('text-anchor', 'middle').attr('fill', '#888')
+            .attr('font-size', '9px')
+            .text(node.inputShape)
+        }
         nodeG.append('rect')
           .attr('x', nx).attr('y', ny).attr('width', nw).attr('height', nh)
           .attr('rx', 6).attr('fill', fill)
@@ -606,6 +635,13 @@ export function NetworkCanvas({
           .attr('text-anchor', 'middle').attr('fill', '#d4d4d4')
           .attr('font-size', '10px').attr('font-weight', 'bold')
           .text(node.label)
+        if (node.outputShape) {
+          nodeG.append('text')
+            .attr('x', nx + nw / 2).attr('y', ny + nh + 12)
+            .attr('text-anchor', 'middle').attr('fill', '#bbb')
+            .attr('font-size', '9px')
+            .text(node.outputShape)
+        }
         if (node.codeMapping && onNavigateToCode && node.codeMapping.filePath) {
           nodeG.append('text')
             .attr('x', nx + nw - 14).attr('y', ny + nh / 2 + 4)
