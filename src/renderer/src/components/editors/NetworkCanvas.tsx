@@ -271,6 +271,234 @@ export function NetworkCanvas({
       }
     }
 
+    // Align skip targets in vertical blocks with their source nodes from other
+    // blocks so cross-block skip lines (green) are as vertical as possible.
+    const blockWidthBeforeShift = new Map<string, number>()
+    for (const node of topNodes) {
+      if (node.kind !== 'block' || !node.children?.length) continue
+      const bl = blockLayouts.get(node.id)
+      if (!bl || bl.direction !== 'vertical') continue
+
+      // Collect cross-block skip edges targeting this vertical block's children
+      const skipTargets: Array<{
+        targetId: string
+        sourceBlockId: string
+        sourceChildId: string
+      }> = []
+      for (const edge of topEdges) {
+        if (edge.style !== 'skip') continue
+        const srcParentId = childParentMap.get(edge.source)
+        if (!srcParentId || srcParentId === node.id) continue
+        const tgtChild = node.children.find(c => c.id === edge.target)
+        if (!tgtChild) continue
+        skipTargets.push({
+          targetId: edge.target,
+          sourceBlockId: srcParentId,
+          sourceChildId: edge.source,
+        })
+      }
+      if (skipTargets.length === 0) continue
+
+      // Build outgoing-edge count per child (internal + top-level) so we
+      // can detect multi-output branching points where columns must split.
+      const childAllOutCount = new Map<string, number>()
+      for (const child of node.children) childAllOutCount.set(child.id, 0)
+      for (const ie of (node.internalEdges ?? [])) {
+        childAllOutCount.set(ie.source, (childAllOutCount.get(ie.source) ?? 0) + 1)
+      }
+      for (const te of topEdges) {
+        if (childAllOutCount.has(te.source)) {
+          childAllOutCount.set(te.source, (childAllOutCount.get(te.source) ?? 0) + 1)
+        }
+      }
+
+      // Partition the block's forward chain into columns around skip targets.
+      // Each column = upstream node + target concat + downstream nodes (stopping
+      // before multi-output nodes and nodes that feed another skip target).
+      const assignedNodes = new Set<string>()
+      const columns: Array<{
+        nodeIds: string[]
+        sourceBlockId: string
+        sourceChildId: string
+      }> = []
+
+      for (const st of skipTargets) {
+        const colNodeIds: string[] = []
+
+        // Upstream: node with a forward edge TO the skip target (if not already assigned)
+        for (const ie of (node.internalEdges ?? [])) {
+          if (ie.target === st.targetId && ie.style === 'forward') {
+            if (!assignedNodes.has(ie.source)) colNodeIds.push(ie.source)
+            break
+          }
+        }
+
+        colNodeIds.push(st.targetId)
+
+        // Downstream BFS following forward edges, stopping at multi-output
+        // nodes and nodes that feed another cross-block skip target.
+        const queue = [st.targetId]
+        const visited = new Set<string>()
+        while (queue.length > 0) {
+          const cur = queue.shift()!
+          if (visited.has(cur)) continue
+          visited.add(cur)
+          for (const ie of (node.internalEdges ?? [])) {
+            if (ie.source === cur && ie.style === 'forward') {
+              if (assignedNodes.has(ie.target)) continue
+              // Stop if ie.target directly feeds another skip target (1-hop)
+              let feedsOtherSkip = false
+              for (const st2 of skipTargets) {
+                if (st2.targetId === st.targetId) continue
+                for (const ie2 of (node.internalEdges ?? [])) {
+                  if (ie2.target === st2.targetId && ie2.source === ie.target && ie2.style === 'forward') {
+                    feedsOtherSkip = true
+                    break
+                  }
+                }
+                if (feedsOtherSkip) break
+              }
+              // Always include ie.target in the column
+              if (!colNodeIds.includes(ie.target)) colNodeIds.push(ie.target)
+              // Only follow forward if single-output and not feeding another skip
+              const outCnt = childAllOutCount.get(ie.target) ?? 0
+              if (!feedsOtherSkip && outCnt <= 1) queue.push(ie.target)
+            }
+          }
+        }
+
+        for (const nid of colNodeIds) assignedNodes.add(nid)
+        columns.push({
+          nodeIds: colNodeIds,
+          sourceBlockId: st.sourceBlockId,
+          sourceChildId: st.sourceChildId,
+        })
+      }
+
+      // Group remaining unassigned nodes into columns by forward chains.
+      // Align each chain to the first internal skip source found, or to
+      // the midpoint of the Backbone source range as a fallback.
+      const unassignedIds = node.children
+        .map(c => c.id)
+        .filter(id => !assignedNodes.has(id))
+      if (unassignedIds.length > 0) {
+        const uaSet = new Set(unassignedIds)
+        const uaVisited = new Set<string>()
+        for (const startId of unassignedIds) {
+          if (uaVisited.has(startId)) continue
+          const chain: string[] = [startId]
+          uaVisited.add(startId)
+          let cur = startId
+          while (true) {
+            let next: string | null = null
+            for (const ie of (node.internalEdges ?? [])) {
+              if (ie.source === cur && ie.style === 'forward' && uaSet.has(ie.target)) {
+                next = ie.target; break
+              }
+            }
+            if (next && !uaVisited.has(next)) {
+              chain.push(next)
+              uaVisited.add(next)
+              cur = next
+            } else { break }
+          }
+
+          // Find alignment: prefer internal skip that targets this chain
+          let alignBlockId: string | null = null
+          let alignChildId: string | null = null
+          for (const ie of (node.internalEdges ?? [])) {
+            if (ie.style === 'skip' && chain.includes(ie.target)) {
+              const srcCol = columns.find(col => col.nodeIds.includes(ie.source))
+              if (srcCol) {
+                alignBlockId = srcCol.sourceBlockId
+                alignChildId = srcCol.sourceChildId
+                break
+              }
+            }
+          }
+          // Fallback: use the forward predecessor's column
+          if (!alignBlockId) {
+            for (const ie of (node.internalEdges ?? [])) {
+              if (ie.style === 'forward' && chain.includes(ie.target)) {
+                const srcCol = columns.find(col => col.nodeIds.includes(ie.source))
+                if (srcCol) {
+                  alignBlockId = srcCol.sourceBlockId
+                  alignChildId = srcCol.sourceChildId
+                  break
+                }
+              }
+            }
+          }
+          // Use midpoint fallback if no column source found
+          if (!alignBlockId) {
+            alignBlockId = skipTargets[0]?.sourceBlockId ?? ''
+            alignChildId = skipTargets[0]?.sourceChildId ?? ''
+          }
+
+          for (const nid of chain) assignedNodes.add(nid)
+          columns.push({
+            nodeIds: chain,
+            sourceBlockId: alignBlockId!,
+            sourceChildId: alignChildId!,
+          })
+        }
+      }
+
+      // Compute desired global x for each column anchor and apply shifts
+      const tgtBlockPos = positions.get(node.id)
+      if (!tgtBlockPos) continue
+      const tgtNode = topNodes.find(n => n.id === node.id)
+      const tgtW = tgtNode?.kind === 'block' ? (blockLayouts.get(node.id)?.width ?? BLOCK_MIN_W) : NODE_W
+      const oldBlockWidth = bl.width
+      blockWidthBeforeShift.set(node.id, oldBlockWidth)
+
+      for (const col of columns) {
+        const srcBl = blockLayouts.get(col.sourceBlockId)
+        const srcChildPos = srcBl?.positions.get(col.sourceChildId)
+        const srcBlockPos = positions.get(col.sourceBlockId)
+        if (!srcChildPos || !srcBlockPos) continue
+
+        const srcNode = topNodes.find(n => n.id === col.sourceBlockId)
+        const srcW = srcNode?.kind === 'block' ? (blockLayouts.get(col.sourceBlockId)?.width ?? BLOCK_MIN_W) : NODE_W
+
+        const anchorId = col.nodeIds.find(nid =>
+          skipTargets.some(st => st.targetId === nid)
+        ) ?? col.nodeIds[0]  // fallback for chain-grouped columns
+        const anchorPos = anchorId ? bl.positions.get(anchorId) : null
+        if (!anchorPos) continue
+
+        const srcGlobalX = srcBlockPos.x - srcW / 2 + srcBl.childOffsetX + srcChildPos.x
+        const anchorGlobalX = tgtBlockPos.x - tgtW / 2 + bl.childOffsetX + anchorPos.x
+        const shift = srcGlobalX - anchorGlobalX + 30
+
+        const targetX = anchorPos.x + shift
+        for (const nid of col.nodeIds) {
+          const cp = bl.positions.get(nid)
+          if (!cp) continue
+          bl.positions.set(nid, { x: targetX, y: cp.y })
+        }
+      }
+
+      // Any truly orphaned nodes (shouldn't happen after chain grouping)
+      const remainingIds = node.children
+        .map(c => c.id)
+        .filter(id => !assignedNodes.has(id))
+      if (remainingIds.length > 0) {
+        let srcMidX = 0
+        for (const st of skipTargets) {
+          const srcBl = blockLayouts.get(st.sourceBlockId)
+          const srcChildPos = srcBl?.positions.get(st.sourceChildId)
+          if (srcChildPos) { srcMidX += srcChildPos.x }
+        }
+        srcMidX /= skipTargets.length
+        const midLocal = bl.positions.get(remainingIds[0])?.x ?? 0
+        for (const id of remainingIds) {
+          const cp = bl.positions.get(id)
+          if (cp) bl.positions.set(id, { x: midLocal, y: cp.y })
+        }
+      }
+    }
+
     // Recompute block bounding boxes for blocks whose children moved
     for (const node of topNodes) {
       if (node.kind !== 'block' || !node.children?.length) continue
@@ -305,6 +533,22 @@ export function NetworkCanvas({
     // Update nodeSizes so bounding box computation below sees new sizes
     for (const [id, bl] of blockLayouts) {
       nodeSizes.set(id, { width: bl.width, height: bl.height })
+    }
+
+    // Compensate vertical-block dagre positions for width expansion caused
+    // by column alignment. When children shift right, the block widens but
+    // stays centered at its dagre x, moving its left edge left by ΔW/2.
+    // Shift the block right by ΔW/2 to cancel this.
+    for (const node of topNodes) {
+      if (node.kind !== 'block' || !node.children?.length) continue
+      const bl = blockLayouts.get(node.id)
+      if (!bl || bl.direction !== 'vertical') continue
+      const oldW = blockWidthBeforeShift.get(node.id)
+      if (oldW === undefined) continue
+      const widthDelta = bl.width - oldW
+      if (widthDelta <= 0) continue
+      const bp = positions.get(node.id)
+      if (bp) positions.set(node.id, { x: bp.x + widthDelta / 2, y: bp.y })
     }
 
     // Compute bounding box for centering
