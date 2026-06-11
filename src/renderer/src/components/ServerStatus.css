@@ -1,7 +1,7 @@
 .server-status-bar {
   display: flex;
   align-items: center;
-  justify-content: flex-end;
+  justify-content: space-between;
   gap: 8px;
   padding: 4px 12px;
   background: var(--bg-secondary);
@@ -77,6 +77,33 @@
 }
 
 .agent-btn-active {
+  background: #1a73e8;
+  color: white;
+  border-color: #1a73e8;
+}
+
+.server-status-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.config-gear-btn {
+  padding: 2px 8px;
+  border: 1px solid var(--border-color);
+  border-radius: 3px;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  cursor: pointer;
+  font-size: 13px;
+  line-height: 1;
+}
+
+.config-gear-btn:hover {
+  background: var(--bg-hover);
+}
+
+.config-gear-btn-active {
   background: #1a73e8;
   color: white;
   border-color: #1a73e8;
