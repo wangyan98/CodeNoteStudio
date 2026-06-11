@@ -89,6 +89,32 @@ declare global {
       startAgent: () => Promise<{ port: number }>
       stopAgent: () => Promise<void>
       getAgentPort: () => Promise<number>
+      getAgentConfig: () => Promise<{
+        pythonPath: string
+        agentScriptPath: string
+        autoStart: boolean
+        providers: Array<{
+          id: string
+          name: string
+          model: string
+          endpoint: string
+          apiKey: string
+          enabled: boolean
+        }>
+      }>
+      saveAgentConfig: (config: {
+        pythonPath: string
+        agentScriptPath: string
+        autoStart: boolean
+        providers: Array<{
+          id: string
+          name: string
+          model: string
+          endpoint: string
+          apiKey: string
+          enabled: boolean
+        }>
+      }) => Promise<{ ok: boolean; error?: string }>
       onNotesChanged: (callback: () => void) => () => void
     }
   }

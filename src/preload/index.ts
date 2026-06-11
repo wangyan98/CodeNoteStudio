@@ -76,6 +76,10 @@ const api = {
   stopAgent: () => ipcRenderer.invoke('agent:stop'),
   getAgentPort: () => ipcRenderer.invoke('agent:get-port'),
 
+  // Agent config
+  getAgentConfig: () => ipcRenderer.invoke('agent-config:get'),
+  saveAgentConfig: (config: unknown) => ipcRenderer.invoke('agent-config:save', config),
+
   // File watcher
   onNotesChanged: (callback: () => void) => {
     const handler = () => callback()
