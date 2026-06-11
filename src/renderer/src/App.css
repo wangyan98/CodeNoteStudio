@@ -119,12 +119,10 @@ html, body, #root {
   border-top: 1px solid var(--border-color);
 }
 
-/* Prevent global box-sizing from breaking Monaco Editor's find widget and tooltips */
-.monaco-editor,
-.monaco-editor *,
-.monaco-findInput,
-.monaco-findInput *,
-.monaco-inputbox,
-.monaco-inputbox * {
+/* The global `* { box-sizing: border-box }` breakMonaco Editor's layout
+   — it expects content-box for find widget buttons, overlays, and tooltips.
+   Reset to content-box for the entire editor container subtree. */
+.code-editor-container,
+.code-editor-container * {
   box-sizing: content-box;
 }
