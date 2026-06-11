@@ -121,3 +121,9 @@ html, body, #root {
   padding: 0;
   box-sizing: border-box;
 }
+
+/* Monaco hover tooltips can overlay find-widget buttons and block clicks.
+   Since the editor is read-only, hover info (type hints, etc.) is non-essential. */
+.monaco-editor .monaco-hover {
+  display: none !important;
+}
