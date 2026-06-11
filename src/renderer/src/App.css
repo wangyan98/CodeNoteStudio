@@ -9,6 +9,12 @@
   --font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 }
 
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
 html, body, #root {
   width: 100%;
   height: 100%;
@@ -113,25 +119,16 @@ html, body, #root {
   border-top: 1px solid var(--border-color);
 }
 
-/* Scope border-box to app DOM only — Monaco Editor internals require the
-   browser default content-box. Excluding .monaco-editor and its descendants
-   from the global reset prevents find-widget close buttons from breaking. */
-*:not(.monaco-editor):not(.monaco-editor *) {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
+/* Monaco Editor compatibility: reset box-sizing to content-box for
+   Monaco's own DOM tree so find-widget layout works correctly. */
+.monaco-editor,
+.monaco-editor * {
+  box-sizing: content-box;
 }
 
-/* Disable all Monaco hover/tooltip overlays — they overlay the find widget
-   close button and intercept clicks. The editor is read-only so these
-   hover views (type info, find widget tooltips) provide no value. */
+/* Hide Monaco hover tooltips that overlay the find-widget close button.
+   The editor is read-only, so hover type-info is non-essential. */
 .monaco-editor .monaco-hover,
-.monaco-editor .monaco-hover-content,
-.monaco-editor .editor-widget,
-.monaco-editor-hover {
+.monaco-editor .editor-widget {
   display: none !important;
 }
-
-/* Remove title tooltip on find-widget buttons — native browser tooltips
-   also overlay the close button but can't be hidden with CSS alone.
-   The JS in CodeViewport handleEditorMount strips title attributes. */
