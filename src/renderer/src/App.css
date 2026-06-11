@@ -126,9 +126,9 @@ html, body, #root {
   box-sizing: content-box;
 }
 
-/* Hide Monaco hover tooltips that overlay the find-widget close button.
-   The editor is read-only, so hover type-info is non-essential. */
-.monaco-editor .monaco-hover,
-.monaco-editor .editor-widget {
+/* Hide Monaco hover type-info tooltips (not find-widget — that's a different
+   overlay). These overlay the find-widget close button and block clicks.
+   The editor is read-only so hover type info is non-essential. */
+.monaco-editor .monaco-hover {
   display: none !important;
 }
