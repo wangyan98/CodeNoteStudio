@@ -1,4 +1,6 @@
 import { ipcMain, BrowserWindow } from 'electron'
+import { readAgentConfig, writeAgentConfig } from './services/agent-config'
+import type { AgentConfig } from './services/agent-config'
 import { loadConfig, saveConfig } from './services/notebook-config'
 import {
   createNote,
@@ -331,6 +333,15 @@ export function registerIpcHandlers(projectPath: string): void {
       port = result.port
     }
     return port
+  })
+
+  // Agent config
+  ipcMain.handle('agent-config:get', async (): Promise<AgentConfig> => {
+    return readAgentConfig()
+  })
+
+  ipcMain.handle('agent-config:save', async (_event, config: AgentConfig): Promise<{ ok: boolean; error?: string }> => {
+    return writeAgentConfig(config)
   })
 
   ipcMain.handle('shell:open-external', async (_event, url: string) => {
