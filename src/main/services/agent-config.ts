@@ -63,6 +63,7 @@ export function writeAgentConfig(config: AgentConfig): { ok: boolean; error?: st
       fs.mkdirSync(dir, { recursive: true })
     }
     fs.writeFileSync(filePath, JSON.stringify(config, null, 2), 'utf-8')
+    fs.chmodSync(filePath, 0o600)
     return { ok: true }
   } catch (e: any) {
     return { ok: false, error: e.message }
