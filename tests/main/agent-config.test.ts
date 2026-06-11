@@ -64,4 +64,22 @@ describe('agent-config', () => {
     expect(config.pythonPath).toBe('python3')
     expect(config.providers).toEqual([])
   })
+
+  it('writeAgentConfig returns error on write failure', async () => {
+    // Override homedir to /dev/null which is a file, so mkdirSync will fail
+    vi.restoreAllMocks()
+    vi.spyOn(os, 'homedir').mockReturnValue('/dev/null')
+    vi.resetModules()
+
+    const { writeAgentConfig } = await import('../../src/main/services/agent-config')
+
+    const result = writeAgentConfig({
+      pythonPath: 'python3',
+      agentScriptPath: '',
+      autoStart: true,
+      providers: []
+    })
+    expect(result.ok).toBe(false)
+    expect(typeof result.error).toBe('string')
+  })
 })

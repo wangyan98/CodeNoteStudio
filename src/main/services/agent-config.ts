@@ -36,7 +36,7 @@ function getConfigFilePath(): string {
 export function readAgentConfig(): AgentConfig {
   const filePath = getConfigFilePath()
   if (!fs.existsSync(filePath)) {
-    return { ...DEFAULTS, providers: [] }
+    return { ...DEFAULTS }
   }
   try {
     const raw = fs.readFileSync(filePath, 'utf-8')
@@ -45,10 +45,13 @@ export function readAgentConfig(): AgentConfig {
       pythonPath: data.pythonPath ?? DEFAULTS.pythonPath,
       agentScriptPath: data.agentScriptPath ?? DEFAULTS.agentScriptPath,
       autoStart: data.autoStart ?? DEFAULTS.autoStart,
-      providers: Array.isArray(data.providers) ? data.providers : []
+      providers: Array.isArray(data.providers)
+        ? data.providers.filter((p: any) => p && typeof p === 'object')
+        : []
     }
   } catch {
-    return { ...DEFAULTS, providers: [] }
+    console.warn(`[agent-config] Corrupted config at ${filePath}, using defaults`)
+    return { ...DEFAULTS }
   }
 }
 
