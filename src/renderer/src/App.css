@@ -118,3 +118,13 @@ html, body, #root {
   color: var(--placeholder-color);
   border-top: 1px solid var(--border-color);
 }
+
+/* Prevent global box-sizing from breaking Monaco Editor's find widget and tooltips */
+.monaco-editor,
+.monaco-editor *,
+.monaco-findInput,
+.monaco-findInput *,
+.monaco-inputbox,
+.monaco-inputbox * {
+  box-sizing: content-box;
+}
