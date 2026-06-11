@@ -1,0 +1,202 @@
+/* src/renderer/src/components/ConfigDialog.css */
+
+.config-dialog-overlay {
+  position: fixed;
+  bottom: 36px;
+  left: 12px;
+  z-index: 1000;
+}
+
+.config-dialog {
+  width: 460px;
+  max-height: 520px;
+  background: var(--bg-primary, #1e1e1e);
+  border: 1px solid var(--border-color, #3c3c3c);
+  border-radius: 8px;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.5);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.config-dialog.minimized {
+  max-height: unset;
+}
+
+.config-dialog-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  background: var(--bg-secondary, #252526);
+  border-bottom: 1px solid var(--border-color, #3c3c3c);
+  user-select: none;
+}
+
+.config-dialog-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary, #d4d4d4);
+}
+
+.config-dialog-header-actions {
+  display: flex;
+  gap: 4px;
+}
+
+.config-dialog-header-btn {
+  background: none;
+  border: none;
+  color: var(--text-muted, #999);
+  cursor: pointer;
+  font-size: 14px;
+  padding: 2px 6px;
+  border-radius: 3px;
+}
+
+.config-dialog-header-btn:hover {
+  background: var(--bg-hover, #3c3c3c);
+  color: var(--text-primary, #d4d4d4);
+}
+
+.config-dialog-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.config-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.config-section-title {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-muted, #999);
+  border-bottom: 1px solid var(--border-color, #3c3c3c);
+  padding-bottom: 4px;
+}
+
+.config-field {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.config-field label {
+  font-size: 11px;
+  color: var(--text-muted, #999);
+}
+
+.config-field input[type="text"],
+.config-field input[type="password"] {
+  padding: 4px 8px;
+  border: 1px solid var(--border-color, #3c3c3c);
+  border-radius: 3px;
+  background: var(--bg-primary, #1e1e1e);
+  color: var(--text-primary, #d4d4d4);
+  font-size: 12px;
+  outline: none;
+}
+
+.config-field input:focus {
+  border-color: #1a73e8;
+}
+
+.config-field-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.config-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--text-primary, #d4d4d4);
+  cursor: pointer;
+}
+
+.config-toggle input[type="checkbox"] {
+  accent-color: #1a73e8;
+}
+
+.config-provider-card {
+  border: 1px solid var(--border-color, #3c3c3c);
+  border-radius: 4px;
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.config-provider-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.config-provider-card-header .provider-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary, #d4d4d4);
+}
+
+.config-provider-card-fields {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+
+.config-provider-card-fields .config-field.full-width {
+  grid-column: 1 / -1;
+}
+
+.config-dialog-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 8px 12px;
+  border-top: 1px solid var(--border-color, #3c3c3c);
+  background: var(--bg-secondary, #252526);
+}
+
+.config-dialog-footer button {
+  padding: 4px 16px;
+  border: 1px solid var(--border-color, #3c3c3c);
+  border-radius: 3px;
+  background: var(--bg-primary, #1e1e1e);
+  color: var(--text-primary, #d4d4d4);
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.config-dialog-footer button.config-save-btn {
+  background: #1a73e8;
+  color: white;
+  border-color: #1a73e8;
+}
+
+.config-dialog-footer button.config-save-btn:hover {
+  background: #1557b0;
+}
+
+.config-save-status {
+  font-size: 11px;
+  color: #4caf50;
+  align-self: center;
+  margin-right: auto;
+}
+
+.config-save-status.error {
+  color: #d93025;
+}
