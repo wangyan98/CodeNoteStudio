@@ -33,9 +33,43 @@ function getConfigFilePath(): string {
   return path.join(CONFIG_DIR, CONFIG_FILE)
 }
 
+function getProvidersFilePath(): string {
+  return path.join(CONFIG_DIR, 'providers.json')
+}
+
+function migrateLegacyProviders(): AgentProvider[] | null {
+  const oldPath = getProvidersFilePath()
+  if (!fs.existsSync(oldPath)) return null
+  try {
+    const raw = fs.readFileSync(oldPath, 'utf-8')
+    const oldProviders = JSON.parse(raw)
+    if (!Array.isArray(oldProviders) || oldProviders.length === 0) return null
+    const migrated: AgentProvider[] = oldProviders
+      .filter((p: any) => p && typeof p === 'object')
+      .map((p: any) => ({
+        id: p.id || '',
+        name: p.name || '',
+        model: p.model || '',
+        endpoint: p.base_url || '',
+        apiKey: p.api_key || '',
+        enabled: true
+      }))
+    // Write migrated config immediately so it persists
+    const config: AgentConfig = { ...DEFAULTS, providers: migrated }
+    writeAgentConfig(config)
+    return migrated
+  } catch {
+    return null
+  }
+}
+
 export function readAgentConfig(): AgentConfig {
   const filePath = getConfigFilePath()
   if (!fs.existsSync(filePath)) {
+    const migrated = migrateLegacyProviders()
+    if (migrated) {
+      return { ...DEFAULTS, providers: migrated }
+    }
     return { ...DEFAULTS }
   }
   try {

@@ -65,6 +65,29 @@ describe('agent-config', () => {
     expect(config.providers).toEqual([])
   })
 
+  it('migrates legacy providers.json to agent-config.json', async () => {
+    mkdirSync(join(configDir, '.code-note-studio'), { recursive: true })
+    writeFileSync(
+      join(configDir, '.code-note-studio', 'providers.json'),
+      JSON.stringify([
+        { id: 'deepseek', name: 'DeepSeek', base_url: 'https://api.deepseek.com/v1', api_key: 'sk-key', model: 'deepseek-v4' }
+      ])
+    )
+
+    const { readAgentConfig } = await import('../../src/main/services/agent-config')
+    const config = readAgentConfig()
+
+    expect(config.providers).toHaveLength(1)
+    expect(config.providers[0].id).toBe('deepseek')
+    expect(config.providers[0].name).toBe('DeepSeek')
+    expect(config.providers[0].model).toBe('deepseek-v4')
+    expect(config.providers[0].endpoint).toBe('https://api.deepseek.com/v1')
+    expect(config.providers[0].apiKey).toBe('sk-key')
+    expect(config.providers[0].enabled).toBe(true)
+    expect(config.pythonPath).toBe('python3')
+    expect(config.autoStart).toBe(true)
+  })
+
   it('writeAgentConfig returns error on write failure', async () => {
     // Override homedir to /dev/null which is a file, so mkdirSync will fail
     vi.restoreAllMocks()
