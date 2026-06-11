@@ -189,6 +189,14 @@ export function CodeViewport() {
   const handleEditorMount = useCallback((editor: monaco.editor.IStandaloneCodeEditor) => {
     editorRef.current = editor
 
+    // Strip title attributes from find widget buttons so browser tooltips
+    // don't overlay the close button and block clicks
+    const el = editor.getContainerDomNode()
+    const stripFindWidgetTitles = () => {
+      el.querySelector('.find-widget')?.querySelectorAll('[title]').forEach((n: Element) => n.removeAttribute('title'))
+    }
+    new MutationObserver(stripFindWidgetTitles).observe(el, { childList: true, subtree: true })
+
     // Scroll to pending line if applicable
     if (state.pendingScroll && activeFile && activeFile.path === state.pendingScroll.filePath) {
       editor.revealLineInCenter(state.pendingScroll.line)

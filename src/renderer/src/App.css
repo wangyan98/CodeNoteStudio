@@ -122,8 +122,16 @@ html, body, #root {
   box-sizing: border-box;
 }
 
-/* Monaco hover tooltips can overlay find-widget buttons and block clicks.
-   Since the editor is read-only, hover info (type hints, etc.) is non-essential. */
-.monaco-editor .monaco-hover {
+/* Disable all Monaco hover/tooltip overlays — they overlay the find widget
+   close button and intercept clicks. The editor is read-only so these
+   hover views (type info, find widget tooltips) provide no value. */
+.monaco-editor .monaco-hover,
+.monaco-editor .monaco-hover-content,
+.monaco-editor .editor-widget,
+.monaco-editor-hover {
   display: none !important;
 }
+
+/* Remove title tooltip on find-widget buttons — native browser tooltips
+   also overlay the close button but can't be hidden with CSS alone.
+   The JS in CodeViewport handleEditorMount strips title attributes. */
