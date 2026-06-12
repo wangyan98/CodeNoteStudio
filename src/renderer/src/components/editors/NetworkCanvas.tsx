@@ -31,12 +31,14 @@ function runLayout(
   nodes: GraphNode[],
   edges: GraphEdge[],
   nodeSizes?: Map<string, { width: number; height: number }>,
-  direction: BlockDirection = 'vertical'
+  direction: BlockDirection = 'vertical',
+  nodesep = 40,
+  ranksep = 60
 ): Map<string, { x: number; y: number }> {
   const g = new dagre.graphlib.Graph()
   g.setGraph({
     rankdir: direction === 'horizontal' ? 'LR' : 'TB',
-    nodesep: 40, edgesep: 20, ranksep: 60, marginx: 40, marginy: 30
+    nodesep, edgesep: 20, ranksep, marginx: 40, marginy: 30
   })
   g.setDefaultEdgeLabel(() => ({}))
 
@@ -232,7 +234,7 @@ export function NetworkCanvas({
       }
       // Both children: skip (dagre has no node for either)
     }
-    const positions = runLayout(topNodes, layoutEdges, nodeSizes)
+    const positions = runLayout(topNodes, layoutEdges, nodeSizes, 'vertical', 120, 80)
 
 
     // Center the first node in each vertical block after all shifts.
@@ -792,8 +794,6 @@ export function NetworkCanvas({
       outDegree.set(edge.source, (outDegree.get(edge.source) ?? 0) + 1)
       inDegree.set(edge.target, (inDegree.get(edge.target) ?? 0) + 1)
     }
-    const outIdx = new Map<string, number>()
-    const inIdx = new Map<string, number>()
 
     // Build child position lookup for cross-block edge resolution
     // Maps childId => global center position and direction
@@ -831,6 +831,8 @@ export function NetworkCanvas({
     }
 
     // Helper to resolve a node ID to its global position and direction
+    // External edges always use vertical port direction (top-in, bottom-out)
+    // regardless of each block's internal layout direction.
     const resolveGlobalPos = (nodeId: string):
       { pos: { x: number; y: number }; w: number; h: number; direction: BlockDirection } | null => {
       // First try top-level
@@ -838,10 +840,7 @@ export function NetworkCanvas({
       if (topPos) {
         const node = topNodes.find(n => n.id === nodeId)
         const size = getNodeSize(node)
-        const dir = node?.kind === 'block'
-          ? (node.direction ?? blockLayouts.get(nodeId)?.direction ?? 'vertical')
-          : 'vertical'
-        return { pos: { x: offsetX + topPos.x, y: offsetY + topPos.y }, w: size.w, h: size.h, direction: dir }
+        return { pos: { x: offsetX + topPos.x, y: offsetY + topPos.y }, w: size.w, h: size.h, direction: 'vertical' }
       }
       // Then try child lookup
       const child = childLookup.get(nodeId)
@@ -851,15 +850,54 @@ export function NetworkCanvas({
       return null
     }
 
+    // Pre-compute port indices sorted by horizontal position so edges from
+    // left-side nodes connect to left-side ports (no visual crossing).
+    const edgePortMap = new Map<string, { srcIdx: number; tgtIdx: number }>()
+    // Group by target: for each target, sort incoming edges by source X → tgtIdx
+    {
+      const byTarget = new Map<string, { edgeId: string; srcX: number }[]>()
+      for (const edge of topEdges) {
+        const srcInfo = resolveGlobalPos(edge.source)
+        if (!srcInfo) continue
+        if (!byTarget.has(edge.target)) byTarget.set(edge.target, [])
+        byTarget.get(edge.target)!.push({ edgeId: edge.id, srcX: srcInfo.pos.x })
+      }
+      for (const [, items] of byTarget) {
+        items.sort((a, b) => a.srcX - b.srcX)
+        items.forEach((item, i) => {
+          const e = edgePortMap.get(item.edgeId) ?? { srcIdx: 0, tgtIdx: 0 }
+          e.tgtIdx = i
+          edgePortMap.set(item.edgeId, e)
+        })
+      }
+    }
+    // Group by source: for each source, sort outgoing edges by target X → srcIdx
+    {
+      const bySource = new Map<string, { edgeId: string; tgtX: number }[]>()
+      for (const edge of topEdges) {
+        const tgtInfo = resolveGlobalPos(edge.target)
+        if (!tgtInfo) continue
+        if (!bySource.has(edge.source)) bySource.set(edge.source, [])
+        bySource.get(edge.source)!.push({ edgeId: edge.id, tgtX: tgtInfo.pos.x })
+      }
+      for (const [, items] of bySource) {
+        items.sort((a, b) => a.tgtX - b.tgtX)
+        items.forEach((item, i) => {
+          const e = edgePortMap.get(item.edgeId) ?? { srcIdx: 0, tgtIdx: 0 }
+          e.srcIdx = i
+          edgePortMap.set(item.edgeId, e)
+        })
+      }
+    }
+
     for (const edge of topEdges) {
       const srcInfo = resolveGlobalPos(edge.source)
       const tgtInfo = resolveGlobalPos(edge.target)
       if (!srcInfo || !tgtInfo) continue
 
-      const si = outIdx.get(edge.source) ?? 0
-      outIdx.set(edge.source, si + 1)
-      const ti = inIdx.get(edge.target) ?? 0
-      inIdx.set(edge.target, ti + 1)
+      const ports = edgePortMap.get(edge.id) ?? { srcIdx: 0, tgtIdx: 0 }
+      const si = ports.srcIdx
+      const ti = ports.tgtIdx
 
       // If target node has a merge bar, edge hits the bar, not the node
       let targetPosY = tgtInfo.pos.y
