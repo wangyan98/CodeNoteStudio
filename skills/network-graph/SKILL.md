@@ -64,14 +64,14 @@ Represents a reusable sub-network (e.g. ResBlock, C2f, Bottleneck). A block **co
 - Use **block** only when a group of layers forms a reusable sub-component (ResBlock, C2f, TransformerBlock…)
 - Do NOT set `layerType` or `params` on a block node — those fields belong on `kind: "layer"` only
 - Do NOT set `inputShape`/`outputShape` on a block node — shapes go on individual layer nodes
-- `direction`: **Always set to `"vertical"`** — all block nodes MUST use top→bottom layout so edges enter from top and exit from bottom. Never use `"horizontal"` or leave as `null`/omitted.
+- `direction`: Controls the block's internal layout direction — `"horizontal"` (left→right) or `"vertical"` (top→bottom). When omitted/null, the layout is auto-detected.
 
 ### Block direction
 
-All block nodes MUST use `"vertical"` direction. Edges enter from the **top** and exit from the **bottom** of each node.
+Direction controls how children are laid out within a block.
 
 - **Vertical (TB)**: children flow top-to-bottom, ports spread horizontally on top/bottom edges. Skip edges exit via left/right sides.
-- Never use `"horizontal"` or `null`/omitted — auto-detection can produce incorrect horizontal layouts for blocks with multi-output nodes.
+- **Horizontal (LR)**: children flow left-to-right, ports spread vertically on left/right edges. Skip edges exit via top/bottom sides.
 
 The top-level document layout is always vertical (blocks stack top-to-bottom). Direction only affects sub-layout within each block.
 
@@ -114,10 +114,10 @@ Edge styles: forward, skip.
 | `scripts/create_network.py <path> [--name]` | Create .net.json with input/output |
 | `scripts/list_preset_layers.py` | List all available preset layer types and their parameters. Call this BEFORE add_layer to see valid layer types. |
 | `scripts/add_layer.py <path> <type> [--name] [--params JSON]` | Insert layer before output |
-| `scripts/add_block.py <path> <name> [--repeat N] [--direction vertical]` | Create block node (direction always vertical) |
+| `scripts/add_block.py <path> <name> [--repeat N] [--direction horizontal|vertical]` | Create block node |
 | `scripts/add_node_to_block.py <path> <block-id> <node-id>` | Move node into block |
 | `scripts/add_connection.py <path> <from-id> <to-id> [--style] [--label]` | Add edge |
-| `scripts/update_node.py <path> <node-id> [--label] [--params] [--input-shape] [--output-shape] [--code-mapping] [--direction vertical] <value>` | Update node |
+| `scripts/update_node.py <path> <node-id> [--label] [--params] [--input-shape] [--output-shape] [--code-mapping] [--direction horizontal|vertical]` | Update node |
 | `scripts/delete_node.py <path> <node-id>` | Delete node + incident edges |
 | `scripts/delete_connection.py <path> <edge-id>` | Delete single edge |
 | `scripts/build_yolov5n.py <path> [--name]` | Build a complete YOLOv5n net.json with direction-aware blocks |
@@ -168,7 +168,8 @@ Flags can be combined in a single call. Shapes only apply to `kind: "layer"` and
 ### update_node.py (direction)
 
 ```bash
-# Set block layout direction (always vertical)
+# Set block layout direction
+python scripts/update_node.py model.net.json <block-id> --direction horizontal
 python scripts/update_node.py model.net.json <block-id> --direction vertical
 ```
 
@@ -184,6 +185,7 @@ Creates a complete YOLOv5n net.json with direction-aware blocks for visual clari
 ### add_block.py (direction)
 
 ```bash
-# Create a block (direction always vertical)
+# Create a block with explicit layout direction
+python scripts/add_block.py model.net.json "MyBlock" --direction horizontal
 python scripts/add_block.py model.net.json "MyBlock" --direction vertical
 ```
