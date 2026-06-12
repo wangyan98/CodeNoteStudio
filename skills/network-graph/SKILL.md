@@ -7,6 +7,12 @@ description: Create and edit .net.json network graph files — a notebook-specif
 
 Operates on `.net.json` files — graph-based neural network visualizations with nodes and edges.
 
+## Critical rules
+
+- **NEVER write `.net.json` files directly.** All .net.json creation/modification MUST go through the scripts listed below. The scripts handle UUID generation, edge rewiring, and data integrity.
+- **Writing build scripts is allowed.** You MAY directly write generator scripts like `scripts/build_*.py` that programmatically call the existing CRUD scripts (create/add_layer/add_connection/...) to produce a .net.json. This is the preferred approach for large architectures.
+- **Scripts directory:** `skills/network-graph/scripts/`
+
 ## Purpose
 
 `.net.json` is a notebook-specific format for **neural network architecture diagrams**. Each node represents a network component (input, output, layer, or block), and edges define data flow between them. Nodes carry typed parameters (layer type, shapes, hyperparameters) and optional `codeMapping` links to implementation code.
@@ -17,6 +23,8 @@ Typical use cases:
 - Tracing forward/backward data flow through skip connections and blocks
 
 ## Node Kind Reference
+
+**Label length constraint:** `label` on all node kinds (layer, block, input, output) must be kept **short and concise** — no more than ~20 characters. Long labels overflow the node box in the rendered graph and make diagrams unreadable. Prefer abbreviated or canonical names (e.g. `"Conv2d"` not `"Convolutional 2D Layer"`, `"BatchNorm"` not `"Batch Normalization"`). If a more detailed description is needed, place it in `params` or rely on `layerType` to convey the meaning.
 
 ### `kind: "layer"` — Individual network operation
 

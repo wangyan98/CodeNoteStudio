@@ -1,7 +1,8 @@
-import { app } from 'electron'
 import fs from 'node:fs'
+import os from 'node:os'
 import path from 'node:path'
 
+const CONFIG_DIR = path.join(os.homedir(), '.code-note-studio')
 const WORKSPACE_FILE = 'workspace.json'
 
 export interface WorkspaceHistoryEntry {
@@ -17,7 +18,7 @@ interface WorkspaceData {
 const MAX_HISTORY = 10
 
 function getWorkspaceFilePath(): string {
-  return path.join(app.getPath('userData'), WORKSPACE_FILE)
+  return path.join(CONFIG_DIR, WORKSPACE_FILE)
 }
 
 function readWorkspaceData(): WorkspaceData {

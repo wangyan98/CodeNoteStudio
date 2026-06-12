@@ -863,17 +863,19 @@ export function NetworkCanvas({
 
       // If target node has a merge bar, edge hits the bar, not the node
       let targetPosY = tgtInfo.pos.y
+      let tgtEffectiveH = tgtInfo.h
       const tgtMergeInfo = mergeBarNodes.get(edge.target)
       if (tgtMergeInfo && tgtMergeInfo.count >= 3) {
         const barGap = 20
         const barH = 10
         targetPosY = tgtInfo.pos.y - tgtInfo.h / 2 - barGap - barH / 2
+        tgtEffectiveH = barH
       }
 
       renderEdge(edge,
         srcInfo.pos,
         { x: tgtInfo.pos.x, y: targetPosY },
-        srcInfo.w, srcInfo.h, tgtInfo.w, tgtInfo.h, g,
+        srcInfo.w, srcInfo.h, tgtInfo.w, tgtEffectiveH, g,
         si, outDegree.get(edge.source) ?? 1,
         ti, inDegree.get(edge.target) ?? 1,
         srcInfo.direction, tgtInfo.direction)
