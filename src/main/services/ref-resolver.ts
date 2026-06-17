@@ -237,7 +237,7 @@ export async function resolveRefs(
       // Fallback B: file not in symbol index. Construct path from repo root.
       const repoPath = getRepoPath(candidateSymbols, symbols, targetRepo, activeRepo, codeRepos)
       if (repoPath) {
-        const absPath = repoPath + '/' + ref.filePath
+        const absPath = path.join(repoPath, ref.filePath!)
         const mapping: CodeMapping = {
           raw: ref.raw,
           functionName: ref.name ?? `line ${ref.line}`,
@@ -283,7 +283,7 @@ export async function resolveRefs(
         mappings.push({
           raw: ref.raw,
           functionName: ref.name,
-          filePath: repoPath + '/' + ref.filePath,
+          filePath: path.join(repoPath, ref.filePath!),
           startLine: 1,
           endLine: 1,
         })
@@ -335,7 +335,7 @@ export async function resolveRefs(
         mappings.push({
           raw: ref.raw,
           functionName: ref.filePath,
-          filePath: repoPath + '/' + ref.filePath,
+          filePath: path.join(repoPath, ref.filePath!),
           startLine: 1,
           endLine: 1,
         })
