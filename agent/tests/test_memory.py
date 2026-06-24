@@ -112,3 +112,79 @@ class TestConversationMemory:
         memory.clear()
         assert len(memory.get_messages()) == 0
         assert memory.get_current_workspace() is None
+
+
+import uuid
+
+
+class TestMultiConversation:
+    @pytest.fixture
+    def memory(self):
+        from memory import ConversationMemory
+        mem = ConversationMemory(":memory:")
+        yield mem
+        mem.close()
+
+    def test_add_message_with_explicit_conversation_id(self, memory):
+        cid1 = str(uuid.uuid4())
+        cid2 = str(uuid.uuid4())
+
+        memory.create_conversation(cid1)
+        memory.create_conversation(cid2)
+        memory.add_message("user", "hello from c1", conversation_id=cid1)
+        memory.add_message("user", "hello from c2", conversation_id=cid2)
+
+        msgs1 = memory.get_messages(cid1)
+        msgs2 = memory.get_messages(cid2)
+        assert len(msgs1) == 1
+        assert msgs1[0]["content"] == "hello from c1"
+        assert len(msgs2) == 1
+        assert msgs2[0]["content"] == "hello from c2"
+
+    def test_clear_with_conversation_id_scoped(self, memory):
+        cid1 = str(uuid.uuid4())
+        cid2 = str(uuid.uuid4())
+        memory.create_conversation(cid1)
+        memory.create_conversation(cid2)
+        memory.add_message("user", "msg1", conversation_id=cid1)
+        memory.add_message("user", "msg2", conversation_id=cid2)
+
+        memory.clear(cid1)
+        assert len(memory.get_messages(cid1)) == 0
+        assert len(memory.get_messages(cid2)) == 1
+
+    def test_workspace_scoped_to_conversation(self, memory):
+        cid = str(uuid.uuid4())
+        memory.create_conversation(cid)
+        ws = {"workspace": "/child", "repos": [], "active_file": "",
+              "provider_id": "", "output_dir": "", "frozen_at": "t"}
+        memory.set_current_workspace(ws, conversation_id=cid)
+
+        got = memory.get_current_workspace(cid)
+        assert got == ws
+
+        # Main conversation workspace is independent.
+        assert memory.get_current_workspace() is None
+
+    def test_get_openai_messages_with_conversation_id(self, memory):
+        cid = str(uuid.uuid4())
+        memory.create_conversation(cid)
+        memory.add_message("user", "q", conversation_id=cid)
+        memory.add_message("assistant", "a", conversation_id=cid)
+        memory.add_message("tool", '{"ok":true}', tool_name="echo", conversation_id=cid)
+
+        msgs = memory.get_openai_messages(cid)
+        assert len(msgs) == 3
+        assert msgs[2] == {"role": "tool", "content": '{"ok":true}', "tool_call_id": "echo"}
+
+    def test_create_conversation_with_parent_id(self, memory):
+        parent_id = str(uuid.uuid4())
+        child_id = str(uuid.uuid4())
+        memory.create_conversation(parent_id)
+        memory.create_conversation(child_id, parent_id=parent_id)
+
+        children = memory.get_conversation_children()
+        # The child is returned; main (auto-created by get_or_create_conversation) is not.
+        child_entry = next(c for c in children if c["conversation_id"] == child_id)
+        assert child_entry is not None
+        assert child_entry["parent_id"] == parent_id

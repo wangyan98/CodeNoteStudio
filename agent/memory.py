@@ -9,11 +9,13 @@ class ConversationMemory:
         self.conn = sqlite3.connect(db_path)
         self.conn.row_factory = sqlite3.Row
         self._init_tables()
+        self._main_conv_id: str | None = None
 
     def _init_tables(self):
         self.conn.execute("""
             CREATE TABLE IF NOT EXISTS conversations (
                 id TEXT PRIMARY KEY,
+                parent_id TEXT,
                 created_at TEXT,
                 updated_at TEXT
             )
@@ -31,7 +33,7 @@ class ConversationMemory:
         """)
         self.conn.execute("""
             CREATE TABLE IF NOT EXISTS current_turn (
-                id INTEGER PRIMARY KEY CHECK (id = 1),
+                conversation_id TEXT PRIMARY KEY,
                 workspace TEXT,
                 repos TEXT,
                 active_file TEXT,
@@ -41,14 +43,28 @@ class ConversationMemory:
                 updated_at TEXT
             )
         """)
+        self.conn.execute("""
+            CREATE TABLE IF NOT EXISTS app_state (
+                key TEXT PRIMARY KEY,
+                value TEXT
+            )
+        """)
         self.conn.commit()
+        try:
+            self.conn.execute("ALTER TABLE conversations ADD COLUMN parent_id TEXT")
+        except sqlite3.OperationalError:
+            pass  # column already exists
+        try:
+            self.conn.execute("ALTER TABLE current_turn ADD COLUMN conversation_id TEXT")
+        except sqlite3.OperationalError:
+            pass
 
     def get_or_create_conversation(self) -> str:
         row = self.conn.execute(
-            "SELECT id FROM conversations ORDER BY updated_at DESC LIMIT 1"
+            "SELECT value FROM app_state WHERE key = 'main_conv_id'"
         ).fetchone()
         if row:
-            return row["id"]
+            return row["value"]
 
         conv_id = str(uuid.uuid4())
         now = datetime.now(timezone.utc).isoformat()
@@ -56,8 +72,19 @@ class ConversationMemory:
             "INSERT INTO conversations (id, created_at, updated_at) VALUES (?, ?, ?)",
             (conv_id, now, now),
         )
+        self.conn.execute(
+            "INSERT INTO app_state (key, value) VALUES ('main_conv_id', ?)",
+            (conv_id,),
+        )
         self.conn.commit()
         return conv_id
+
+    def _resolve_conv_id(self, conversation_id: str | None = None) -> str:
+        if conversation_id is not None:
+            return conversation_id
+        if self._main_conv_id is None:
+            self._main_conv_id = self.get_or_create_conversation()
+        return self._main_conv_id
 
     def add_message(
         self,
@@ -65,8 +92,9 @@ class ConversationMemory:
         content: str,
         tool_name: str | None = None,
         tool_calls: list[dict] | None = None,
+        conversation_id: str | None = None,
     ):
-        conv_id = self.get_or_create_conversation()
+        conv_id = self._resolve_conv_id(conversation_id)
         now = datetime.now(timezone.utc).isoformat()
         tool_calls_json = json.dumps(tool_calls) if tool_calls else None
         self.conn.execute(
@@ -79,19 +107,19 @@ class ConversationMemory:
         )
         self.conn.commit()
 
-    def get_messages(self) -> list[dict]:
-        conv_id = self.get_or_create_conversation()
+    def get_messages(self, conversation_id: str | None = None) -> list[dict]:
+        conv_id = self._resolve_conv_id(conversation_id)
         rows = self.conn.execute(
             "SELECT role, content, tool_name, tool_calls FROM messages WHERE conversation_id = ? ORDER BY id",
             (conv_id,),
         ).fetchall()
         return [dict(row) for row in rows]
 
-    def get_openai_messages(self) -> list[dict]:
+    def get_openai_messages(self, conversation_id: str | None = None) -> list[dict]:
         """Return messages in OpenAI-compatible format."""
         import json as _json
         messages = []
-        for msg in self.get_messages():
+        for msg in self.get_messages(conversation_id):
             if msg["role"] == "tool":
                 messages.append({
                     "role": "tool",
@@ -111,23 +139,24 @@ class ConversationMemory:
                 })
         return messages
 
-    def clear(self):
-        conv_id = self.get_or_create_conversation()
+    def clear(self, conversation_id: str | None = None):
+        conv_id = self._resolve_conv_id(conversation_id)
         self.conn.execute(
             "DELETE FROM messages WHERE conversation_id = ?", (conv_id,)
         )
-        self.clear_current_workspace()
+        self.clear_current_workspace(conversation_id)
         self.conn.commit()
 
-    def set_current_workspace(self, ws: dict) -> None:
+    def set_current_workspace(self, ws: dict, conversation_id: str | None = None) -> None:
         """Persist the frozen workspace snapshot for the active round (single row, id=1)."""
+        conv_id = self._resolve_conv_id(conversation_id)
         now = datetime.now(timezone.utc).isoformat()
         self.conn.execute(
             """
             INSERT INTO current_turn
-                (id, workspace, repos, active_file, provider_id, output_dir, frozen_at, updated_at)
-            VALUES (1, ?, ?, ?, ?, ?, ?, ?)
-            ON CONFLICT(id) DO UPDATE SET
+                (conversation_id, workspace, repos, active_file, provider_id, output_dir, frozen_at, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT(conversation_id) DO UPDATE SET
                 workspace=excluded.workspace,
                 repos=excluded.repos,
                 active_file=excluded.active_file,
@@ -137,6 +166,7 @@ class ConversationMemory:
                 updated_at=excluded.updated_at
             """,
             (
+                conv_id,
                 ws.get("workspace", ""),
                 json.dumps(ws.get("repos", [])),
                 ws.get("active_file", ""),
@@ -148,10 +178,12 @@ class ConversationMemory:
         )
         self.conn.commit()
 
-    def get_current_workspace(self) -> dict | None:
+    def get_current_workspace(self, conversation_id: str | None = None) -> dict | None:
+        conv_id = self._resolve_conv_id(conversation_id)
         row = self.conn.execute(
             "SELECT workspace, repos, active_file, provider_id, output_dir, frozen_at "
-            "FROM current_turn WHERE id = 1"
+            "FROM current_turn WHERE conversation_id = ?",
+            (conv_id,),
         ).fetchone()
         if not row:
             return None
@@ -164,9 +196,24 @@ class ConversationMemory:
             "frozen_at": row["frozen_at"],
         }
 
-    def clear_current_workspace(self) -> None:
-        self.conn.execute("DELETE FROM current_turn WHERE id = 1")
+    def clear_current_workspace(self, conversation_id: str | None = None) -> None:
+        conv_id = self._resolve_conv_id(conversation_id)
+        self.conn.execute("DELETE FROM current_turn WHERE conversation_id = ?", (conv_id,))
         self.conn.commit()
+
+    def create_conversation(self, conv_id: str, parent_id: str | None = None) -> None:
+        now = datetime.now(timezone.utc).isoformat()
+        self.conn.execute(
+            "INSERT OR IGNORE INTO conversations (id, parent_id, created_at, updated_at) VALUES (?, ?, ?, ?)",
+            (conv_id, parent_id, now, now),
+        )
+        self.conn.commit()
+
+    def get_conversation_children(self) -> list[dict]:
+        rows = self.conn.execute(
+            "SELECT id as conversation_id, parent_id, created_at FROM conversations WHERE parent_id IS NOT NULL ORDER BY created_at"
+        ).fetchall()
+        return [dict(row) for row in rows]
 
     def close(self):
         self.conn.close()
