@@ -2,6 +2,35 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { useAppContext } from '../contexts/AppContext'
 import './AgentDialog.css'
 
+export interface FrozenContext {
+  workspace: string
+  repos: string[]
+  activeFile: string
+  providerId: string
+  frozenAt: string
+}
+
+export function buildFrozenFromState(state: any, selectedProvider: string): FrozenContext {
+  const activeFilePath =
+    state.activeCodeFileIndex >= 0
+      ? state.openCodeFiles?.[state.activeCodeFileIndex]?.path || ''
+      : ''
+  return {
+    workspace: state.workspacePath || '',
+    repos: state.codeRepoPath ? [state.codeRepoPath] : [],
+    activeFile: activeFilePath,
+    providerId: selectedProvider || '',
+    frozenAt: new Date().toISOString(),
+  }
+}
+
+export type RoundState = 'pending' | 'frozen' | 'staleContext'
+
+export function deriveRoundState(messagesLen: number, frozen: FrozenContext | null): RoundState {
+  if (messagesLen === 0) return 'pending'
+  return frozen ? 'frozen' : 'staleContext'
+}
+
 interface Message {
   id: string
   role: 'user' | 'assistant' | 'tool_call' | 'tool_result' | 'error'
@@ -30,7 +59,11 @@ export function AgentDialog({ visible, onClose }: AgentDialogProps) {
   const [port, setPort] = useState<number | null>(null)
   const [connecting, setConnecting] = useState(true)
   const [minimized, setMinimized] = useState(false)
+  const [frozen, setFrozen] = useState<FrozenContext | null>(null)
+  const frozenRef = useRef<FrozenContext | null>(null)
+  const roundIdRef = useRef<number>(0)
   const messagesEndRef = useRef<HTMLDivElement>(null)
+  useEffect(() => { frozenRef.current = frozen }, [frozen])
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -61,13 +94,24 @@ export function AgentDialog({ visible, onClose }: AgentDialogProps) {
       try {
         const resp = await fetch(`http://127.0.0.1:${p}/history`)
         const data = await resp.json()
-        if (data.ok && data.messages.length > 0) {
-          setMessages(data.messages.map((m: any) => ({
+        if (data.ok) {
+          const restored = data.messages.map((m: any) => ({
             id: Math.random().toString(36),
             role: m.role === 'tool' ? 'tool_result' : m.role,
             content: typeof m.content === 'string' ? m.content : JSON.stringify(m.content),
             toolName: m.tool_name,
-          })))
+          }))
+          setMessages(restored)
+          // Restore the round snapshot if the backend persisted one.
+          // Backend snapshot uses snake_case; map to the frontend FrozenContext.
+          const f = data.frozen
+          setFrozen(f ? {
+            workspace: f.workspace || '',
+            repos: Array.isArray(f.repos) ? f.repos : [],
+            activeFile: f.active_file || '',
+            providerId: f.provider_id || '',
+            frozenAt: f.frozen_at || '',
+          } : null)
         }
       } catch {}
     }).catch((e) => {
@@ -101,19 +145,27 @@ export function AgentDialog({ visible, onClose }: AgentDialogProps) {
     setInput('')
     setLoading(true)
 
+    // Freeze config on the first send of a round only.
+    const msgCount = messages.length
+    const rs = deriveRoundState(msgCount, frozenRef.current)
+    let snapshot = frozenRef.current
+    if (rs === 'pending') {
+      snapshot = buildFrozenFromState(state, selectedProvider)
+      setFrozen(snapshot)
+      frozenRef.current = snapshot
+      roundIdRef.current += 1
+    }
+
     try {
       const response = await fetch(`http://127.0.0.1:${port}/chat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           message: userMsg.content,
-          provider_id: selectedProvider,
-          workspace: state.workspacePath || '',
-          repos: state.codeRepoPath ? [state.codeRepoPath] : [],
-          active_file:
-            state.activeCodeFileIndex >= 0
-              ? state.openCodeFiles[state.activeCodeFileIndex]?.path || ''
-              : '',
+          provider_id: snapshot?.providerId || selectedProvider,
+          workspace: snapshot?.workspace || '',
+          repos: snapshot?.repos || [],
+          active_file: snapshot?.activeFile || '',
         }),
       })
 
@@ -194,7 +246,7 @@ export function AgentDialog({ visible, onClose }: AgentDialogProps) {
     } finally {
       setLoading(false)
     }
-  }, [input, port, loading, selectedProvider, state.workspacePath, state.codeRepoPath])
+  }, [input, port, loading, selectedProvider, messages])
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -208,6 +260,8 @@ export function AgentDialog({ visible, onClose }: AgentDialogProps) {
     try {
       await fetch(`http://127.0.0.1:${port}/history`, { method: 'DELETE' })
       setMessages([])
+      setFrozen(null)
+      frozenRef.current = null
     } catch {}
   }
 
@@ -234,6 +288,14 @@ export function AgentDialog({ visible, onClose }: AgentDialogProps) {
 
   if (!visible) return null
 
+  const roundState = deriveRoundState(messages.length, frozen)
+  const repoLabel =
+    roundState === 'frozen'
+      ? (frozen!.repos[0]?.split('/').pop() || 'none')
+      : roundState === 'pending'
+      ? (state.codeRepoPath?.split('/').pop() || 'none')
+      : '快照不可用'
+
   return (
     <div className="agent-dialog-overlay">
       <div className={`agent-dialog${minimized ? ' minimized' : ''}`}>
@@ -257,7 +319,9 @@ export function AgentDialog({ visible, onClose }: AgentDialogProps) {
                   <option key={p.id} value={p.id}>{p.name} ({p.model})</option>
                 ))}
               </select>
-              <span>Repo: {state.codeRepoPath?.split('/').pop() || 'none'}</span>
+              <span title={frozen?.activeFile || state.codeRepoPath || ''}>
+                {roundState === 'frozen' ? '🔒 ' : ''}Repo: {repoLabel}
+              </span>
             </div>
             <div className="agent-dialog-messages">
               {messages.map((msg) => (
