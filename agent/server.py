@@ -146,7 +146,9 @@ def create_app(agent_factory=None, memory=None):
     providers = load_providers()
 
     if memory is None:
-        memory = ConversationMemory(":memory:")
+        db_path = os.path.expanduser("~/.code-note-studio/agent-conversation.db")
+        os.makedirs(os.path.dirname(db_path), exist_ok=True)
+        memory = ConversationMemory(db_path)
 
     @app.get("/health")
     async def health():
@@ -191,7 +193,7 @@ def create_app(agent_factory=None, memory=None):
         )
 
         if agent_factory:
-            agent = agent_factory(provider, workspace, repos, output_dir)
+            agent = agent_factory(provider, workspace, repos, output_dir, provider_id, active_file)
         else:
             agent = AgentLoop(
                 provider=provider,
@@ -201,6 +203,7 @@ def create_app(agent_factory=None, memory=None):
                 repos=repos,
                 output_dir=output_dir,
                 active_file=active_file,
+                provider_id=provider_id,
             )
 
         async def event_stream():
@@ -213,7 +216,11 @@ def create_app(agent_factory=None, memory=None):
     async def get_history():
         messages = memory.get_messages()
         user_visible = [m for m in messages if m["role"] != "system"]
-        return {"ok": True, "messages": user_visible}
+        return {
+            "ok": True,
+            "messages": user_visible,
+            "frozen": memory.get_current_workspace(),
+        }
 
     @app.delete("/history")
     async def clear_history():

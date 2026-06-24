@@ -1,4 +1,5 @@
 import json, os
+from datetime import datetime, timezone
 from typing import AsyncIterator
 from provider.base import BaseProvider
 from tools.registry import ToolRegistry
@@ -17,6 +18,7 @@ class AgentLoop:
         output_dir: str,
         max_steps: int = 80,
         active_file: str = "",
+        provider_id: str = "",
     ):
         self.provider = provider
         self.registry = registry
@@ -26,12 +28,14 @@ class AgentLoop:
         self.output_dir = output_dir
         self.max_steps = max_steps
         self.active_file = active_file
+        self.provider_id = provider_id
         self._activated_skills: set[str] = set()
 
     async def run(self, user_message: str) -> AsyncIterator[dict]:
         try:
             existing = self.memory.get_messages()
-            if len(existing) == 0:
+            is_pending_first_turn = len(existing) == 0
+            if is_pending_first_turn:
                 tools_summary = [
                     {"name": t["name"], "description": t["description"]}
                     for t in self.registry.tools.values()
@@ -44,6 +48,17 @@ class AgentLoop:
                     active_file=self.active_file,
                 )
                 self.memory.add_message("system", system_msg)
+                # Freeze the round's config: the system message above is the
+                # authoritative frozen config; this structured snapshot is for
+                # UI recovery and next-request body assembly.
+                self.memory.set_current_workspace({
+                    "workspace": self.workspace,
+                    "repos": self.repos,
+                    "active_file": self.active_file,
+                    "provider_id": self.provider_id,
+                    "output_dir": self.output_dir,
+                    "frozen_at": datetime.now(timezone.utc).isoformat(),
+                })
 
             self.memory.add_message("user", user_message)
             yield {"type": "user", "content": user_message}
