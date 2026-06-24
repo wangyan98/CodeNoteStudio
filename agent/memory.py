@@ -29,6 +29,18 @@ class ConversationMemory:
                 created_at TEXT
             )
         """)
+        self.conn.execute("""
+            CREATE TABLE IF NOT EXISTS current_turn (
+                id INTEGER PRIMARY KEY CHECK (id = 1),
+                workspace TEXT,
+                repos TEXT,
+                active_file TEXT,
+                provider_id TEXT,
+                output_dir TEXT,
+                frozen_at TEXT,
+                updated_at TEXT
+            )
+        """)
         self.conn.commit()
 
     def get_or_create_conversation(self) -> str:
@@ -104,6 +116,56 @@ class ConversationMemory:
         self.conn.execute(
             "DELETE FROM messages WHERE conversation_id = ?", (conv_id,)
         )
+        self.clear_current_workspace()
+        self.conn.commit()
+
+    def set_current_workspace(self, ws: dict) -> None:
+        """Persist the frozen workspace snapshot for the active round (single row, id=1)."""
+        now = datetime.now(timezone.utc).isoformat()
+        self.conn.execute(
+            """
+            INSERT INTO current_turn
+                (id, workspace, repos, active_file, provider_id, output_dir, frozen_at, updated_at)
+            VALUES (1, ?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT(id) DO UPDATE SET
+                workspace=excluded.workspace,
+                repos=excluded.repos,
+                active_file=excluded.active_file,
+                provider_id=excluded.provider_id,
+                output_dir=excluded.output_dir,
+                frozen_at=excluded.frozen_at,
+                updated_at=excluded.updated_at
+            """,
+            (
+                ws.get("workspace", ""),
+                json.dumps(ws.get("repos", [])),
+                ws.get("active_file", ""),
+                ws.get("provider_id", ""),
+                ws.get("output_dir", ""),
+                ws.get("frozen_at", ""),
+                now,
+            ),
+        )
+        self.conn.commit()
+
+    def get_current_workspace(self) -> dict | None:
+        row = self.conn.execute(
+            "SELECT workspace, repos, active_file, provider_id, output_dir, frozen_at "
+            "FROM current_turn WHERE id = 1"
+        ).fetchone()
+        if not row:
+            return None
+        return {
+            "workspace": row["workspace"],
+            "repos": json.loads(row["repos"]) if row["repos"] else [],
+            "active_file": row["active_file"],
+            "provider_id": row["provider_id"],
+            "output_dir": row["output_dir"],
+            "frozen_at": row["frozen_at"],
+        }
+
+    def clear_current_workspace(self) -> None:
+        self.conn.execute("DELETE FROM current_turn WHERE id = 1")
         self.conn.commit()
 
     def close(self):

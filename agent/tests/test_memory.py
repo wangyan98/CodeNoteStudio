@@ -64,3 +64,51 @@ class TestConversationMemory:
             "content": '{"ok": true}',
             "tool_call_id": "search_code",
         }
+
+    def test_current_turn_table_created(self, memory):
+        cursor = memory.conn.execute(
+            "SELECT name FROM sqlite_master WHERE type='table'"
+        )
+        tables = [row[0] for row in cursor.fetchall()]
+        assert "current_turn" in tables
+
+    def test_set_and_get_current_workspace(self, memory):
+        ws = {
+            "workspace": "/ws",
+            "repos": ["/repo"],
+            "active_file": "/ws/a.py",
+            "provider_id": "p1",
+            "output_dir": "/ws/docs",
+            "frozen_at": "2026-06-24T00:00:00+00:00",
+        }
+        memory.set_current_workspace(ws)
+        got = memory.get_current_workspace()
+        assert got == ws
+
+    def test_set_current_workspace_upserts_single_row(self, memory):
+        memory.set_current_workspace({"workspace": "/a", "repos": [], "active_file": "",
+                                      "provider_id": "", "output_dir": "", "frozen_at": "t1"})
+        memory.set_current_workspace({"workspace": "/b", "repos": [], "active_file": "",
+                                      "provider_id": "", "output_dir": "", "frozen_at": "t2"})
+        rows = memory.conn.execute("SELECT COUNT(*) FROM current_turn").fetchone()
+        assert rows[0] == 1
+        assert memory.get_current_workspace()["workspace"] == "/b"
+
+    def test_get_current_workspace_null_when_empty(self, memory):
+        assert memory.get_current_workspace() is None
+
+    def test_clear_current_workspace(self, memory):
+        memory.set_current_workspace({"workspace": "/ws", "repos": [], "active_file": "",
+                                      "provider_id": "", "output_dir": "", "frozen_at": "t"})
+        memory.clear_current_workspace()
+        assert memory.get_current_workspace() is None
+        rows = memory.conn.execute("SELECT COUNT(*) FROM current_turn").fetchone()
+        assert rows[0] == 0
+
+    def test_clear_also_clears_current_workspace(self, memory):
+        memory.add_message("user", "hi")
+        memory.set_current_workspace({"workspace": "/ws", "repos": [], "active_file": "",
+                                      "provider_id": "", "output_dir": "", "frozen_at": "t"})
+        memory.clear()
+        assert len(memory.get_messages()) == 0
+        assert memory.get_current_workspace() is None
