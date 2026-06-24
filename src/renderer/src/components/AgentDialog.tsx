@@ -61,7 +61,6 @@ export function AgentDialog({ visible, onClose }: AgentDialogProps) {
   const [minimized, setMinimized] = useState(false)
   const [frozen, setFrozen] = useState<FrozenContext | null>(null)
   const frozenRef = useRef<FrozenContext | null>(null)
-  const roundIdRef = useRef<number>(0)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   useEffect(() => { frozenRef.current = frozen }, [frozen])
 
@@ -153,7 +152,6 @@ export function AgentDialog({ visible, onClose }: AgentDialogProps) {
       snapshot = buildFrozenFromState(state, selectedProvider)
       setFrozen(snapshot)
       frozenRef.current = snapshot
-      roundIdRef.current += 1
     }
 
     try {
