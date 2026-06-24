@@ -4,4 +4,4 @@
 21. 各个编辑文件的渲染页面可以全屏
 22. 记录上一次打开的项目文件也转到 user目录下的.code-note-studio
 
-26. 不能在每次询问agent，修改这轮访问的active file和repos
+26. 不能在每次询问agent，修改这轮访问的active file和repos （已完成：轮次开始时冻结 active file/repos/workspace/provider 落盘持久化，Clear 重置轮次，见 docs/superpowers/specs/2026-06-24-agent-round-config-freeze-design.md）
