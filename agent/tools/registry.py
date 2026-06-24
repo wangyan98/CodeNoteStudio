@@ -1,9 +1,15 @@
-from typing import Callable
+import asyncio
+from typing import Any, Callable
 
 
 class ToolRegistry:
     def __init__(self):
         self.tools: dict[str, dict] = {}
+        self._host_loop = None
+
+    def set_host_loop(self, loop):
+        """Store the current host AgentLoop (set before each run)."""
+        self._host_loop = loop
 
     def register(
         self,
@@ -34,8 +40,11 @@ class ToolRegistry:
             for t in self.tools.values()
         ]
 
-    def execute(self, name: str, arguments: dict) -> dict:
+    async def execute(self, name: str, arguments: dict) -> dict:
         if name not in self.tools:
             raise KeyError(f"Tool '{name}' not registered")
         handler = self.tools[name]["handler"]
-        return handler(**arguments)
+        result = handler(**arguments)
+        if asyncio.iscoroutine(result):
+            result = await result
+        return result
