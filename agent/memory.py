@@ -54,10 +54,31 @@ class ConversationMemory:
             self.conn.execute("ALTER TABLE conversations ADD COLUMN parent_id TEXT")
         except sqlite3.OperationalError:
             pass  # column already exists
-        try:
-            self.conn.execute("ALTER TABLE current_turn ADD COLUMN conversation_id TEXT")
-        except sqlite3.OperationalError:
-            pass
+
+        # Migrate current_turn from old id-based PK to conversation_id PK.
+        # Old schema: id INTEGER PRIMARY KEY CHECK (id = 1) — single-row global.
+        # New schema: conversation_id TEXT PRIMARY KEY — one row per conversation.
+        # For existing DBs, ALTER TABLE ADD COLUMN conversation_id succeeds but
+        # conversation_id is not a PK, so ON CONFLICT(conversation_id) fails.
+        # Detection: if id is still the PK, drop and recreate.
+        cursor = self.conn.execute("PRAGMA table_info(current_turn)")
+        cols = {row[1] for row in cursor.fetchall()}
+        if "id" in cols:
+            # Drop old table and recreate with correct schema.
+            self.conn.execute("DROP TABLE current_turn")
+            self.conn.execute("""
+                CREATE TABLE current_turn (
+                    conversation_id TEXT PRIMARY KEY,
+                    workspace TEXT,
+                    repos TEXT,
+                    active_file TEXT,
+                    provider_id TEXT,
+                    output_dir TEXT,
+                    frozen_at TEXT,
+                    updated_at TEXT
+                )
+            """)
+            self.conn.commit()
 
     def get_or_create_conversation(self) -> str:
         row = self.conn.execute(
