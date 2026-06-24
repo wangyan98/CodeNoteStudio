@@ -18,6 +18,7 @@ class AgentLoop:
         output_dir: str,
         max_steps: int = 80,
         active_file: str = "",
+        provider_id: str = "",
     ):
         self.provider = provider
         self.registry = registry
@@ -27,6 +28,7 @@ class AgentLoop:
         self.output_dir = output_dir
         self.max_steps = max_steps
         self.active_file = active_file
+        self.provider_id = provider_id
         self._activated_skills: set[str] = set()
 
     async def run(self, user_message: str) -> AsyncIterator[dict]:
@@ -53,7 +55,7 @@ class AgentLoop:
                     "workspace": self.workspace,
                     "repos": self.repos,
                     "active_file": self.active_file,
-                    "provider_id": getattr(self, "provider_id", "") or "",
+                    "provider_id": self.provider_id,
                     "output_dir": self.output_dir,
                     "frozen_at": datetime.now(timezone.utc).isoformat(),
                 })
