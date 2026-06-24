@@ -2,6 +2,14 @@ from pathlib import Path
 
 SKILLS_DIR = Path(__file__).resolve().parent.parent / "skills"
 
+SUBAGENT_ROOT_TAG = "<subagent_root/>"
+PLACEHOLDER_TOOL_RESULT = "[tool result omitted — subagent inherited context]"
+SUBAGENT_GUARD = """\
+<subagent_guard>
+You are running as a SUB-AGENT. You MUST NOT call the `create_subagent` tool for any reason.
+Your job is to complete the delegated subtask using the other available tools and end with a concise final answer. Calling `create_subagent` will be rejected.
+</subagent_guard>"""
+
 SYSTEM_TEMPLATE = """You are a code analysis assistant. You help users understand code repositories by searching, reading files, and generating structured documentation.
 
 ## Current Context
@@ -128,6 +136,25 @@ def build_system_message(
         tools_section=tools_section,
         active_file=active_file or "(none)",
     )
+
+
+def build_subagent_system_message(
+    workspace: str,
+    repos: list[str],
+    output_dir: str,
+    tools_summary: list[dict] | None = None,
+    active_file: str = "",
+) -> str:
+    """Build the system message for a sub-agent, including the root tag and anti-nesting guard."""
+    tools_section = _build_tools_section(tools_summary) if tools_summary else _FALLBACK_TOOLS
+    base = SYSTEM_TEMPLATE.format(
+        workspace=workspace,
+        repos=", ".join(repos) if repos else "(none)",
+        output_dir=output_dir,
+        tools_section=tools_section,
+        active_file=active_file or "(none)",
+    )
+    return f"{SUBAGENT_ROOT_TAG}\n{base}\n\n{SUBAGENT_GUARD}"
 
 
 def build_context(
