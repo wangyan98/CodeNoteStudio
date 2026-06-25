@@ -248,3 +248,75 @@ class TestAgentLoopSnapshot:
         # Only one system message persisted.
         systems = [m for m in memory.get_messages() if m["role"] == "system"]
         assert len(systems) == 1
+
+
+import uuid
+
+
+class TestAgentLoopWithConversationId:
+    @pytest.fixture
+    def registry_with_tools(self):
+        from tools.registry import ToolRegistry
+        reg = ToolRegistry()
+        reg.register(
+            name="echo",
+            description="Echo back the input",
+            parameters={"type": "object", "properties": {"message": {"type": "string"}}, "required": ["message"]},
+            handler=lambda message: {"ok": True, "echo": message},
+        )
+        return reg
+
+    @pytest.fixture
+    def memory(self):
+        from memory import ConversationMemory
+        return ConversationMemory(":memory:")
+
+    @pytest.mark.asyncio
+    async def test_explicit_conversation_id_isolates_messages(self, registry_with_tools, memory):
+        """Messages from two AgentLoops with different conv_ids don't leak."""
+        cid1 = str(uuid.uuid4())
+        cid2 = str(uuid.uuid4())
+        memory.create_conversation(cid1)
+        memory.create_conversation(cid2)
+
+        provider1 = FakeProvider([[{"type": "text", "content": "one"}, {"type": "done"}]])
+        provider2 = FakeProvider([[{"type": "text", "content": "two"}, {"type": "done"}]])
+
+        agent1 = AgentLoop(provider=provider1, registry=registry_with_tools, memory=memory,
+                           workspace="/ws", repos=["/repo"], output_dir="/ws/docs", max_steps=5,
+                           conversation_id=cid1)
+        agent2 = AgentLoop(provider=provider2, registry=registry_with_tools, memory=memory,
+                           workspace="/ws", repos=["/repo"], output_dir="/ws/docs", max_steps=5,
+                           conversation_id=cid2)
+
+        async for _ in agent1.run("hi"):
+            pass
+        async for _ in agent2.run("hey"):
+            pass
+
+        msgs1 = memory.get_messages(cid1)
+        msgs2 = memory.get_messages(cid2)
+        assert len(msgs1) > 0
+        assert len(msgs2) > 0
+        assert msgs1[-1]["content"] == "one"
+        assert msgs2[-1]["content"] == "two"
+
+    @pytest.mark.asyncio
+    async def test_is_subagent_skips_system_and_freeze(self, registry_with_tools, memory):
+        """Sub-agent does NOT write a system message or freeze workspace."""
+        cid = str(uuid.uuid4())
+        memory.create_conversation(cid)
+        provider = FakeProvider([[{"type": "text", "content": "ok"}, {"type": "done"}]])
+        agent = AgentLoop(provider=provider, registry=registry_with_tools, memory=memory,
+                          workspace="/ws", repos=["/repo"], output_dir="/ws/docs", max_steps=5,
+                          conversation_id=cid, is_subagent=True)
+        async for _ in agent.run("task"):
+            pass
+
+        msgs = memory.get_messages(cid)
+        # Only the user message and assistant reply; no system message.
+        roles = [m["role"] for m in msgs]
+        assert "system" not in roles
+        assert roles == ["user", "assistant"]
+        # No workspace frozen for this sub conv.
+        assert memory.get_current_workspace(cid) is None

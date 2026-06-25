@@ -19,6 +19,9 @@ class AgentLoop:
         max_steps: int = 80,
         active_file: str = "",
         provider_id: str = "",
+        conversation_id: str | None = None,
+        is_subagent: bool = False,
+        parent_conv_id: str | None = None,
     ):
         self.provider = provider
         self.registry = registry
@@ -29,38 +32,39 @@ class AgentLoop:
         self.max_steps = max_steps
         self.active_file = active_file
         self.provider_id = provider_id
+        self.is_subagent = is_subagent
+        self.parent_conv_id = parent_conv_id
+        self.conversation_id = conversation_id or memory.get_or_create_conversation()
         self._activated_skills: set[str] = set()
 
     async def run(self, user_message: str) -> AsyncIterator[dict]:
         try:
-            existing = self.memory.get_messages()
+            existing = self.memory.get_messages(conversation_id=self.conversation_id)
             is_pending_first_turn = len(existing) == 0
             if is_pending_first_turn:
-                tools_summary = [
-                    {"name": t["name"], "description": t["description"]}
-                    for t in self.registry.tools.values()
-                ]
-                system_msg = build_system_message(
-                    workspace=self.workspace,
-                    repos=self.repos,
-                    output_dir=self.output_dir,
-                    tools_summary=tools_summary,
-                    active_file=self.active_file,
-                )
-                self.memory.add_message("system", system_msg)
-                # Freeze the round's config: the system message above is the
-                # authoritative frozen config; this structured snapshot is for
-                # UI recovery and next-request body assembly.
-                self.memory.set_current_workspace({
-                    "workspace": self.workspace,
-                    "repos": self.repos,
-                    "active_file": self.active_file,
-                    "provider_id": self.provider_id,
-                    "output_dir": self.output_dir,
-                    "frozen_at": datetime.now(timezone.utc).isoformat(),
-                })
+                if not self.is_subagent:
+                    tools_summary = [
+                        {"name": t["name"], "description": t["description"]}
+                        for t in self.registry.tools.values()
+                    ]
+                    system_msg = build_system_message(
+                        workspace=self.workspace,
+                        repos=self.repos,
+                        output_dir=self.output_dir,
+                        tools_summary=tools_summary,
+                        active_file=self.active_file,
+                    )
+                    self.memory.add_message("system", system_msg, conversation_id=self.conversation_id)
+                    self.memory.set_current_workspace({
+                        "workspace": self.workspace,
+                        "repos": self.repos,
+                        "active_file": self.active_file,
+                        "provider_id": self.provider_id,
+                        "output_dir": self.output_dir,
+                        "frozen_at": datetime.now(timezone.utc).isoformat(),
+                    }, conversation_id=self.conversation_id)
 
-            self.memory.add_message("user", user_message)
+            self.memory.add_message("user", user_message, conversation_id=self.conversation_id)
             yield {"type": "user", "content": user_message}
 
             tools = self.registry.get_openai_schemas()
@@ -68,7 +72,7 @@ class AgentLoop:
 
             while step < self.max_steps:
                 step += 1
-                messages = self.memory.get_openai_messages()
+                messages = self.memory.get_openai_messages(conversation_id=self.conversation_id)
 
                 tool_calls_in_turn: list[dict] = []
                 assistant_text_parts: list[str] = []
@@ -115,6 +119,7 @@ class AgentLoop:
                             }
                             for tc in tool_calls_in_turn
                         ],
+                        conversation_id=self.conversation_id,
                     )
 
                     for tc in tool_calls_in_turn:
@@ -125,7 +130,7 @@ class AgentLoop:
                             resolved = os.path.normpath(os.path.join(self.workspace, args['name']))
                             args = {**args, "name": resolved}
                         try:
-                            result = self.registry.execute(tool_name, args)
+                            result = await self.registry.execute(tool_name, args)
                         except Exception as e:
                             result = {"ok": False, "error": str(e)}
 
@@ -143,7 +148,7 @@ class AgentLoop:
                             truncated["preview"] = result_str[:MAX_TOOL_RESULT_CHARS]
                             truncated["error"] = result.get("error", "")[:200] if not result.get("ok") else ""
                             result_str = json.dumps(truncated, ensure_ascii=False)
-                        self.memory.add_message("tool", result_str, tool_name=tc["id"])
+                        self.memory.add_message("tool", result_str, tool_name=tc["id"], conversation_id=self.conversation_id)
                         yield {
                             "type": "tool_result",
                             "tool_call_id": tc["id"],
@@ -159,7 +164,7 @@ class AgentLoop:
                 # No tool calls — conversation complete
                 full_text = "".join(assistant_text_parts)
                 if full_text:
-                    self.memory.add_message("assistant", full_text)
+                    self.memory.add_message("assistant", full_text, conversation_id=self.conversation_id)
                 yield {"type": "done"}
                 return
 
@@ -189,4 +194,5 @@ class AgentLoop:
                 self.memory.add_message(
                     "system",
                     f"[Activated skill: {skill_name}]\n\n{full_skill}",
+                    conversation_id=self.conversation_id,
                 )

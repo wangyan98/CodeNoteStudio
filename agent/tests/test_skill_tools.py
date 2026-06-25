@@ -13,23 +13,25 @@ class TestMindmapTools:
         register_mindmap_tools(reg)
         return reg
 
-    def test_create_mindmap(self, registry):
+    @pytest.mark.asyncio
+    async def test_create_mindmap(self, registry):
         with tempfile.TemporaryDirectory() as tmpdir:
             name = os.path.join(tmpdir, "test")
-            result = registry.execute("create_mindmap", {"name": name})
+            result = await registry.execute("create_mindmap", {"name": name})
             assert result["ok"] is True
             assert "id" in result
             path = result["path"]
             assert os.path.exists(path)
 
-    def test_add_node(self, registry):
+    @pytest.mark.asyncio
+    async def test_add_node(self, registry):
         with tempfile.TemporaryDirectory() as tmpdir:
             name = os.path.join(tmpdir, "test")
-            create_result = registry.execute("create_mindmap", {"name": name})
+            create_result = await registry.execute("create_mindmap", {"name": name})
             path = create_result["path"]
             parent_id = create_result["id"]
 
-            result = registry.execute("add_node", {
+            result = await registry.execute("add_node", {
                 "path": path,
                 "parent_id": parent_id,
                 "title": "Child Node",
@@ -46,10 +48,11 @@ class TestMarkdownTools:
         register_markdown_tools(reg)
         return reg
 
-    def test_create_md(self, registry):
+    @pytest.mark.asyncio
+    async def test_create_md(self, registry):
         with tempfile.TemporaryDirectory() as tmpdir:
             name = os.path.join(tmpdir, "test")
-            result = registry.execute("create_md", {
+            result = await registry.execute("create_md", {
                 "name": name,
                 "title": "My Doc",
             })
@@ -60,12 +63,13 @@ class TestMarkdownTools:
                 content = f.read()
             assert "# My Doc" in content
 
-    def test_append_section(self, registry):
+    @pytest.mark.asyncio
+    async def test_append_section(self, registry):
         with tempfile.TemporaryDirectory() as tmpdir:
             name = os.path.join(tmpdir, "test")
-            create_result = registry.execute("create_md", {"name": name, "title": "Doc"})
+            create_result = await registry.execute("create_md", {"name": name, "title": "Doc"})
             path = create_result["path"]
-            result = registry.execute("append_section", {
+            result = await registry.execute("append_section", {
                 "path": path,
                 "heading": "Analysis",
                 "content": "This is the analysis content.",
