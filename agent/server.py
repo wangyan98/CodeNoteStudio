@@ -136,7 +136,6 @@ def build_registry(guard: PermissionGuard | None = None) -> ToolRegistry:
     register_derive_tools(registry)
     register_network_tools(registry)
     register_markdown_tools(registry)
-    register_file_search_tools(registry)
     register_code_mapping_tools(registry)
 
     return registry
