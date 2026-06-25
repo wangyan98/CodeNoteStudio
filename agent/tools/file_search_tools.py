@@ -32,6 +32,7 @@ def register_file_search_tools(registry):
             },
             "required": ["directory"],
         },
+        path_params=[{"param": "directory", "write": False, "required": True}],
         handler=lambda directory, name="*", content="", max_results=100: _run_skill_script(
             "file-search/scripts/search_files.py",
             directory,

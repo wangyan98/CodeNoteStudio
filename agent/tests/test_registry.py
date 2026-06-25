@@ -1,3 +1,4 @@
+import os
 import pytest
 import asyncio
 from tools.registry import ToolRegistry
@@ -136,8 +137,6 @@ class TestAsyncExecute:
         registry.set_host_loop(host)
         assert registry._host_loop is host
 
-
-import os
 
 
 class FakeMemory:
