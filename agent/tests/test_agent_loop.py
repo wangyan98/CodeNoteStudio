@@ -320,3 +320,197 @@ class TestAgentLoopWithConversationId:
         assert roles == ["user", "assistant"]
         # No workspace frozen for this sub conv.
         assert memory.get_current_workspace(cid) is None
+
+
+import os
+
+
+class TestAgentLoopWithGuard:
+    """Integration tests: AgentLoop with PermissionGuard."""
+
+    @pytest.fixture
+    def guard(self):
+        from tools.permissions import PermissionGuard
+        return PermissionGuard(
+            workspace=os.path.realpath("/tmp/ws-grd"),
+            repos=[os.path.realpath("/tmp/repo-grd")],
+            output_dir=os.path.realpath("/tmp/out-grd"),
+            skills_dir=os.path.realpath("/tmp/sk-grd"),
+        )
+
+    @pytest.fixture
+    def registry_with_guard(self, guard):
+        from tools.registry import ToolRegistry
+        reg = ToolRegistry()
+        reg._guard = guard
+        reg.register(
+            name="echo",
+            description="Echo back",
+            parameters={
+                "type": "object",
+                "properties": {"message": {"type": "string"}},
+                "required": ["message"],
+            },
+            handler=lambda message: {"ok": True, "echo": message},
+            # no path_params — echo is not a file tool
+        )
+        reg.register(
+            name="create_zone_reader",
+            description="A fake create_* tool for testing guard",
+            parameters={
+                "type": "object",
+                "properties": {
+                    "name": {"type": "string"},
+                    "content": {"type": "string"},
+                },
+                "required": ["name"],
+            },
+            handler=lambda name, content="": {"ok": True, "path": name, "content": content},
+            path_params=[{"param": "name", "write": True, "required": True}],
+        )
+        return reg
+
+    @pytest.fixture
+    def memory(self):
+        from memory import ConversationMemory
+        return ConversationMemory(":memory:")
+
+    @pytest.mark.asyncio
+    async def test_create_tool_in_workspace_succeeds(self, registry_with_guard, memory):
+        """create_* tool targeting workspace should succeed."""
+        provider = FakeProvider([
+            [
+                {
+                    "type": "tool_call",
+                    "tool_call": {
+                        "id": "call_1",
+                        "function": {
+                            "name": "create_zone_reader",
+                            "arguments": {
+                                "name": "notes.md",
+                                "content": "hello",
+                            },
+                        },
+                    },
+                },
+                {"type": "done"},
+            ],
+            [
+                {"type": "text", "content": "Done."},
+                {"type": "done"},
+            ],
+        ])
+
+        agent = AgentLoop(
+            provider=provider,
+            registry=registry_with_guard,
+            memory=memory,
+            workspace="/tmp/ws-grd",
+            repos=["/tmp/repo-grd"],
+            output_dir="/tmp/out-grd",
+            max_steps=5,
+        )
+
+        events = []
+        async for event in agent.run("create a note"):
+            events.append(event)
+
+        tool_results = [e for e in events if e["type"] == "tool_result"]
+        assert len(tool_results) == 1
+        assert tool_results[0]["result"]["ok"] is True
+        # path should be resolved to an absolute path inside workspace
+        assert tool_results[0]["result"]["path"].startswith(os.path.realpath("/tmp/ws-grd"))
+
+    @pytest.mark.asyncio
+    async def test_create_tool_outside_workspace_denied(self, registry_with_guard, memory):
+        """create_* tool with ../ escape should be denied by AgentLoop guard."""
+        provider = FakeProvider([
+            [
+                {
+                    "type": "tool_call",
+                    "tool_call": {
+                        "id": "call_1",
+                        "function": {
+                            "name": "create_zone_reader",
+                            "arguments": {
+                                "name": "../../../etc/malicious.sh",
+                                "content": "bad",
+                            },
+                        },
+                    },
+                },
+                {"type": "done"},
+            ],
+            [
+                {"type": "text", "content": "OK."},
+                {"type": "done"},
+            ],
+        ])
+
+        agent = AgentLoop(
+            provider=provider,
+            registry=registry_with_guard,
+            memory=memory,
+            workspace="/tmp/ws-grd",
+            repos=["/tmp/repo-grd"],
+            output_dir="/tmp/out-grd",
+            max_steps=5,
+        )
+
+        events = []
+        async for event in agent.run("create a note outside"):
+            events.append(event)
+
+        tool_results = [e for e in events if e["type"] == "tool_result"]
+        # One tool_result event for the denied call
+        denied = [tr for tr in tool_results if tr["result"].get("ok") is False]
+        assert len(denied) == 1
+        assert "Permission denied" in denied[0]["result"]["error"]
+
+    @pytest.mark.asyncio
+    async def test_no_guard_skips_checks(self, registry_with_guard, memory):
+        """When registry._guard is None, create_* tools work unvalidated."""
+        registry_with_guard._guard = None
+
+        provider = FakeProvider([
+            [
+                {
+                    "type": "tool_call",
+                    "tool_call": {
+                        "id": "call_1",
+                        "function": {
+                            "name": "create_zone_reader",
+                            "arguments": {
+                                "name": "../../../etc/somefile",
+                                "content": "test",
+                            },
+                        },
+                    },
+                },
+                {"type": "done"},
+            ],
+            [
+                {"type": "text", "content": "Done."},
+                {"type": "done"},
+            ],
+        ])
+
+        agent = AgentLoop(
+            provider=provider,
+            registry=registry_with_guard,
+            memory=memory,
+            workspace="/tmp/ws-grd",
+            repos=["/tmp/repo-grd"],
+            output_dir="/tmp/out-grd",
+            max_steps=5,
+        )
+
+        events = []
+        async for event in agent.run("create anything"):
+            events.append(event)
+
+        tool_results = [e for e in events if e["type"] == "tool_result"]
+        assert len(tool_results) == 1
+        # Without guard, the tool executes (path will be resolved via realpath
+        # but not checked — the handler just echoes it back)
+        assert tool_results[0]["result"]["ok"] is True

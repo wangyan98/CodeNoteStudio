@@ -12,7 +12,8 @@ from fastapi.responses import StreamingResponse
 from memory import ConversationMemory
 from tools.registry import ToolRegistry
 from tools.file_ops import read_file, list_files, search_in_files, grep
-from tools.mindmap_tools import register_mindmap_tools
+from tools.permissions import PermissionGuard
+from tools.mindmap_tools import register_mindmap_tools, set_skill_guard
 from tools.derive_tools import register_derive_tools
 from tools.network_tools import register_network_tools
 from tools.markdown_tools import register_markdown_tools
@@ -30,8 +31,9 @@ def load_providers() -> list[dict]:
     return []
 
 
-def build_registry() -> ToolRegistry:
+def build_registry(guard: PermissionGuard | None = None) -> ToolRegistry:
     registry = ToolRegistry()
+    registry._guard = guard
 
     # File ops
     registry.register(
@@ -48,6 +50,7 @@ def build_registry() -> ToolRegistry:
             "required": ["path"],
         },
         handler=read_file,
+        path_params=[{"param": "path", "write": False, "required": True}],
     )
 
     registry.register(
@@ -63,6 +66,7 @@ def build_registry() -> ToolRegistry:
             "required": ["directory"],
         },
         handler=list_files,
+        path_params=[{"param": "directory", "write": False, "required": True}],
     )
 
     registry.register(
@@ -79,6 +83,7 @@ def build_registry() -> ToolRegistry:
             "required": ["directory", "query"],
         },
         handler=search_in_files,
+        path_params=[{"param": "directory", "write": False, "required": True}],
     )
 
     registry.register(
@@ -120,9 +125,13 @@ def build_registry() -> ToolRegistry:
             "required": ["directory", "pattern"],
         },
         handler=grep,
+        path_params=[{"param": "directory", "write": False, "required": True}],
     )
 
-    # Skill tools
+    # File search tools (directory is read-only path param — registrations
+    # inside register_file_search_tools already have path_params added in Task 3)
+    register_file_search_tools(registry)
+    # Skill tools (create_* have write path params — already added in Task 3)
     register_mindmap_tools(registry)
     register_derive_tools(registry)
     register_network_tools(registry)
@@ -142,7 +151,17 @@ def create_app(agent_factory=None, memory=None):
         allow_methods=["*"],
         allow_headers=["*"],
     )
-    registry = build_registry()
+    # Build the PermissionGuard with server-level skills_dir.
+    # workspace/repos/output_dir are per-request and updated in /chat.
+    skills_dir = str(Path(__file__).resolve().parent.parent / "skills")
+    guard = PermissionGuard(
+        workspace=os.getcwd(),   # placeholder; overridden per-request
+        repos=[],
+        output_dir=os.getcwd(),
+        skills_dir=skills_dir,
+    )
+    registry = build_registry(guard=guard)
+    set_skill_guard(guard)
     providers = load_providers()
 
     if memory is None:
@@ -212,6 +231,9 @@ def create_app(agent_factory=None, memory=None):
                 provider_id=provider_id,
                 conversation_id=main_conversation_id,
             )
+
+        # Update guard with this request's actual workspace/repos/output_dir
+        guard.update(workspace=workspace, repos=repos, output_dir=output_dir)
 
         # Bind this AgentLoop as the host for create_subagent calls in this round.
         registry.set_host_loop(agent)

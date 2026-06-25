@@ -22,10 +22,13 @@ async def test_full_agent_run_with_fake_provider():
     """End-to-end test with a fake provider that simulates a full analysis flow."""
     from tools.registry import ToolRegistry
     from tools.file_ops import read_file, list_files, search_in_files
+    import tools.mindmap_tools as mmt
     from tools.mindmap_tools import register_mindmap_tools
     from tools.markdown_tools import register_markdown_tools
     from agent_loop import AgentLoop
     from memory import ConversationMemory
+
+    mmt.set_skill_guard(None)  # no sandbox for integration test
 
     # Setup registry with file ops and skill tools
     registry = ToolRegistry()
