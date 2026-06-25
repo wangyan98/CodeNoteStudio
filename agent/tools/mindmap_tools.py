@@ -137,12 +137,15 @@ def _run_skill_script(*args: str) -> dict:
         cmd = [sys.executable, str(script_path)] + list(args[1:])
         profile_path = None
 
+    result = None
     try:
         result = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
     finally:
         if profile_path:
             os.unlink(profile_path)
 
+    if result is None:
+        return {"ok": False, "error": "subprocess execution failed before producing a result"}
     if result.returncode != 0:
         return {"ok": False, "error": result.stderr.strip() or result.stdout.strip()}
     try:

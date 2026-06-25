@@ -1,8 +1,5 @@
-from pathlib import Path
 from .registry import ToolRegistry
 from .mindmap_tools import _run_skill_script
-
-SKILLS_DIR = Path(__file__).resolve().parents[2] / "skills"
 
 
 def register_file_search_tools(registry):
