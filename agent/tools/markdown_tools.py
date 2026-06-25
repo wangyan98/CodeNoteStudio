@@ -15,6 +15,7 @@ def register_markdown_tools(registry: ToolRegistry):
             },
             "required": ["name"],
         },
+        path_params=[{"param": "name", "write": True, "required": True}],
         handler=lambda name, title=None: _create_md(name, title),
     )
 
@@ -31,6 +32,7 @@ def register_markdown_tools(registry: ToolRegistry):
             },
             "required": ["path", "heading", "content"],
         },
+        path_params=[{"param": "path", "write": True, "required": True}],
         handler=lambda path, heading, content: _run_skill_script(
             "markdown/scripts/append_section.py", path, heading, content
         ),
@@ -49,6 +51,7 @@ def register_markdown_tools(registry: ToolRegistry):
             },
             "required": ["path", "heading", "content"],
         },
+        path_params=[{"param": "path", "write": True, "required": True}],
         handler=lambda path, heading, content: _run_skill_script(
             "markdown/scripts/replace_section.py", path, heading, content
         ),
@@ -66,6 +69,7 @@ def register_markdown_tools(registry: ToolRegistry):
             },
             "required": ["path", "embed_path"],
         },
+        path_params=[{"param": "path", "write": True, "required": True}],
         handler=lambda path, embed_path: _run_skill_script(
             "markdown/scripts/insert_embed.py", path, embed_path
         ),
@@ -83,6 +87,7 @@ def register_markdown_tools(registry: ToolRegistry):
             },
             "required": ["path", "embed_path"],
         },
+        path_params=[{"param": "path", "write": True, "required": True}],
         handler=lambda path, embed_path: _run_skill_script(
             "markdown/scripts/delete_embed.py", path, embed_path
         ),
@@ -100,6 +105,7 @@ def register_markdown_tools(registry: ToolRegistry):
             },
             "required": ["path", "ref"],
         },
+        path_params=[{"param": "path", "write": True, "required": True}],
         handler=lambda path, ref: _run_skill_script(
             "markdown/scripts/insert_ref.py", path, ref
         ),
@@ -117,6 +123,7 @@ def register_markdown_tools(registry: ToolRegistry):
             },
             "required": ["path", "ref"],
         },
+        path_params=[{"param": "path", "write": True, "required": True}],
         handler=lambda path, ref: _run_skill_script(
             "markdown/scripts/delete_ref.py", path, ref
         ),

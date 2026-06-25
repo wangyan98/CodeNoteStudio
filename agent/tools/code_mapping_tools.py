@@ -20,6 +20,7 @@ def register_code_mapping_tools(registry: ToolRegistry):
             },
             "required": ["path", "node_id", "raw", "function_name", "file_path", "start_line", "end_line"],
         },
+        path_params=[{"param": "path", "write": True, "required": True}],
         handler=lambda path, node_id, raw, function_name, file_path, start_line, end_line: _run_skill_script(
             "code-mapping/scripts/set_code_mapping.py",
             path, node_id,
@@ -43,6 +44,7 @@ def register_code_mapping_tools(registry: ToolRegistry):
             },
             "required": ["path", "node_id"],
         },
+        path_params=[{"param": "path", "write": True, "required": True}],
         handler=lambda path, node_id: _run_skill_script(
             "code-mapping/scripts/delete_code_mapping.py", path, node_id
         ),

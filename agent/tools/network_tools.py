@@ -15,6 +15,7 @@ def register_network_tools(registry: ToolRegistry):
             },
             "required": ["name"],
         },
+        path_params=[{"param": "name", "write": True, "required": True}],
         handler=lambda name, title=None: _create_network(name, title),
     )
 
@@ -31,6 +32,7 @@ def register_network_tools(registry: ToolRegistry):
             },
             "required": ["path", "layer_type"],
         },
+        path_params=[{"param": "path", "write": True, "required": True}],
         handler=lambda path, layer_type, name=None: _add_layer(path, layer_type, name),
     )
 
@@ -47,6 +49,7 @@ def register_network_tools(registry: ToolRegistry):
             },
             "required": ["path", "name"],
         },
+        path_params=[{"param": "path", "write": True, "required": True}],
         handler=lambda path, name, repeat=None: _add_block(path, name, repeat),
     )
 

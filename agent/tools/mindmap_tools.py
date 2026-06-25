@@ -49,6 +49,7 @@ def register_mindmap_tools(registry: ToolRegistry):
             },
             "required": ["name"],
         },
+        path_params=[{"param": "name", "write": True, "required": True}],
         handler=lambda name: _run_skill_script("mind-map/scripts/create_mindmap.py", name),
     )
 
@@ -66,6 +67,7 @@ def register_mindmap_tools(registry: ToolRegistry):
             },
             "required": ["path", "parent_id", "title"],
         },
+        path_params=[{"param": "path", "write": True, "required": True}],
         handler=lambda path, parent_id, title, content="": _run_skill_script(
             "mind-map/scripts/add_node.py", path, parent_id, "--title", title, "--content", content
         ),
@@ -85,6 +87,7 @@ def register_mindmap_tools(registry: ToolRegistry):
             },
             "required": ["path", "node_id"],
         },
+        path_params=[{"param": "path", "write": True, "required": True}],
         handler=lambda path, node_id, title=None, content=None: _update_node(path, node_id, title, content),
     )
 
@@ -100,6 +103,7 @@ def register_mindmap_tools(registry: ToolRegistry):
             },
             "required": ["path", "node_id"],
         },
+        path_params=[{"param": "path", "write": True, "required": True}],
         handler=lambda path, node_id: _run_skill_script(
             "mind-map/scripts/delete_node.py", path, node_id
         ),

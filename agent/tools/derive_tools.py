@@ -14,6 +14,7 @@ def register_derive_tools(registry: ToolRegistry):
             },
             "required": ["name"],
         },
+        path_params=[{"param": "name", "write": True, "required": True}],
         handler=lambda name: _run_skill_script("derive-tree/scripts/create_derive.py", name),
     )
 
@@ -32,6 +33,7 @@ def register_derive_tools(registry: ToolRegistry):
             },
             "required": ["path", "title"],
         },
+        path_params=[{"param": "path", "write": True, "required": True}],
         handler=lambda path, title, content="", after_step=None, derives_from=None: _add_step(
             path, title, content, after_step, derives_from
         ),
