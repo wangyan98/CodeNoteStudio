@@ -58,6 +58,7 @@ class OpenAICompatProvider(BaseProvider):
 
                 tool_call_buffers: dict[int, dict] = {}
                 _last_thinking = ""  # dedup: track total seen to compute deltas
+                _last_text = ""      # same dedup for regular content
 
                 async for line in response.aiter_lines():
                     if not line.startswith("data: "):
@@ -95,8 +96,19 @@ class OpenAICompatProvider(BaseProvider):
                         if new_part:
                             yield {"type": "thinking", "content": new_part}
 
+                    # Regular content — same dedup: some providers (especially
+                    # DeepSeek-compatible backends) send the full accumulated
+                    # message text in each chunk, not just the new token(s).
                     if "content" in delta and delta["content"]:
-                        yield {"type": "text", "content": delta["content"]}
+                        full = delta["content"]
+                        if full.startswith(_last_text):
+                            new_part = full[len(_last_text):]
+                        else:
+                            # Reset happened (new message or provider restart).
+                            new_part = full
+                        _last_text = full
+                        if new_part:
+                            yield {"type": "text", "content": new_part}
 
                     if "tool_calls" in delta:
                         for tc_delta in delta["tool_calls"]:
