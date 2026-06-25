@@ -1,0 +1,32 @@
+(version 1)
+
+;; —— Read-only: skills, Python, system libraries ——
+(allow file-read* (subpath "<PARAM_SKILLS_DIR>"))
+(allow file-read* (subpath "<PARAM_PYTHON_HOME>"))
+(allow file-read* (subpath "/usr/lib"))
+(allow file-read* (subpath "/System/Library"))
+(allow file-read* (subpath "/Library/Frameworks"))
+(allow file-read* (subpath "/Applications/Xcode.app"))
+(allow file-read* (subpath "/private/var/select"))
+(allow file-read* (subpath "/dev"))
+
+;; —— Read-only: repos (generated at runtime) ——
+<PARAM_REPOS_RULES>
+
+;; —— Read-write ——
+(allow file-write* (subpath "<PARAM_WORKSPACE>"))
+(allow file-write* (subpath "<PARAM_OUTPUT_DIR>"))
+(allow file-write* (subpath "/tmp"))
+(allow file-write* (subpath "/private/tmp"))
+(allow file-write* (subpath "/dev"))
+
+;; —— Process execution ——
+(allow process-exec (subpath "<PARAM_PYTHON_HOME>"))
+
+;; —— Basic operations ——
+(allow signal)
+(allow sysctl-read)
+(allow mach-lookup)
+
+;; —— Deny everything else (no network, no arbitrary FS) ——
+(deny default)

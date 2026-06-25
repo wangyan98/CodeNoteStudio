@@ -1,21 +1,8 @@
 from pathlib import Path
-import json
-import subprocess
-import sys
+from .registry import ToolRegistry
+from .mindmap_tools import _run_skill_script
 
 SKILLS_DIR = Path(__file__).resolve().parents[2] / "skills"
-
-
-def _run_skill_script(*args: str) -> dict:
-    script_path = SKILLS_DIR / args[0]
-    cmd = [sys.executable, str(script_path)] + list(args[1:])
-    result = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
-    if result.returncode != 0:
-        return {"ok": False, "error": result.stderr.strip() or result.stdout.strip()}
-    try:
-        return json.loads(result.stdout.strip())
-    except json.JSONDecodeError:
-        return {"ok": False, "error": result.stdout.strip()}
 
 
 def register_file_search_tools(registry):
