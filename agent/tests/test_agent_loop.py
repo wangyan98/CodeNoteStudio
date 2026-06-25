@@ -1,3 +1,4 @@
+import os
 import pytest
 from agent_loop import AgentLoop
 
@@ -320,9 +321,6 @@ class TestAgentLoopWithConversationId:
         assert roles == ["user", "assistant"]
         # No workspace frozen for this sub conv.
         assert memory.get_current_workspace(cid) is None
-
-
-import os
 
 
 class TestAgentLoopWithGuard:
