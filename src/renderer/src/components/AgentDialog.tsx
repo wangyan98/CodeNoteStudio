@@ -37,6 +37,7 @@ interface Message {
   role: 'user' | 'assistant' | 'tool_call' | 'tool_result' | 'error'
   content: string
   toolName?: string
+  thinking?: string  // streaming thinking that preceded this assistant message
 }
 
 interface Provider {
@@ -199,19 +200,23 @@ export function AgentDialog({ visible, onClose }: AgentDialogProps) {
                 break
 
               case 'text':
-                setThinkingText('')
-                assistantText += event.content
-                setMessages(prev => {
-                  const last = prev[prev.length - 1]
-                  if (last?.role === 'assistant') {
-                    return [...prev.slice(0, -1), { ...last, content: assistantText }]
-                  }
-                  return [...prev, {
-                    id: Math.random().toString(36),
-                    role: 'assistant',
-                    content: assistantText,
-                  }]
-                })
+                {
+                  const hadThinking = thinkingText
+                  setThinkingText('')
+                  assistantText += event.content
+                  setMessages(prev => {
+                    const last = prev[prev.length - 1]
+                    if (last?.role === 'assistant') {
+                      return [...prev.slice(0, -1), { ...last, content: assistantText }]
+                    }
+                    return [...prev, {
+                      id: Math.random().toString(36),
+                      role: 'assistant',
+                      content: assistantText,
+                      thinking: hadThinking || undefined,
+                    }]
+                  })
+                }
                 break
 
               case 'tool_call':
@@ -351,7 +356,7 @@ export function AgentDialog({ visible, onClose }: AgentDialogProps) {
               }}
             >
               {thinkingText && (
-                <div className="agent-message thinking">
+                <div className="agent-message assistant">
                   <details open>
                     <summary>🤔 Thinking...</summary>
                     <div className="thinking-content">{thinkingText}</div>
@@ -364,11 +369,18 @@ export function AgentDialog({ visible, onClose }: AgentDialogProps) {
                 const content = renderContent(msg)
                 if (msg.role === 'assistant') {
                   return (
-                    <div
-                      key={msg.id}
-                      className={`agent-message ${msg.role}`}
-                      dangerouslySetInnerHTML={{ __html: content as string }}
-                    />
+                    <div key={msg.id} className="agent-message assistant">
+                      {msg.thinking && (
+                        <details open>
+                          <summary>🤔 Thinking...</summary>
+                          <div className="thinking-content">{msg.thinking}</div>
+                        </details>
+                      )}
+                      <div
+                        className="assistant-content"
+                        dangerouslySetInnerHTML={{ __html: content as string }}
+                      />
+                    </div>
                   )
                 }
                 return (

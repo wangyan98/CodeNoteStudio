@@ -57,6 +57,7 @@ class OpenAICompatProvider(BaseProvider):
                     )
 
                 tool_call_buffers: dict[int, dict] = {}
+                _last_thinking = ""  # dedup: track total seen to compute deltas
 
                 async for line in response.aiter_lines():
                     if not line.startswith("data: "):
@@ -80,9 +81,19 @@ class OpenAICompatProvider(BaseProvider):
                     delta = choices[0].get("delta", {})
                     finish = choices[0].get("finish_reason")
 
-                    # DeepSeek-style reasoning_content (thinking tokens)
+                    # DeepSeek-style reasoning_content (thinking tokens).
+                    # Some providers send full accumulated text each chunk
+                    # rather than incremental deltas. Compute the true delta
+                    # so the frontend can safely append without duplication.
                     if "reasoning_content" in delta and delta["reasoning_content"]:
-                        yield {"type": "thinking", "content": delta["reasoning_content"]}
+                        full = delta["reasoning_content"]
+                        if full.startswith(_last_thinking):
+                            new_part = full[len(_last_thinking):]
+                        else:
+                            new_part = full
+                        _last_thinking = full
+                        if new_part:
+                            yield {"type": "thinking", "content": new_part}
 
                     if "content" in delta and delta["content"]:
                         yield {"type": "text", "content": delta["content"]}

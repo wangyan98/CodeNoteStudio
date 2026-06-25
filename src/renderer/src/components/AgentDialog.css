@@ -217,34 +217,35 @@
   font-size: 12px;
 }
 
-.agent-message.thinking {
-  align-self: flex-start;
-  background: #2d2d2d;
-  background: var(--bg-secondary, #2d2d2d);
-  border-left: 3px solid #61afef;
-  color: #999;
-  color: var(--text-muted, #999);
-  font-size: 12px;
-  max-width: 95%;
+/* thinking block inline inside assistant message */
+.agent-message.assistant details {
+  margin-bottom: 8px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #3c3c3c;
 }
 
-.agent-message.thinking details summary {
+.agent-message.assistant details summary {
   cursor: pointer;
   color: #61afef;
   font-weight: 500;
+  font-size: 12px;
   user-select: none;
 }
 
-.agent-message.thinking .thinking-content {
+.agent-message.assistant .thinking-content {
   margin-top: 6px;
   padding-top: 6px;
-  border-top: 1px solid #3c3c3c;
   white-space: pre-wrap;
   word-break: break-word;
   max-height: 200px;
   overflow-y: auto;
   color: #888;
   font-style: italic;
+  font-size: 12px;
+}
+
+.agent-message.assistant .assistant-content {
+  /* actual assistant reply below thinking */
 }
 
 .agent-message.error {
