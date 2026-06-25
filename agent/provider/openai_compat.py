@@ -80,6 +80,10 @@ class OpenAICompatProvider(BaseProvider):
                     delta = choices[0].get("delta", {})
                     finish = choices[0].get("finish_reason")
 
+                    # DeepSeek-style reasoning_content (thinking tokens)
+                    if "reasoning_content" in delta and delta["reasoning_content"]:
+                        yield {"type": "thinking", "content": delta["reasoning_content"]}
+
                     if "content" in delta and delta["content"]:
                         yield {"type": "text", "content": delta["content"]}
 

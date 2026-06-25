@@ -28,6 +28,7 @@ interface MdEditorProps {
 export interface MdEditorHandle {
   insertAtCursor: (text: string) => void
   insertAtPosition: (text: string, clientX: number, clientY: number) => void
+  appendToEnd: (text: string) => void
   switchToEdit: () => void
 }
 
@@ -65,6 +66,29 @@ export const MdEditor = forwardRef<MdEditorHandle, MdEditorProps>(
         // Fallback to cursor position
         editor.trigger('keyboard', 'type', { text })
       }
+    },
+    appendToEnd(text: string) {
+      const editor = editorMonacoRef.current
+      if (!editor) return
+      const model = editor.getModel()
+      if (!model) return
+      const lastLine = model.getLineCount()
+      const lastCol = model.getLineMaxColumn(lastLine)
+      const prefix = model.getValue() === '' ? '' : '\n'
+      const insertText = prefix + text + '\n'
+      editor.executeEdits('append-to-end', [{
+        range: {
+          startLineNumber: lastLine,
+          startColumn: lastCol,
+          endLineNumber: lastLine,
+          endColumn: lastCol
+        },
+        text: insertText
+      }])
+      // Move cursor to end after insertion
+      const newLastLine = model.getLineCount()
+      const newLastCol = model.getLineMaxColumn(newLastLine)
+      editor.setPosition({ lineNumber: newLastLine, column: newLastCol })
     },
     switchToEdit() {
       setShowPreview(false)

@@ -29,7 +29,7 @@ export function NoteViewport() {
     const handler = (e: Event) => {
       const text = (e as CustomEvent<string>).detail
       if (mdEditorRef.current) {
-        mdEditorRef.current.insertAtCursor(text)
+        mdEditorRef.current.appendToEnd(text)
       }
     }
     window.addEventListener('symbol-insert', handler)

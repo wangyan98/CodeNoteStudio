@@ -53,6 +53,7 @@ interface AgentDialogProps {
 export function AgentDialog({ visible, onClose }: AgentDialogProps) {
   const { state, dispatch } = useAppContext()
   const [messages, setMessages] = useState<Message[]>([])
+  const [thinkingText, setThinkingText] = useState('')
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
   const [providers, setProviders] = useState<Provider[]>([])
@@ -95,12 +96,14 @@ export function AgentDialog({ visible, onClose }: AgentDialogProps) {
         const resp = await fetch(`http://127.0.0.1:${p}/history`)
         const data = await resp.json()
         if (data.ok) {
-          const restored = data.messages.map((m: any) => ({
-            id: Math.random().toString(36),
-            role: m.role === 'tool' ? 'tool_result' : m.role,
-            content: typeof m.content === 'string' ? m.content : JSON.stringify(m.content),
-            toolName: m.tool_name,
-          }))
+          const restored = data.messages
+            .map((m: any) => ({
+              id: Math.random().toString(36),
+              role: m.role === 'tool' ? 'tool_result' : m.role,
+              content: typeof m.content === 'string' ? m.content : (m.content != null ? JSON.stringify(m.content) : ''),
+              toolName: m.tool_name,
+            }))
+            .filter((m: Message) => m.role !== 'tool_call' && m.role !== 'tool_result' && m.content?.trim())
           setMessages(restored)
           // Restore the round snapshot if the backend persisted one.
           // Backend snapshot uses snake_case; map to the frontend FrozenContext.
@@ -191,7 +194,12 @@ export function AgentDialog({ visible, onClose }: AgentDialogProps) {
             const event = JSON.parse(line.slice(6))
 
             switch (event.type) {
+              case 'thinking':
+                setThinkingText(prev => prev + event.content)
+                break
+
               case 'text':
+                setThinkingText('')
                 assistantText += event.content
                 setMessages(prev => {
                   const last = prev[prev.length - 1]
@@ -230,6 +238,14 @@ export function AgentDialog({ visible, onClose }: AgentDialogProps) {
                   role: 'error',
                   content: event.content,
                 }])
+                break
+
+              case 'done':
+                setThinkingText('')
+                break
+
+              case 'resume':
+                setThinkingText('')
                 break
             }
           } catch {}
@@ -334,7 +350,17 @@ export function AgentDialog({ visible, onClose }: AgentDialogProps) {
                 }
               }}
             >
-              {messages.map((msg) => {
+              {thinkingText && (
+                <div className="agent-message thinking">
+                  <details open>
+                    <summary>🤔 Thinking...</summary>
+                    <div className="thinking-content">{thinkingText}</div>
+                  </details>
+                </div>
+              )}
+              {messages
+                .filter(msg => msg.role !== 'tool_call' && msg.role !== 'tool_result' && msg.content?.trim())
+                .map((msg) => {
                 const content = renderContent(msg)
                 if (msg.role === 'assistant') {
                   return (

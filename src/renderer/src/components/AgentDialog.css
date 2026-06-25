@@ -217,6 +217,36 @@
   font-size: 12px;
 }
 
+.agent-message.thinking {
+  align-self: flex-start;
+  background: #2d2d2d;
+  background: var(--bg-secondary, #2d2d2d);
+  border-left: 3px solid #61afef;
+  color: #999;
+  color: var(--text-muted, #999);
+  font-size: 12px;
+  max-width: 95%;
+}
+
+.agent-message.thinking details summary {
+  cursor: pointer;
+  color: #61afef;
+  font-weight: 500;
+  user-select: none;
+}
+
+.agent-message.thinking .thinking-content {
+  margin-top: 6px;
+  padding-top: 6px;
+  border-top: 1px solid #3c3c3c;
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 200px;
+  overflow-y: auto;
+  color: #888;
+  font-style: italic;
+}
+
 .agent-message.error {
   align-self: flex-start;
   background: #fff0f0;
