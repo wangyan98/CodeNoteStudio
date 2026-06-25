@@ -123,8 +123,12 @@ async def _run_one(child_loop) -> dict:
                 final_text += event["content"]
             elif event["type"] == "done":
                 break
-    except Exception:
-        pass  # handled below
+    except Exception as exc:
+        return {
+            "ok": False,
+            "answer": f"(child agent crashed: {exc})",
+            "conversation_id": child_loop.conversation_id,
+        }
 
     result_text = final_text.strip() or "(no final answer)"
     return {

@@ -84,7 +84,7 @@ class AgentLoop:
         in the DB (used for sub-agent replay). Yields the same events as run().
         """
         try:
-            yield {"type": "user", "content": "(resuming)"}
+            yield {"type": "resume", "content": "(resuming)"}
 
             tools = self.registry.get_openai_schemas()
             step = 0
