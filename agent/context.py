@@ -21,6 +21,13 @@ SYSTEM_TEMPLATE = """You are a code analysis assistant. You help users understan
 ## Available Tools
 {tools_section}
 
+## Permissions
+- **Repos** (read-only): You may read and search code in the attached repositories but must NOT attempt to write, create, or modify files there. Write operations on repo paths will be rejected automatically.
+- **Workspace** (read-write): You may create, edit, and delete files in the workspace directory.
+- **Output** (read-write): Generated documents may be placed in the output directory.
+- **Skills** (internal): Skill scripts are loaded automatically when tools are first used. You do not need to (and cannot) read or write skill files directly.
+- **Everything else**: Access to paths outside the above directories is denied.
+
 ## Guidelines
 1. When asked to analyze code, first use search_in_files and read_file to understand the relevant source files.
 2. Then choose the most appropriate document type(s) to present your findings.
