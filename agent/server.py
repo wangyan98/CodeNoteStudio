@@ -150,6 +150,12 @@ def create_app(agent_factory=None, memory=None):
         os.makedirs(os.path.dirname(db_path), exist_ok=True)
         memory = ConversationMemory(db_path)
 
+    # Generate and persist the main conversation id.
+    main_conversation_id = memory.get_or_create_conversation()
+
+    # Import here to avoid circular imports.
+    from tools.subagent_tool import register_subagent_tools
+
     @app.get("/health")
     async def health():
         return {"status": "ok"}
@@ -204,7 +210,13 @@ def create_app(agent_factory=None, memory=None):
                 output_dir=output_dir,
                 active_file=active_file,
                 provider_id=provider_id,
+                conversation_id=main_conversation_id,
             )
+
+        # Bind this AgentLoop as the host for create_subagent calls in this round.
+        registry.set_host_loop(agent)
+        # Ensure create_subagent is registered (idempotent re-register, new host bound).
+        register_subagent_tools(registry)
 
         async def event_stream():
             async for event in agent.run(message):
@@ -213,18 +225,28 @@ def create_app(agent_factory=None, memory=None):
         return StreamingResponse(event_stream(), media_type="text/event-stream")
 
     @app.get("/history")
-    async def get_history():
-        messages = memory.get_messages()
+    async def get_history(conversation_id: str = None):
+        conv_id = conversation_id or main_conversation_id
+        messages = memory.get_messages(conversation_id=conv_id)
         user_visible = [m for m in messages if m["role"] != "system"]
-        return {
+        response = {
             "ok": True,
             "messages": user_visible,
-            "frozen": memory.get_current_workspace(),
+            "conversation_id": conv_id,
         }
+        # Include frozen snapshot for any conversation that has one.
+        frozen = memory.get_current_workspace(conversation_id=conv_id)
+        if frozen:
+            response["frozen"] = frozen
+        # Include sub-agent traceability for the main conversation.
+        if conv_id == main_conversation_id:
+            response["subagent_conversations"] = memory.get_conversation_children()
+        return response
 
     @app.delete("/history")
-    async def clear_history():
-        memory.clear()
+    async def clear_history(conversation_id: str = None):
+        conv_id = conversation_id or main_conversation_id
+        memory.clear(conversation_id=conv_id)
         return {"ok": True}
 
     return app

@@ -25,6 +25,7 @@ def app():
 
     memory = ConversationMemory(db_path)
     registry = ToolRegistry()
+    main_conv_id = memory.get_or_create_conversation()
 
     def make_agent(provider, workspace, repos, output_dir, provider_id="", active_file=""):
         return AgentLoop(
@@ -37,6 +38,7 @@ def app():
             max_steps=5,
             provider_id=provider_id,
             active_file=active_file,
+            conversation_id=main_conv_id,
         )
 
     return create_app(make_agent, memory)
@@ -107,7 +109,7 @@ async def test_history_frozen_null_before_any_chat(app):
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as client:
         resp = await client.get("/history")
-        assert resp.json()["frozen"] is None
+        assert resp.json().get("frozen") is None
 
 
 @pytest.mark.asyncio
@@ -122,7 +124,7 @@ async def test_clear_clears_messages_and_snapshot(app):
         resp = await client.get("/history")
         data = resp.json()
         assert data["messages"] == []
-        assert data["frozen"] is None
+        assert data.get("frozen") is None
 
 
 @pytest.mark.asyncio
@@ -161,11 +163,13 @@ async def test_restart_recovery_restores_messages_and_snapshot(tmp_path):
     def build():
         memory = ConversationMemory(db_path)
         registry = ToolRegistry()
+        main_conv_id = memory.get_or_create_conversation()
         def make_agent(provider, workspace, repos, output_dir, provider_id="", active_file=""):
             return AgentLoop(provider=provider, registry=registry, memory=memory,
                              workspace=workspace or "/ws", repos=repos or [],
                              output_dir=output_dir or "/ws/docs", max_steps=5,
-                             provider_id=provider_id, active_file=active_file)
+                             provider_id=provider_id, active_file=active_file,
+                             conversation_id=main_conv_id)
         return create_app(make_agent, memory), memory
 
     app1, memory1 = build()
