@@ -1,40 +1,10 @@
 import json
-import os
 import subprocess
 import sys
-import tempfile
 from pathlib import Path
 from .registry import ToolRegistry
 
 SKILLS_DIR = Path(__file__).resolve().parents[2] / "skills"
-
-SANDBOX_PROFILE_TEMPLATE = Path(__file__).resolve().parents[1] / "sandbox" / "profile.sb"
-
-_guard = None  # type: ignore  # PermissionGuard | None
-
-
-def set_skill_guard(guard) -> None:
-    """Set the global PermissionGuard for sandboxed skill execution.
-
-    Called once during server startup. When None (default), skill scripts
-    execute directly without sandboxing (backward compatible for tests).
-    """
-    global _guard
-    _guard = guard
-
-
-def _build_sandbox_profile(workspace: str, repos: list[str], output_dir: str) -> str:
-    """Fill the sandbox template with concrete paths for the current guard config."""
-    template = SANDBOX_PROFILE_TEMPLATE.read_text()
-    repos_rules = "\n".join(
-        f'(allow file-read* (subpath "{r}"))' for r in repos
-    )
-    return (template
-        .replace("<PARAM_SKILLS_DIR>", str(SKILLS_DIR))
-        .replace("<PARAM_PYTHON_HOME>", str(Path(sys.executable).parent.parent))
-        .replace("<PARAM_WORKSPACE>", workspace)
-        .replace("<PARAM_OUTPUT_DIR>", output_dir)
-        .replace("<PARAM_REPOS_RULES>", repos_rules))
 
 
 def register_mindmap_tools(registry: ToolRegistry):
@@ -121,32 +91,13 @@ def _update_node(path, node_id, title=None, content=None):
 
 def _run_skill_script(*args: str) -> dict:
     script_path = SKILLS_DIR / args[0]
-
-    if _guard:
-        profile = _build_sandbox_profile(
-            _guard.workspace,
-            [os.path.realpath(r) for r in _guard.repos],
-            _guard.output_dir,
-        )
-        with tempfile.NamedTemporaryFile(
-            mode="w", suffix=".sb", delete=False
-        ) as f:
-            f.write(profile)
-            profile_path = f.name
-        cmd = [
-            "/usr/bin/sandbox-exec", "-f", profile_path,
-            sys.executable, str(script_path), *list(args[1:]),
-        ]
-    else:
-        cmd = [sys.executable, str(script_path)] + list(args[1:])
-        profile_path = None
+    cmd = [sys.executable, str(script_path)] + list(args[1:])
 
     result = None
     try:
         result = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
-    finally:
-        if profile_path:
-            os.unlink(profile_path)
+    except Exception:
+        pass
 
     if result is None:
         return {"ok": False, "error": "subprocess execution failed before producing a result"}

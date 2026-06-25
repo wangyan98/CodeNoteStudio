@@ -13,7 +13,7 @@ from memory import ConversationMemory
 from tools.registry import ToolRegistry
 from tools.file_ops import read_file, list_files, search_in_files, grep
 from tools.permissions import PermissionGuard
-from tools.mindmap_tools import register_mindmap_tools, set_skill_guard
+from tools.mindmap_tools import register_mindmap_tools
 from tools.derive_tools import register_derive_tools
 from tools.network_tools import register_network_tools
 from tools.markdown_tools import register_markdown_tools
@@ -160,7 +160,6 @@ def create_app(agent_factory=None, memory=None):
         skills_dir=skills_dir,
     )
     registry = build_registry(guard=guard)
-    set_skill_guard(guard)
     providers = load_providers()
 
     if memory is None:

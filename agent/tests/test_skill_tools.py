@@ -1,7 +1,6 @@
 import os
 import tempfile
 import pytest
-import tools.mindmap_tools as mmt
 from tools.mindmap_tools import register_mindmap_tools
 from tools.markdown_tools import register_markdown_tools
 from tools.registry import ToolRegistry
@@ -10,7 +9,6 @@ from tools.registry import ToolRegistry
 class TestMindmapTools:
     @pytest.fixture
     def registry(self):
-        mmt.set_skill_guard(None)  # no sandbox for unit tests
         reg = ToolRegistry()
         register_mindmap_tools(reg)
         return reg
@@ -46,7 +44,6 @@ class TestMindmapTools:
 class TestMarkdownTools:
     @pytest.fixture
     def registry(self):
-        mmt.set_skill_guard(None)  # no sandbox for unit tests
         reg = ToolRegistry()
         register_markdown_tools(reg)
         return reg
