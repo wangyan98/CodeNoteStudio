@@ -67,6 +67,25 @@ class AgentLoop:
             self.memory.add_message("user", user_message, conversation_id=self.conversation_id)
             yield {"type": "user", "content": user_message}
 
+            async for event in self._run_loop():
+                yield event
+
+        except Exception as e:
+            yield {
+                "type": "error",
+                "content": f"Agent error: {e}",
+            }
+            yield {"type": "done"}
+
+    async def _run_loop(self) -> AsyncIterator[dict]:
+        """Internal: run the tool loop from the existing conversation history.
+
+        Like run() but does NOT add a user message — the messages are already
+        in the DB (used for sub-agent replay). Yields the same events as run().
+        """
+        try:
+            yield {"type": "user", "content": "(resuming)"}
+
             tools = self.registry.get_openai_schemas()
             step = 0
 
@@ -102,7 +121,6 @@ class AgentLoop:
                     yield {"type": "done"}
                     return
 
-                # Execute tool calls
                 if tool_calls_in_turn:
                     text = "".join(assistant_text_parts) if assistant_text_parts else ""
                     self.memory.add_message(
@@ -125,9 +143,8 @@ class AgentLoop:
                     for tc in tool_calls_in_turn:
                         tool_name = tc["function"]["name"]
                         args = tc["function"]["arguments"]
-                        # Ensure create_* tools write under workspace
                         if tool_name.startswith("create_") and "name" in args and self.workspace:
-                            resolved = os.path.normpath(os.path.join(self.workspace, args['name']))
+                            resolved = os.path.normpath(os.path.join(self.workspace, args["name"]))
                             args = {**args, "name": resolved}
                         try:
                             result = await self.registry.execute(tool_name, args)
@@ -135,7 +152,6 @@ class AgentLoop:
                             result = {"ok": False, "error": str(e)}
 
                         result_str = json.dumps(result, ensure_ascii=False)
-                        # Truncate large tool results to prevent context overflow
                         MAX_TOOL_RESULT_CHARS = 8000
                         if len(result_str) > MAX_TOOL_RESULT_CHARS:
                             truncated = {"ok": result.get("ok"), "truncated": True}
@@ -156,12 +172,9 @@ class AgentLoop:
                             "result": result,
                         }
 
-                    # Progressive disclosure: inject full SKILL.md for first-time skill usage
                     self._activate_skills(tool_calls_in_turn)
-
                     continue
 
-                # No tool calls — conversation complete
                 full_text = "".join(assistant_text_parts)
                 if full_text:
                     self.memory.add_message("assistant", full_text, conversation_id=self.conversation_id)
