@@ -63,13 +63,10 @@ class ToolRegistry:
                     value, needs_write=pp.get("write", False)
                 )
                 if not result["ok"]:
-                    # Inject system message to remind the agent of boundaries
-                    if self._host_loop:
-                        self._host_loop.memory.add_message(
-                            "system",
-                            f"[Permission denied] {result['error']}",
-                            conversation_id=self._host_loop.conversation_id,
-                        )
+                    # Attach a system note for the caller to inject AFTER the
+                    # tool result message. This keeps the tool message directly
+                    # after assistant(tool_calls), which DeepSeek's API requires.
+                    result["_system_note"] = f"[Permission denied] {result['error']}"
                     return result
 
         handler = tool_info["handler"]

@@ -150,15 +150,17 @@ class AgentLoop:
                                 check = self.registry._guard.check(resolved, needs_write=True)
                                 if not check["ok"]:
                                     result_str = json.dumps(check, ensure_ascii=False)
-                                    self.memory.add_message(
-                                        "system",
-                                        f"[Permission denied] {check['error']}",
-                                        conversation_id=self.conversation_id,
-                                    )
+                                    # Add tool message FIRST (DeepSeek requires tool
+                                    # messages directly after assistant tool_calls)
                                     self.memory.add_message(
                                         "tool",
                                         result_str,
                                         tool_name=tc["id"],
+                                        conversation_id=self.conversation_id,
+                                    )
+                                    self.memory.add_message(
+                                        "system",
+                                        f"[Permission denied] {check['error']}",
                                         conversation_id=self.conversation_id,
                                     )
                                     yield {
@@ -189,6 +191,14 @@ class AgentLoop:
                             truncated["error"] = result.get("error", "")[:200] if not result.get("ok") else ""
                             result_str = json.dumps(truncated, ensure_ascii=False)
                         self.memory.add_message("tool", result_str, tool_name=tc["id"], conversation_id=self.conversation_id)
+                        # Inject system note AFTER tool message (DeepSeek requires
+                        # tool messages directly after assistant tool_calls)
+                        if isinstance(result, dict) and "_system_note" in result:
+                            self.memory.add_message(
+                                "system",
+                                result["_system_note"],
+                                conversation_id=self.conversation_id,
+                            )
                         yield {
                             "type": "tool_result",
                             "tool_call_id": tc["id"],

@@ -221,8 +221,10 @@ class TestRegistryWithGuard:
         assert "read-only repo" in result["error"]
 
     @pytest.mark.asyncio
-    async def test_denied_injects_system_message(self, registry, host):
-        """Permission denial should inject a system message via host_loop."""
+    async def test_denied_returns_system_note(self, registry, host):
+        """Permission denial should return _system_note in result (not inject
+        system message directly — the caller adds it after the tool message to
+        keep tool messages directly after assistant tool_calls for DeepSeek)."""
         registry.register(
             name="outside_read",
             description="Read file",
@@ -234,10 +236,12 @@ class TestRegistryWithGuard:
             handler=lambda path: {"ok": True},
             path_params=[{"param": "path", "write": False, "required": True}],
         )
-        await registry.execute("outside_read", {"path": "/etc/passwd"})
-        assert len(host.memory.messages) == 1
-        assert host.memory.messages[0]["role"] == "system"
-        assert "Permission denied" in host.memory.messages[0]["content"]
+        result = await registry.execute("outside_read", {"path": "/etc/passwd"})
+        assert result["ok"] is False
+        assert "_system_note" in result
+        assert "Permission denied" in result["_system_note"]
+        # Registry should NOT inject system messages directly anymore
+        assert len(host.memory.messages) == 0
 
     @pytest.mark.asyncio
     async def test_no_path_params_skips_guard(self, registry):
