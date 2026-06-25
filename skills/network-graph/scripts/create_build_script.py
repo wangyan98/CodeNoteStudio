@@ -78,15 +78,7 @@ def main():
     else:
         path = os.path.realpath(path)
 
-    # 4. Deduplication — reject if file already exists
-    if os.path.exists(path):
-        print(json.dumps({
-            "ok": False,
-            "error": f"File already exists: {path}",
-        }))
-        sys.exit(1)
-
-    # 5. Parent directory check
+    # 4. Parent directory check
     parent = os.path.dirname(path)
     if not os.path.isdir(parent):
         print(json.dumps({
@@ -95,9 +87,22 @@ def main():
         }))
         sys.exit(1)
 
-    # 6. Write skeleton
-    with open(path, "w") as f:
-        f.write(SKELETON)
+    # 5. Atomic create — rejects if file already exists, handles PermissionError
+    try:
+        with open(path, "x") as f:
+            f.write(SKELETON)
+    except FileExistsError:
+        print(json.dumps({
+            "ok": False,
+            "error": f"File already exists: {path}",
+        }))
+        sys.exit(1)
+    except (PermissionError, OSError) as e:
+        print(json.dumps({
+            "ok": False,
+            "error": f"Cannot write file: {e}",
+        }))
+        sys.exit(1)
 
     # 7. Output JSON
     print(json.dumps({"ok": True, "path": path}))

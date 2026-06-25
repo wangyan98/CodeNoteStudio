@@ -21,6 +21,7 @@ Operates on `.net.json` files — graph-based neural network visualizations with
     are allowed — do NOT create or execute shell scripts, binaries, or other
     executable types.
   → Output `.net.json` files must also land in the workspace.
+  → PermissionGuard enforces these boundaries; violations return an error.
 - **Scripts directory:** `skills/network-graph/scripts/`
 
 ## Purpose

@@ -62,11 +62,28 @@ def test_rejects_duplicate_file():
 
 
 def test_rejects_missing_parent_directory():
-    code, out = run_script("/tmp/nonexistent_dir_xyz/build.py")
-    assert code == 1
-    result = json.loads(out)
-    assert result["ok"] is False
-    assert "Parent directory does not exist" in result["error"]
+    with tempfile.TemporaryDirectory() as tmp:
+        target = os.path.join(tmp, "nonexistent_subdir", "build.py")
+        code, out = run_script(target)
+        assert code == 1
+        result = json.loads(out)
+        assert result["ok"] is False
+        assert "Parent directory does not exist" in result["error"]
+
+
+def test_handles_unwritable_directory_gracefully():
+    with tempfile.TemporaryDirectory() as tmp:
+        target = os.path.join(tmp, "nope.py")
+        # Make directory read-only
+        os.chmod(tmp, 0o500)
+        try:
+            code, out = run_script(target)
+            assert code == 1
+            result = json.loads(out)
+            assert result["ok"] is False
+            assert "Cannot write" in result["error"] or "Permission" in result["error"]
+        finally:
+            os.chmod(tmp, 0o700)
 
 
 def test_workspace_check_allows_in_workspace():
