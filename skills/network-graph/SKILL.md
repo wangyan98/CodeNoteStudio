@@ -10,7 +10,17 @@ Operates on `.net.json` files — graph-based neural network visualizations with
 ## Critical rules
 
 - **NEVER write `.net.json` files directly.** All .net.json creation/modification MUST go through the scripts listed below. The scripts handle UUID generation, edge rewiring, and data integrity.
-- **Writing build scripts is allowed.** You MAY directly write generator scripts like `scripts/build_*.py` that programmatically call the existing CRUD scripts (create/add_layer/add_connection/...) to produce a .net.json. This is the preferred approach for large architectures.
+- **Writing build scripts is allowed.** You MAY scaffold new generator scripts
+  with `scripts/create_build_script.py <full-path> --workspace <workspace-path>`
+  and then edit them. Build scripts programmatically call the existing CRUD
+  scripts to produce a .net.json. This is the preferred approach for large
+  architectures.
+  → All build scripts MUST be created in the workspace directory (not inside
+    skills/network-graph/scripts/).
+  → Execute them with `python <script-path> <output-path>`. Only Python scripts
+    are allowed — do NOT create or execute shell scripts, binaries, or other
+    executable types.
+  → Output `.net.json` files must also land in the workspace.
 - **Scripts directory:** `skills/network-graph/scripts/`
 
 ## Purpose
@@ -121,6 +131,7 @@ Edge styles: forward, skip.
 | `scripts/delete_node.py <path> <node-id>` | Delete node + incident edges |
 | `scripts/delete_connection.py <path> <edge-id>` | Delete single edge |
 | `scripts/build_yolov5n.py <path> [--name]` | Build a complete YOLOv5n net.json with direction-aware blocks |
+| `scripts/create_build_script.py <path> --workspace <dir>` | Scaffold a new build script in workspace |
 
 ### create_network.py
 
