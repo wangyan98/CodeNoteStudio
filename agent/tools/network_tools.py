@@ -65,6 +65,22 @@ def register_network_tools(registry: ToolRegistry):
         handler=lambda: _run_skill_script("network-graph/scripts/list_preset_layers.py"),
     )
 
+    registry.register(
+        name="create_build_script",
+        description="Scaffold a new network-graph build script in the workspace. Use this BEFORE write_file when you need to create a Python script that programmatically builds a .net.json network graph (e.g. for large architectures like YOLOv6, ResNet, Transformer). Returns a skeleton with standard imports and argparse structure that you then edit with write_file.",
+        skill="network-graph",
+        parameters={
+            "type": "object",
+            "properties": {
+                "path": {"type": "string", "description": "Absolute path for the new build script (must end with .py or it will be appended automatically)"},
+                "workspace": {"type": "string", "description": "Workspace root directory for path validation"},
+            },
+            "required": ["path", "workspace"],
+        },
+        path_params=[{"param": "path", "write": True, "required": True}],
+        handler=lambda path, workspace=None: _create_build_script(path, workspace),
+    )
+
 
 def _add_block(path, name, repeat=None):
     args = ["network-graph/scripts/add_block.py", path, name]
@@ -84,4 +100,11 @@ def _create_network(name, title=None):
     args = ["network-graph/scripts/create_network.py", name]
     if title:
         args.extend(["--title", title])
+    return _run_skill_script(*args)
+
+
+def _create_build_script(path, workspace=None):
+    args = ["network-graph/scripts/create_build_script.py", path]
+    if workspace:
+        args.extend(["--workspace", workspace])
     return _run_skill_script(*args)

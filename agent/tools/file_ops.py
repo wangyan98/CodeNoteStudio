@@ -218,3 +218,23 @@ def grep(
             "Use a more specific directory or pattern to narrow down."
         )
     return result
+
+
+def write_file(path: str, content: str) -> dict:
+    """Create or overwrite a file with the given content.
+
+    Restricted to writable zones by PermissionGuard (workspace and output_dir).
+    The parent directory must already exist.
+    """
+    parent = os.path.dirname(path)
+    if not os.path.isdir(parent):
+        return {
+            "ok": False,
+            "error": f"Parent directory does not exist: {parent}",
+        }
+    try:
+        with open(path, "w", encoding="utf-8") as f:
+            f.write(content)
+        return {"ok": True, "path": path}
+    except (PermissionError, OSError) as e:
+        return {"ok": False, "error": f"Cannot write file: {e}"}

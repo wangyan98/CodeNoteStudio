@@ -11,7 +11,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from memory import ConversationMemory
 from tools.registry import ToolRegistry
-from tools.file_ops import read_file, list_files, search_in_files, grep
+from tools.file_ops import read_file, list_files, search_in_files, grep, write_file
 from tools.permissions import PermissionGuard
 from tools.mindmap_tools import register_mindmap_tools
 from tools.derive_tools import register_derive_tools
@@ -126,6 +126,22 @@ def build_registry(guard: PermissionGuard | None = None) -> ToolRegistry:
         },
         handler=grep,
         path_params=[{"param": "directory", "write": False, "required": True}],
+    )
+
+    # Generic file write
+    registry.register(
+        name="write_file",
+        description="Create or overwrite a file. Use this to write new files or edit existing ones. IMPORTANT: the file will be created in the workspace directory. Path must be an absolute path within the workspace.",
+        parameters={
+            "type": "object",
+            "properties": {
+                "path": {"type": "string", "description": "Absolute path to the file to create/overwrite"},
+                "content": {"type": "string", "description": "Full file content to write"},
+            },
+            "required": ["path", "content"],
+        },
+        handler=write_file,
+        path_params=[{"param": "path", "write": True, "required": True}],
     )
 
     # File search tools (directory is read-only path param — registrations

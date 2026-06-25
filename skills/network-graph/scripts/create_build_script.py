@@ -9,7 +9,13 @@ Build script — scaffolded by network-graph skill.
 import argparse, json, sys
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+# Walk up from this script's directory to find the project root (the directory
+# that contains skills/lib/), then add skills/ to sys.path for imports.
+_root = Path(__file__).resolve().parent
+while not (_root / "skills" / "lib" / "schemas.py").exists() and _root != _root.parent:
+    _root = _root.parent
+if (_root / "skills" / "lib" / "schemas.py").exists():
+    sys.path.insert(0, str(_root / "skills"))
 from lib.file_utils import save_network
 from lib.schemas import GraphNode, GraphEdge, NetworkDocument
 
