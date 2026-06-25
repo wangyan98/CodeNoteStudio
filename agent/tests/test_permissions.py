@@ -85,6 +85,32 @@ class TestPermissionGuardClassify:
         zone = guard.classify(p)
         assert zone in ("workspace", "output")  # either is fine for RW
 
+    def test_classify_never_raises_on_bad_input(self, guard):
+        """classify() and check() must never raise exceptions, always return."""
+        bad_inputs = [
+            "",
+            "\x00",
+            "/" + "x" * 5000,
+            "relative/path",
+        ]
+        for inp in bad_inputs:
+            try:
+                result = guard.classify(inp)
+                assert isinstance(result, str), (
+                    f"classify({inp!r}) returned {type(result)}"
+                )
+            except Exception as e:
+                pytest.fail(f"classify({inp!r}) raised {e}")
+            try:
+                result = guard.check(inp)
+                assert isinstance(result, dict), (
+                    f"check({inp!r}) returned {type(result)}"
+                )
+                assert "ok" in result
+                assert "zone" in result
+            except Exception as e:
+                pytest.fail(f"check({inp!r}) raised {e}")
+
     def test_classify_multiple_repos(self):
         """Multiple repos are all checked."""
         ws = os.path.realpath("/tmp/ws-multi")

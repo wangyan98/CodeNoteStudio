@@ -20,13 +20,18 @@ class PermissionGuard:
         skills_dir: str,
     ):
         self.workspace = os.path.realpath(workspace)
+        # Defensive copy: list comprehension creates a new list so external
+        # mutation of the original list does not affect the guard instance.
         self.repos = [os.path.realpath(r) for r in repos]
         self.output_dir = os.path.realpath(output_dir)
         self.skills_dir = os.path.realpath(skills_dir)
 
     def classify(self, path: str) -> str:
         """Return zone: 'workspace' | 'repo' | 'output' | 'skills' | 'denied'"""
-        real = os.path.realpath(path)
+        try:
+            real = os.path.realpath(path)
+        except (OSError, ValueError):
+            return "denied"
         if real == self.workspace or real.startswith(self.workspace + os.sep):
             return "workspace"
         if real == self.output_dir or real.startswith(self.output_dir + os.sep):
@@ -65,5 +70,7 @@ class PermissionGuard:
     def update(self, workspace: str, repos: list[str], output_dir: str) -> None:
         """Update mutable per-request fields. skills_dir is immutable (server-level)."""
         self.workspace = os.path.realpath(workspace)
+        # Defensive copy: list comprehension creates a new list so external
+        # mutation of the original list does not affect the guard instance.
         self.repos = [os.path.realpath(r) for r in repos]
         self.output_dir = os.path.realpath(output_dir)
