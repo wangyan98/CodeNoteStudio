@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useAppContext } from '../contexts/AppContext'
+import { renderMarkdown } from '../services/markdown-renderer'
 import './AgentDialog.css'
 
 export interface FrozenContext {
@@ -268,20 +269,20 @@ export function AgentDialog({ visible, onClose }: AgentDialogProps) {
     onClose()
   }
 
-  const renderContent = (msg: Message) => {
-    if (msg.role !== 'assistant') return msg.content
+  const DOC_PATH_RE = /(docs\/[\w./-]+\.(?:md|mind\.json|derive\.json|net\.json))/g
 
-    const parts = msg.content.split(/(docs\/[\w./-]+\.(?:md|mind\.json|derive\.json|net\.json))/g)
-    return parts.map((part, i) => {
-      if (part.match(/^docs\/[\w./-]+\.(?:md|mind\.json|derive\.json|net\.json)$/)) {
-        return (
-          <span key={i} className="doc-link" onClick={() => handleDocClick(part)}>
-            {part}
-          </span>
-        )
-      }
-      return part
-    })
+  const renderAssistantHtml = (content: string): string => {
+    // Pre-process: convert raw doc paths to markdown links so renderMarkdown
+    // turns them into <a> tags with a custom protocol we can intercept on click.
+    const preprocessed = content.replace(DOC_PATH_RE, '[$1](doclink://$1)')
+    return renderMarkdown(preprocessed, [])
+  }
+
+  const renderContent = (msg: Message) => {
+    if (msg.role === 'assistant') {
+      return renderAssistantHtml(msg.content)
+    }
+    return msg.content
   }
 
   if (!visible) return null
@@ -321,12 +322,35 @@ export function AgentDialog({ visible, onClose }: AgentDialogProps) {
                 {roundState === 'frozen' ? '🔒 ' : ''}Repo: {repoLabel}
               </span>
             </div>
-            <div className="agent-dialog-messages">
-              {messages.map((msg) => (
-                <div key={msg.id} className={`agent-message ${msg.role}`}>
-                  {renderContent(msg)}
-                </div>
-              ))}
+            <div
+              className="agent-dialog-messages"
+              onClick={(e) => {
+                const anchor = (e.target as HTMLElement).closest('a[href^="doclink://"]')
+                if (anchor) {
+                  e.preventDefault()
+                  const href = anchor.getAttribute('href') || ''
+                  const docPath = href.slice('doclink://'.length)
+                  if (docPath) handleDocClick(docPath)
+                }
+              }}
+            >
+              {messages.map((msg) => {
+                const content = renderContent(msg)
+                if (msg.role === 'assistant') {
+                  return (
+                    <div
+                      key={msg.id}
+                      className={`agent-message ${msg.role}`}
+                      dangerouslySetInnerHTML={{ __html: content as string }}
+                    />
+                  )
+                }
+                return (
+                  <div key={msg.id} className={`agent-message ${msg.role}`}>
+                    {content}
+                  </div>
+                )
+              })}
               <div ref={messagesEndRef} />
             </div>
             <div className="agent-dialog-input">
