@@ -118,14 +118,35 @@ export function inferEmbedType(path: string): 'derive' | 'mind' | 'seq' | 'md' |
 export function renderMarkdown(
   md: string,
   codeMappings: CodeMapping[],
-  noteAbsoluteDir?: string
+  noteAbsoluteDir?: string,
+  codeRepos?: { path: string }[]
 ): string {
+  // Strip repo prefix from an absolute path to get a relative path
+  const relativePath = (absPath: string): string => {
+    if (codeRepos) {
+      for (const repo of codeRepos) {
+        const prefix = repo.path.endsWith('/') ? repo.path : repo.path + '/'
+        if (absPath.startsWith(prefix)) return absPath.slice(prefix.length)
+      }
+    }
+    return absPath.split('/').pop() || absPath
+  }
   const snippetByRaw = new Map<string, CodeSnippet>()
+  const labelByRaw = new Map<string, string>()
   const matchedRaws = new Set<string>()
   for (const m of codeMappings) {
     matchedRaws.add(m.raw)
     if (m.codeSnippet) {
       snippetByRaw.set(m.raw, m.codeSnippet)
+    }
+    // Build human-readable label for the clickable link.
+    // - functionName that contains '/' is a fallback path → file-only ref
+    // - otherwise → "relativePath#functionName"
+    const relPath = relativePath(m.filePath)
+    if (m.functionName.includes('/')) {
+      labelByRaw.set(m.raw, relPath)
+    } else {
+      labelByRaw.set(m.raw, `${relPath} <span class="ref-fn">${m.functionName}</span>`)
     }
   }
 
@@ -217,19 +238,32 @@ export function renderMarkdown(
     return `<div class="note-embed-placeholder" data-note-path="${trimmedPath}" data-note-type="${embedType}"></div>`
   })
 
-  // @ref code references
+  // @ref on its own line — render code snippet inline
+  html = html.replace(
+    /^@ref\(([a-zA-Z0-9._/\-:#]+)\)$/gm,
+    (_fullMatch: string, refBody: string) => {
+      if (!matchedRaws.has(refBody)) {
+        return `@ref(${refBody})`
+      }
+      const label = labelByRaw.get(refBody) || refBody
+      const snippet = snippetByRaw.get(refBody)
+      let result = `<span class="ref-link" data-ref-name="${refBody}">${label}</span>`
+      if (snippet) {
+        result += renderCodeSnippet(snippet)
+      }
+      return result
+    }
+  )
+
+  // @ref inline — only blue link, no code block
   html = html.replace(
     /@ref\(([a-zA-Z0-9._/\-:#]+)\)/g,
     (_fullMatch: string, refBody: string) => {
       if (!matchedRaws.has(refBody)) {
         return `@ref(${refBody})`
       }
-      const snippet = snippetByRaw.get(refBody)
-      let result = `<span class="ref-link" data-ref-name="${refBody}">@ref(${refBody})</span>`
-      if (snippet) {
-        result += renderCodeSnippet(snippet)
-      }
-      return result
+      const label = labelByRaw.get(refBody) || refBody
+      return `<span class="ref-link" data-ref-name="${refBody}">${label}</span>`
     }
   )
 

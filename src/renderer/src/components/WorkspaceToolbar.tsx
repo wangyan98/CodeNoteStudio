@@ -93,6 +93,8 @@ export function WorkspaceToolbar() {
     loadingRef.current = true
     // Clear all state from previous workspace
     dispatch({ type: 'RESET_WORKSPACE_STATE' })
+    // Reset agent conversation so old messages don't carry over
+    window.electronAPI.resetAgentConversation().catch(() => {})
     try {
       const config = await window.electronAPI.openWorkspace(wsPath)
       dispatch({ type: 'SET_WORKSPACE', path: wsPath, name: config.name || wsPath })

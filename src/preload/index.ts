@@ -75,6 +75,7 @@ const api = {
   startAgent: () => ipcRenderer.invoke('agent:start'),
   stopAgent: () => ipcRenderer.invoke('agent:stop'),
   getAgentPort: () => ipcRenderer.invoke('agent:get-port'),
+  resetAgentConversation: () => ipcRenderer.invoke('agent:reset-conversation'),
 
   // Agent config
   getAgentConfig: () => ipcRenderer.invoke('agent-config:get'),

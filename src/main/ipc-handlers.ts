@@ -335,6 +335,23 @@ export function registerIpcHandlers(projectPath: string): void {
     return port
   })
 
+  ipcMain.handle('agent:reset-conversation', async () => {
+    const { getAgentPort, startAgent } = await import('./agent-manager')
+    let port = getAgentPort()
+    if (!port) {
+      const result = await startAgent()
+      port = result.port
+    }
+    try {
+      const resp = await fetch(`http://127.0.0.1:${port}/reset`, { method: 'POST' })
+      if (!resp.ok) {
+        console.error('[agent:reset-conversation] Server returned', resp.status)
+      }
+    } catch (err) {
+      console.error('[agent:reset-conversation] Failed to reach agent server:', err)
+    }
+  })
+
   // Agent config
   ipcMain.handle('agent-config:get', async (): Promise<AgentConfig> => {
     return readAgentConfig()

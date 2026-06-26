@@ -184,7 +184,9 @@ def create_app(agent_factory=None, memory=None):
         memory = ConversationMemory(db_path)
 
     # Generate and persist the main conversation id.
-    main_conversation_id = memory.get_or_create_conversation()
+    # Wrapped in a dict so nested endpoint functions can update it (Python
+    # closures capture by reference for mutable containers).
+    _state: dict[str, str] = {"main_conversation_id": memory.get_or_create_conversation()}
 
     # Import here to avoid circular imports.
     from tools.subagent_tool import register_subagent_tools
@@ -243,7 +245,7 @@ def create_app(agent_factory=None, memory=None):
                 output_dir=output_dir,
                 active_file=active_file,
                 provider_id=provider_id,
-                conversation_id=main_conversation_id,
+                conversation_id=_state["main_conversation_id"],
             )
 
         # Update guard with this request's actual workspace/repos/output_dir
@@ -262,7 +264,7 @@ def create_app(agent_factory=None, memory=None):
 
     @app.get("/history")
     async def get_history(conversation_id: str = None):
-        conv_id = conversation_id or main_conversation_id
+        conv_id = conversation_id or _state["main_conversation_id"]
         messages = memory.get_messages(conversation_id=conv_id)
         user_visible = [m for m in messages if m["role"] != "system"]
         response = {
@@ -275,15 +277,21 @@ def create_app(agent_factory=None, memory=None):
         if frozen:
             response["frozen"] = frozen
         # Include sub-agent traceability for the main conversation.
-        if conv_id == main_conversation_id:
+        if conv_id == _state["main_conversation_id"]:
             response["subagent_conversations"] = memory.get_conversation_children()
         return response
 
     @app.delete("/history")
     async def clear_history(conversation_id: str = None):
-        conv_id = conversation_id or main_conversation_id
+        conv_id = conversation_id or _state["main_conversation_id"]
         memory.clear(conversation_id=conv_id)
         return {"ok": True}
+
+    @app.post("/reset")
+    async def reset_conversation():
+        """Start a fresh main conversation (called on workspace switch)."""
+        _state["main_conversation_id"] = memory.reset_main_conversation()
+        return {"ok": True, "conversation_id": _state["main_conversation_id"]}
 
     return app
 

@@ -18,6 +18,7 @@ interface MdEditorProps {
   notePath: string
   workspacePath: string | null
   codeRepoPath: string | null
+  codeRepos?: { path: string }[]
   onSave: (content: string) => Promise<void>
   onRefClick?: (refName: string) => void
   onEmbedClick?: (notePath: string, noteType: 'derive' | 'mind' | 'seq' | 'net') => void
@@ -35,7 +36,7 @@ export interface MdEditorHandle {
 type SaveStatus = 'saved' | 'saving' | 'unsaved' | 'error'
 
 export const MdEditor = forwardRef<MdEditorHandle, MdEditorProps>(
-  function MdEditor({ content, notePath, workspacePath, codeRepoPath, onSave, onRefClick, onEmbedClick, onNavigateToCode, codeMappings }, ref) {
+  function MdEditor({ content, notePath, workspacePath, codeRepoPath, codeRepos, onSave, onRefClick, onEmbedClick, onNavigateToCode, codeMappings }, ref) {
   const [value, setValue] = useState(content)
   const [showPreview, setShowPreview] = useState(true)
   const [saveStatus, setSaveStatus] = useState<SaveStatus>('saved')
@@ -301,7 +302,7 @@ export const MdEditor = forwardRef<MdEditorHandle, MdEditorProps>(
             <div
               className="md-preview-content"
               dangerouslySetInnerHTML={{
-                __html: renderMarkdown(value, previewMappings.length > 0 ? previewMappings : (codeMappings ?? []), noteAbsoluteDir)
+                __html: renderMarkdown(value, previewMappings.length > 0 ? previewMappings : (codeMappings ?? []), noteAbsoluteDir, codeRepos)
               }}
               onClick={(e) => {
                 const target = (e.target as HTMLElement).closest('.ref-link') as HTMLElement | null

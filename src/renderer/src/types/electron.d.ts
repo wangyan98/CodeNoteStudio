@@ -89,6 +89,7 @@ declare global {
       startAgent: () => Promise<{ port: number }>
       stopAgent: () => Promise<void>
       getAgentPort: () => Promise<number>
+      resetAgentConversation: () => Promise<void>
       getAgentConfig: () => Promise<{
         pythonPath: string
         agentScriptPath: string

@@ -74,6 +74,10 @@ export function AgentDialog({ visible, onClose }: AgentDialogProps) {
   useEffect(() => {
     if (!visible) return
     setConnecting(true)
+    // Clear stale messages from previous workspace
+    setMessages([])
+    setFrozen(null)
+    frozenRef.current = null
     window.electronAPI.getAgentPort().then(async (p) => {
       setPort(p)
       setConnecting(false)
@@ -127,7 +131,7 @@ export function AgentDialog({ visible, onClose }: AgentDialogProps) {
         content: `Agent server failed to start: ${e.message}. Check that python3 and dependencies are installed.`,
       }])
     })
-  }, [visible])
+  }, [visible, state.workspacePath])
 
   const handleSend = useCallback(async () => {
     if (!input.trim() || loading) return

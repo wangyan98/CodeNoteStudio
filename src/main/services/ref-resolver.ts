@@ -195,10 +195,18 @@ export async function resolveRefs(
           (s) => s.startLine <= ref.line! && s.endLine >= ref.line! && symbolMatchesName(s, ref.name!)
         )
         if (match) {
-          const mapping = toMapping(ref, match)
-          if (mapping.filePath && mapping.startLine) {
-            mapping.codeSnippet = await extractCodeSnippet(mapping.filePath, mapping.startLine)
+          // Use the user-specified line so explicit line numbers are
+          // always respected (the line is where to jump, not just a
+          // disambiguator for the symbol search).
+          const absPath = match.filePath
+          const mapping: CodeMapping = {
+            raw: ref.raw,
+            functionName: ref.name ?? match.name,
+            filePath: absPath,
+            startLine: ref.line,
+            endLine: ref.line,
           }
+          mapping.codeSnippet = await extractCodeSnippet(absPath, ref.line)
           mappings.push(mapping)
           continue
         }
@@ -211,10 +219,17 @@ export async function resolveRefs(
       if (fileSymbols) {
         const match = fileSymbols.find((s) => s.startLine <= ref.line! && s.endLine >= ref.line!)
         if (match) {
-          const mapping = toMapping(ref, match)
-          if (mapping.filePath && mapping.startLine) {
-            mapping.codeSnippet = await extractCodeSnippet(mapping.filePath, mapping.startLine)
+          // Use the user-specified line rather than the symbol's startLine,
+          // so explicit line numbers are always respected.
+          const absPath = match.filePath
+          const mapping: CodeMapping = {
+            raw: ref.raw,
+            functionName: match.name,
+            filePath: absPath,
+            startLine: ref.line,
+            endLine: ref.line,
           }
+          mapping.codeSnippet = await extractCodeSnippet(absPath, ref.line)
           mappings.push(mapping)
           continue
         }

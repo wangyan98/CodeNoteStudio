@@ -84,9 +84,9 @@ export function useCodeNavigation() {
       dispatch({ type: 'SET_CODE_REPO', path: fileRepoPath })
     }
 
-    dispatch({ type: 'REVEAL_FILE_IN_TREE', resolvedPath })
+    dispatch({ type: 'REVEAL_FILE_IN_TREE', filePath: resolvedPath })
     dispatch({ type: 'OPEN_CODE_FILE', file: codeFile })
-    dispatch({ type: 'SET_PENDING_SCROLL', resolvedPath, line: startLine })
+    dispatch({ type: 'SET_PENDING_SCROLL', filePath: resolvedPath, line: startLine })
   }, [dispatch, appState])
 
   return { navigateToCode }

@@ -151,6 +151,7 @@ export function NoteViewport() {
             notePath={selectedNoteId}
             workspacePath={state.workspacePath}
             codeRepoPath={state.codeRepoPath}
+            codeRepos={state.codeRepos}
             codeMappings={codeMappings}
             onSave={async (content: string) => {
               await saveNote(selectedNoteId, content)

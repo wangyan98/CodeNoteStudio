@@ -93,9 +93,11 @@
   color: var(--accent-color);
   cursor: pointer;
   text-decoration: underline dotted;
-  font-family: monospace;
 }
 .md-preview-content .ref-link:hover { text-decoration: underline solid; }
+.md-preview-content .ref-link .ref-fn {
+  color: #e5c07b;
+}
 
 .ref-code-block {
   background: #1e1e1e;

@@ -236,5 +236,20 @@ class ConversationMemory:
         ).fetchall()
         return [dict(row) for row in rows]
 
+    def reset_main_conversation(self) -> str:
+        """Create a new main conversation ID, leaving the old one intact."""
+        conv_id = str(uuid.uuid4())
+        now = datetime.now(timezone.utc).isoformat()
+        self.conn.execute(
+            "INSERT INTO conversations (id, created_at, updated_at) VALUES (?, ?, ?)",
+            (conv_id, now, now),
+        )
+        self.conn.execute(
+            "INSERT OR REPLACE INTO app_state (key, value) VALUES ('main_conv_id', ?)",
+            (conv_id,),
+        )
+        self.conn.commit()
+        return conv_id
+
     def close(self):
         self.conn.close()
