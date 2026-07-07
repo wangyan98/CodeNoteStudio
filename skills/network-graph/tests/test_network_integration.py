@@ -126,3 +126,52 @@ if __name__ == "__main__":
         assert exec_result["ok"] is True
         assert exec_result["nodeCount"] == 4  # input + conv1 + relu1 + output
         assert exec_result["edgeCount"] == 3  # input→conv1, conv1→relu1, relu1→output
+
+
+def test_nested_block_architecture():
+    """Build ResNet-style: Backbone block containing ResBlock with layers inside."""
+    with tempfile.TemporaryDirectory() as tmp:
+        name = os.path.join(tmp, "nested_net")
+
+        code, out = run("create_network.py", name, "--title", "NestedNet")
+        result = json.loads(out)
+        path = result["path"]
+
+        # Create parent block (Backbone)
+        code, out = run("add_block.py", path, "Backbone")
+        result = json.loads(out)
+        backbone_id = result["id"]
+
+        # Create nested block (ResBlock) inside Backbone
+        code, out = run("add_block.py", path, "ResBlock", "--repeat", "3", "--parent", backbone_id)
+        result = json.loads(out)
+        resblock_id = result["id"]
+
+        # Add layers inside the nested ResBlock
+        run("add_layer.py", path, "Conv2d", "--name", "conv_a", "--params",
+            '{"in_channels":64,"out_channels":64,"kernel_size":3,"stride":1,"padding":1}')
+        run("add_layer.py", path, "BatchNorm2d", "--name", "bn_a")
+        run("add_layer.py", path, "ReLU", "--name", "relu_a")
+
+        # Move layers into the ResBlock (they were added at top level by add_layer.py)
+        loaded = load_network(path)
+        conv_a = next(n for n in loaded.nodes if n.label == "conv_a")
+        bn_a = next(n for n in loaded.nodes if n.label == "bn_a")
+        relu_a = next(n for n in loaded.nodes if n.label == "relu_a")
+
+        run("add_node_to_block.py", path, resblock_id, conv_a.id)
+        run("add_node_to_block.py", path, resblock_id, bn_a.id)
+        run("add_node_to_block.py", path, resblock_id, relu_a.id)
+
+        # Verify
+        loaded = load_network(path)
+        backbone = next(n for n in loaded.nodes if n.id == backbone_id)
+        assert len(backbone.children) == 1  # Only the ResBlock
+        assert backbone.children[0].id == resblock_id
+
+        resblock = backbone.children[0]
+        assert resblock.label == "ResBlock"
+        assert resblock.repeat == 3
+        assert len(resblock.children) == 3  # conv_a, bn_a, relu_a
+        layer_labels = [c.label for c in resblock.children]
+        assert layer_labels == ["conv_a", "bn_a", "relu_a"]
