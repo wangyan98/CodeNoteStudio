@@ -18,6 +18,72 @@ export interface NetworkAction {
   edge?: GraphEdge
 }
 
+/** Recursively find a block node by id anywhere in the tree. */
+function findBlockInTree(nodes: GraphNode[], id: string): GraphNode | null {
+  for (const n of nodes) {
+    if (n.id === id) return n
+    if (n.children) {
+      const found = findBlockInTree(n.children, id)
+      if (found) return found
+    }
+  }
+  return null
+}
+
+/** Recursively remove a node by id from the tree. Returns new nodes array and whether a removal happened. */
+function removeNodeFromTree(
+  nodes: GraphNode[],
+  id: string
+): { nodes: GraphNode[]; removed: boolean } {
+  let removed = false
+  const filtered = nodes.filter(n => {
+    if (n.id === id) {
+      removed = true
+      return false
+    }
+    return true
+  })
+  if (removed) return { nodes: filtered, removed: true }
+
+  // Recurse into children
+  return {
+    nodes: filtered.map(n => {
+      if (!n.children) return n
+      const result = removeNodeFromTree(n.children, id)
+      if (!result.removed) return n
+      // Clean internalEdges referencing the removed node
+      const cleanEdges = (n.internalEdges ?? []).filter(
+        e => e.source !== id && e.target !== id
+      )
+      return { ...n, children: result.nodes, internalEdges: cleanEdges }
+    }),
+    removed: false,
+  }
+}
+
+/** Recursively map nodes, applying updater when nodeId matches. */
+function updateNodeInTree(
+  nodes: GraphNode[],
+  nodeId: string,
+  updater: (n: GraphNode) => GraphNode
+): GraphNode[] {
+  return nodes.map(n => {
+    if (n.id === nodeId) return updater(n)
+    if (n.children) {
+      const childIdx = n.children.findIndex(c => c.id === nodeId)
+      if (childIdx !== -1) {
+        // Direct child match — update inline
+        const newChildren = [...n.children]
+        newChildren[childIdx] = updater(n.children[childIdx])
+        return { ...n, children: newChildren }
+      }
+      // Recurse deeper
+      return { ...n, children: updateNodeInTree(n.children, nodeId, updater) }
+    }
+    return n
+  })
+}
+
 function cloneDoc(doc: NetworkDocument): NetworkDocument {
   return structuredClone(doc)
 }
