@@ -106,25 +106,31 @@ export function networkReducer(doc: NetworkDocument, action: NetworkAction): Net
         layerType: action.layerType,
         params: {},
       }
-      // If parentId is set, add as child of that block, chaining to last child
+      // New block nodes get children/edges arrays
+      if (action.kind === 'block') {
+        newNode.children = []
+      }
+      // If parentId is set, add as child of that block (recursive lookup)
       if (action.parentId) {
-        return {
-          ...cloned,
-          nodes: (cloned.nodes ?? []).map(n => {
-            if (n.id !== action.parentId) return n
-            const prevChildren = n.children ?? []
-            const newInternalEdge: GraphEdge | null = prevChildren.length > 0
-              ? { id: uuidv4(), source: prevChildren[prevChildren.length - 1].id, target: newNode.id, style: 'forward' }
-              : null
-            return {
-              ...n,
-              children: [...prevChildren, newNode],
-              internalEdges: newInternalEdge
-                ? [...(n.internalEdges ?? []), newInternalEdge]
-                : (n.internalEdges ?? []),
+        const addChild = (nodes: GraphNode[]): GraphNode[] =>
+          nodes.map(n => {
+            if (n.id === action.parentId) {
+              const prevChildren = n.children ?? []
+              const newInternalEdge: GraphEdge | null = prevChildren.length > 0
+                ? { id: uuidv4(), source: prevChildren[prevChildren.length - 1].id, target: newNode.id, style: 'forward' }
+                : null
+              return {
+                ...n,
+                children: [...prevChildren, newNode],
+                internalEdges: newInternalEdge
+                  ? [...(n.internalEdges ?? []), newInternalEdge]
+                  : (n.internalEdges ?? []),
+              }
             }
-          }),
-        }
+            if (n.children) return { ...n, children: addChild(n.children) }
+            return n
+          })
+        return { ...cloned, nodes: addChild(cloned.nodes ?? []) }
       }
       return { ...cloned, nodes: [...(cloned.nodes ?? []), newNode] }
     }
@@ -132,39 +138,25 @@ export function networkReducer(doc: NetworkDocument, action: NetworkAction): Net
     case 'DELETE_NODE': {
       const cloned = cloneDoc(doc)
       const nodeId = action.nodeId!
+      // Recursively remove from nodes tree
+      const { nodes: newNodes } = removeNodeFromTree(cloned.nodes ?? [], nodeId)
       return {
         ...cloned,
-        nodes: (cloned.nodes ?? []).filter(n => n.id !== nodeId),
+        nodes: newNodes,
         edges: (cloned.edges ?? []).filter(e => e.source !== nodeId && e.target !== nodeId),
       }
     }
 
     case 'UPDATE_NODE': {
       const cloned = cloneDoc(doc)
-      const updateNode = (n: GraphNode): GraphNode => {
-        if (n.id === action.nodeId!) {
+      return {
+        ...cloned,
+        nodes: updateNodeInTree(cloned.nodes ?? [], action.nodeId!, (n) => {
           if (action.field === 'params' && action.paramKey) {
             return { ...n, params: { ...n.params, [action.paramKey]: action.value } } as GraphNode
           }
           return { ...n, [action.field!]: action.value } as GraphNode
-        }
-        if (n.children) {
-          const childIdx = n.children.findIndex(c => c.id === action.nodeId!)
-          if (childIdx !== -1) {
-            const child = n.children[childIdx]
-            const updated = action.field === 'params' && action.paramKey
-              ? { ...child, params: { ...child.params, [action.paramKey]: action.value } } as GraphNode
-              : { ...child, [action.field!]: action.value } as GraphNode
-            const newChildren = [...n.children]
-            newChildren[childIdx] = updated
-            return { ...n, children: newChildren }
-          }
-        }
-        return n
-      }
-      return {
-        ...cloned,
-        nodes: (cloned.nodes ?? []).map(updateNode),
+        }),
       }
     }
 
