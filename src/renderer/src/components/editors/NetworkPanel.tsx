@@ -236,11 +236,25 @@ export function NetworkPanel({
             </div>
             {(node.children ?? []).length > 0 && (
               <div className="network-panel-params">
-                <div className="network-panel-section-title">Layers ({node.children!.length})</div>
+                <div className="network-panel-section-title">
+                  Children ({node.children!.length})
+                </div>
                 {node.children!.map(child => (
                   <div key={child.id} style={{ fontSize: 10, color: '#d4d4d4', padding: '2px 0', display: 'flex', alignItems: 'center', gap: 6 }}>
-                    <span style={{ color: child.layerType ? '#4a90d9' : '#888' }}>{child.layerType ?? child.label}</span>
-                    <span style={{ color: '#888', fontSize: 9 }}>{child.label}</span>
+                    {child.kind === 'block' ? (
+                      <>
+                        <span style={{ color: '#ff9800', fontWeight: 'bold' }}>📦</span>
+                        <span style={{ color: '#ff9800' }}>{child.label}</span>
+                        {child.repeat && child.repeat > 1 && (
+                          <span style={{ color: '#888', fontSize: 9 }}>×{child.repeat}</span>
+                        )}
+                      </>
+                    ) : (
+                      <>
+                        <span style={{ color: child.layerType ? '#4a90d9' : '#888' }}>{child.layerType ?? child.label}</span>
+                        <span style={{ color: '#888', fontSize: 9 }}>{child.label}</span>
+                      </>
+                    )}
                   </div>
                 ))}
               </div>
