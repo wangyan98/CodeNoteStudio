@@ -119,6 +119,8 @@ Direction controls how children are laid out within a block.
 - **Vertical (TB)**: children flow top-to-bottom, ports spread horizontally on top/bottom edges. Skip edges exit via left/right sides.
 - **Horizontal (LR)**: children flow left-to-right, ports spread vertically on left/right edges. Skip edges exit via top/bottom sides.
 
+**Auto-detection rule:** When `direction` is omitted or `null`, the renderer auto-detects the layout by counting outgoing forward edges from each child node. If any child has **2 or more outgoing forward edges** (i.e., the block contains branching/skip connections, shown as green dashed lines), the block is laid out **horizontally (LR)**. Otherwise it defaults to **vertical (TB)**. This convention should guide block creation: use `--direction horizontal` (or omit direction and rely on auto-detection) when a block contains multi-branch skip connections, and `--direction vertical` for simple sequential chains.
+
 Block `direction` only affects the internal layout of children within that block. The top-level arrangement of nodes (blocks, layers, input/output) is auto-detected by the renderer — it is NOT forced to a single orientation. This allows the overview diagram to flow naturally based on the graph structure, while individual blocks can still enforce a consistent internal direction (e.g., a backbone block as horizontal, a neck block as vertical).
 
 ### `kind: "input"` / `kind: "output"` — Entry/exit points
