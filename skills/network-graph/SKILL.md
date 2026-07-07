@@ -22,6 +22,9 @@ Operates on `.net.json` files — graph-based neural network visualizations with
     executable types.
   → Output `.net.json` files must also land in the workspace.
   → PermissionGuard enforces these boundaries; violations return an error.
+  → For complex networks, a single build script MAY produce multiple `.net.json`
+    files (overview + per-component diagrams). See **Multi-Diagram Architectures**
+    above for when and how to split.
 - **Scripts directory:** `skills/network-graph/scripts/`
 
 ## Purpose
@@ -32,6 +35,36 @@ Typical use cases:
 - Documenting model architectures (ResNet, Transformer, etc.)
 - Auto-generating architecture diagrams from PyTorch/TensorFlow code
 - Tracing forward/backward data flow through skip connections and blocks
+
+## Multi-Diagram Architectures
+
+Complex networks with many sub-modules (e.g., SAM3, multi-modal models, encoder-decoder architectures) do **not** need to fit entirely in a single diagram. Instead, split the architecture across multiple `.net.json` files:
+
+- **Overview diagram** — high-level blocks and their interconnections. Blocks in the overview serve as abstractions; they do NOT need to expose every internal layer or edge. Keep the overview focused on the data flow between major components.
+- **Component diagrams** — one `.net.json` per major sub-module, showing detailed layer-by-layer structure, internal edges, shapes, and parameters.
+
+**When to split:**
+- The top-level graph has more than ~8–12 nodes (blocks + layers + input/output)
+- A sub-module has significant internal complexity (e.g., ViT with 32 transformer blocks, FPN with multiple scale branches)
+- The same sub-module is reused across different architectures (split it out for reuse)
+- Cross-block skip connections would create excessive edge crossings in a single diagram
+- Block nesting exceeds 2 levels (block → block → layer) — split deeper sub-modules into dedicated component diagrams
+
+**Conventions:**
+- Use a consistent naming pattern: `<model>-overview.net.json`, `<model>-backbone.net.json`, `<model>-neck.net.json`, etc.
+- In the overview, set block `direction` but keep `children` minimal or empty — the block's internal detail lives in its own dedicated diagram.
+- Use `repeat` on overview blocks to indicate stacked sub-layers without enumerating them.
+
+**Anti-pattern (avoid):** One monolithic diagram with 20+ top-level nodes, deeply nested block children (3+ levels), and dense cross-graph skip edges. This produces an unreadable graph.
+
+**Example — SAM3 split:**
+
+| File | Contents |
+|------|----------|
+| `sam3-overview.net.json` | Image/Text inputs → ViT backbone block → FPN neck block → VL backbone block → Transformer Encoder/Decoder blocks → Segmentation Head block → Output. Internal details omitted; blocks show only the high-level flow and cross-block skip edges. |
+| `sam3-vit-backbone.net.json` | PatchEmbed → 7 ViT stages (windowed + global attention), with full shape annotations and internal edges. |
+| `sam3-fpn-neck.net.json` | PositionEmbeddingSine → 4-scale feature pyramid (P2–P5) with individual ConvTranspose2d/Conv2d/MaxPool2d layers. |
+| `sam3-transformer-decoder.net.json` | Query Embeddings → 6 decoder layers → BBox regression head, with self/cross-attention annotations. |
 
 ## Node Kind Reference
 
@@ -77,6 +110,8 @@ Represents a reusable sub-network (e.g. ResBlock, C2f, Bottleneck). A block **co
 - Do NOT set `inputShape`/`outputShape` on a block node — shapes go on individual layer nodes
 - `direction`: Controls the block's internal layout direction — `"horizontal"` (left→right) or `"vertical"` (top→bottom). When omitted/null, the layout is auto-detected.
 
+**Nesting limit:** Blocks can be nested at most **2 levels deep** (block → block → layer). A block's `children` may contain layers and/or one extra level of blocks, but those nested blocks may only contain layers — no further nesting. If an architecture requires deeper nesting (e.g., Stage → ResBlock → Bottleneck → Conv2d), split it into separate `.net.json` files following the [Multi-Diagram Architectures](#multi-diagram-architectures) pattern.
+
 ### Block direction
 
 Direction controls how children are laid out within a block.
@@ -84,7 +119,7 @@ Direction controls how children are laid out within a block.
 - **Vertical (TB)**: children flow top-to-bottom, ports spread horizontally on top/bottom edges. Skip edges exit via left/right sides.
 - **Horizontal (LR)**: children flow left-to-right, ports spread vertically on left/right edges. Skip edges exit via top/bottom sides.
 
-The top-level document layout is always vertical (blocks stack top-to-bottom). Direction only affects sub-layout within each block.
+Block `direction` only affects the internal layout of children within that block. The top-level arrangement of nodes (blocks, layers, input/output) is auto-detected by the renderer — it is NOT forced to a single orientation. This allows the overview diagram to flow naturally based on the graph structure, while individual blocks can still enforce a consistent internal direction (e.g., a backbone block as horizontal, a neck block as vertical).
 
 ### `kind: "input"` / `kind: "output"` — Entry/exit points
 
