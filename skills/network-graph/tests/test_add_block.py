@@ -1,10 +1,10 @@
-import json, os, subprocess, sys, tempfile
+import json, os, subprocess, sys, tempfile, uuid
 from pathlib import Path
 
 SCRIPTS = Path(__file__).resolve().parents[1] / "scripts"
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from lib.file_utils import save_network, load_network
-from lib.schemas import create_network_document
+from lib.schemas import create_network_document, GraphNode
 
 def run_script(*args):
     result = subprocess.run([sys.executable, str(SCRIPTS / "add_block.py"), *args], capture_output=True, text=True)
@@ -53,6 +53,30 @@ def test_creates_nested_block_with_parent():
         assert parent_loaded.children is not None
         assert len(parent_loaded.children) == 1
         assert parent_loaded.children[0].label == "ChildBlock"
+
+
+def test_creates_nested_block():
+    with tempfile.TemporaryDirectory() as tmp:
+        path = os.path.join(tmp, "test.net.json")
+        doc = create_network_document("Test")
+        # Add a top-level block
+        parent = GraphNode(id=str(uuid.uuid4()), kind="block", label="Parent", children=[])
+        doc.nodes.insert(1, parent)
+        save_network(path, doc)
+
+        # Create nested block inside parent
+        code, out = run_script(path, "ChildBlock", "--repeat", "2", "--parent", parent.id)
+        assert code == 0
+        result = json.loads(out)
+        assert result["ok"] is True
+        assert result["parentId"] == parent.id
+
+        loaded = load_network(path)
+        parent_loaded = next(n for n in loaded.nodes if n.id == parent.id)
+        assert parent_loaded.children is not None
+        assert len(parent_loaded.children) == 1
+        assert parent_loaded.children[0].label == "ChildBlock"
+        assert parent_loaded.children[0].repeat == 2
 
 
 def test_parent_not_found_returns_error():
