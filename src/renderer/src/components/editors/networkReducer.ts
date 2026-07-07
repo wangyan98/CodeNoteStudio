@@ -46,19 +46,19 @@ function removeNodeFromTree(
   if (removed) return { nodes: filtered, removed: true }
 
   // Recurse into children
-  return {
-    nodes: filtered.map(n => {
-      if (!n.children) return n
-      const result = removeNodeFromTree(n.children, id)
-      if (!result.removed) return n
-      // Clean internalEdges referencing the removed node
-      const cleanEdges = (n.internalEdges ?? []).filter(
-        e => e.source !== id && e.target !== id
-      )
-      return { ...n, children: result.nodes, internalEdges: cleanEdges }
-    }),
-    removed: false,
-  }
+  let childRemoved = false
+  const updated = filtered.map(n => {
+    if (!n.children) return n
+    const result = removeNodeFromTree(n.children, id)
+    if (!result.removed) return n
+    childRemoved = true
+    // Clean internalEdges referencing the removed node
+    const cleanEdges = (n.internalEdges ?? []).filter(
+      e => e.source !== id && e.target !== id
+    )
+    return { ...n, children: result.nodes, internalEdges: cleanEdges }
+  })
+  return { nodes: updated, removed: childRemoved }
 }
 
 /** Recursively map nodes, applying updater when nodeId matches. */
