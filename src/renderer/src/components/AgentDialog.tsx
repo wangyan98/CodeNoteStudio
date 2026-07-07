@@ -47,11 +47,11 @@ interface Provider {
 }
 
 interface AgentDialogProps {
-  visible: boolean
-  onClose: () => void
+  hidden: boolean
+  onToggleHidden: () => void
 }
 
-export function AgentDialog({ visible, onClose }: AgentDialogProps) {
+export function AgentDialog({ hidden, onToggleHidden }: AgentDialogProps) {
   const { state, dispatch } = useAppContext()
   const [messages, setMessages] = useState<Message[]>([])
   const [thinkingText, setThinkingText] = useState('')
@@ -61,7 +61,6 @@ export function AgentDialog({ visible, onClose }: AgentDialogProps) {
   const [selectedProvider, setSelectedProvider] = useState('')
   const [port, setPort] = useState<number | null>(null)
   const [connecting, setConnecting] = useState(true)
-  const [minimized, setMinimized] = useState(false)
   const [frozen, setFrozen] = useState<FrozenContext | null>(null)
   const frozenRef = useRef<FrozenContext | null>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
@@ -72,9 +71,7 @@ export function AgentDialog({ visible, onClose }: AgentDialogProps) {
   }, [messages])
 
   useEffect(() => {
-    if (!visible) return
     setConnecting(true)
-    // Clear stale messages from previous workspace
     setMessages([])
     setFrozen(null)
     frozenRef.current = null
@@ -131,7 +128,7 @@ export function AgentDialog({ visible, onClose }: AgentDialogProps) {
         content: `Agent server failed to start: ${e.message}. Check that python3 and dependencies are installed.`,
       }])
     })
-  }, [visible, state.workspacePath])
+  }, [state.workspacePath])
 
   const handleSend = useCallback(async () => {
     if (!input.trim() || loading) return
@@ -209,9 +206,13 @@ export function AgentDialog({ visible, onClose }: AgentDialogProps) {
                   setThinkingText('')
                   assistantText += event.content
                   setMessages(prev => {
-                    const last = prev[prev.length - 1]
-                    if (last?.role === 'assistant') {
-                      return [...prev.slice(0, -1), { ...last, content: assistantText }]
+                    // Find the last assistant message — there may be
+                    // tool_call/tool_result messages inserted after it.
+                    const lastAssistIdx = prev.map(m => m.role).lastIndexOf('assistant')
+                    if (lastAssistIdx >= 0) {
+                      const updated = [...prev]
+                      updated[lastAssistIdx] = { ...updated[lastAssistIdx], content: assistantText }
+                      return updated
                     }
                     return [...prev, {
                       id: Math.random().toString(36),
@@ -291,7 +292,7 @@ export function AgentDialog({ visible, onClose }: AgentDialogProps) {
 
   const handleDocClick = (docPath: string) => {
     dispatch({ type: 'SELECT_NOTE', noteId: docPath })
-    onClose()
+    onToggleHidden()
   }
 
   const DOC_PATH_RE = /(docs\/[\w./-]+\.(?:md|mind\.json|derive\.json|net\.json))/g
@@ -310,8 +311,6 @@ export function AgentDialog({ visible, onClose }: AgentDialogProps) {
     return msg.content
   }
 
-  if (!visible) return null
-
   const roundState = deriveRoundState(messages.length, frozen)
   const repoLabel =
     roundState === 'frozen'
@@ -321,32 +320,29 @@ export function AgentDialog({ visible, onClose }: AgentDialogProps) {
       : '快照不可用'
 
   return (
-    <div className="agent-dialog-overlay">
-      <div className={`agent-dialog${minimized ? ' minimized' : ''}`}>
+    <div className={`agent-dialog-overlay${hidden ? ' overlay-hidden' : ''}`}>
+      <div className="agent-dialog">
         <div className="agent-dialog-header">
           <span className="agent-dialog-title">Code Agent</span>
           <div className="agent-dialog-header-actions">
             <button className="agent-dialog-header-btn" onClick={handleClearHistory} title="Clear history">
               Clear
             </button>
-            <button className="agent-dialog-header-btn" onClick={() => setMinimized(!minimized)} title={minimized ? 'Expand' : 'Minimize'}>
-              {minimized ? '□' : '−'}
+            <button className="agent-dialog-header-btn" onClick={onToggleHidden} title="Hide">
+              −
             </button>
-            <button className="agent-dialog-header-btn" onClick={onClose}>×</button>
           </div>
         </div>
-        {!minimized && (
-          <>
-            <div className="agent-dialog-context">
-              <select value={selectedProvider} onChange={(e) => setSelectedProvider(e.target.value)}>
-                {providers.map((p) => (
-                  <option key={p.id} value={p.id}>{p.name} ({p.model})</option>
-                ))}
-              </select>
-              <span title={frozen?.activeFile || state.codeRepoPath || ''}>
-                {roundState === 'frozen' ? '🔒 ' : ''}Repo: {repoLabel}
-              </span>
-            </div>
+        <div className="agent-dialog-context">
+            <select value={selectedProvider} onChange={(e) => setSelectedProvider(e.target.value)}>
+              {providers.map((p) => (
+                <option key={p.id} value={p.id}>{p.name} ({p.model})</option>
+              ))}
+            </select>
+            <span title={frozen?.activeFile || state.codeRepoPath || ''}>
+              {roundState === 'frozen' ? '🔒 ' : ''}Repo: {repoLabel}
+            </span>
+          </div>
             <div
               className="agent-dialog-messages"
               onClick={(e) => {
@@ -408,9 +404,7 @@ export function AgentDialog({ visible, onClose }: AgentDialogProps) {
                 {loading ? '...' : 'Send'}
               </button>
             </div>
-          </>
-        )}
+        </div>
       </div>
-    </div>
   )
 }

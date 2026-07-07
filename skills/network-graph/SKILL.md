@@ -1,6 +1,6 @@
 ---
 name: network-graph
-description: Create and edit .net.json network graph files — a notebook-specific format for visualizing neural network architectures as directed graphs with nodes (input/output/layer/block) and edges (forward/skip). HARD RULES: (1) NEVER write .net.json by hand — use build scripts only, (2) EVERY layer MUST be inside a block — no top-level layers, (3) Complex networks MUST be split across multiple .net.json files (overview + component diagrams). Triggers on .net.json file operations.
+description: Create and edit .net.json network graph files — a notebook-specific format for visualizing neural network architectures as directed graphs with nodes (input/output/layer/block) and edges (forward/skip). HARD RULES: (1) NEVER write .net.json by hand — use build scripts only, (2) Complex networks MUST be split across multiple .net.json files (overview + component diagrams). Triggers on .net.json file operations.
 ---
 
 # Network Graph Skill
@@ -15,26 +15,14 @@ You MUST NOT create, write, or edit `.net.json` files by hand. All `.net.json` o
 
 Punishment for writing .net.json directly: UUID collision, broken edge references, data corruption.
 
-### 2. MANDATORY: Use blocks — do NOT put layers at the top level
+### 2. Layers and blocks — know the difference
 
-**Every layer MUST live inside a block.** The only nodes allowed at the top level of a diagram are:
-- `kind: "input"` and `kind: "output"` (entry/exit points)
-- `kind: "block"` (containers for layers)
+**Layers and blocks are fundamentally different.** A common mistake is treating blocks as if they were layers — setting `layerType`, `params`, `inputShape`, or `outputShape` on a block node. Those fields belong on `kind: "layer"` only.
 
-A top-level layer outside any block is a broken diagram. Blocks organize layers into meaningful sub-components (ResBlock, MLP, ConvStage, etc.).
+- **`kind: "layer"`** — A single operation (Conv2d, ReLU, BatchNorm, Linear…). Has `layerType`, `params`, `inputShape`, `outputShape`.
+- **`kind: "block"`** — A container that groups nodes together. Has `children`, `internalEdges`, `repeat`, `direction`. Does NOT have `layerType`, `params`, or shapes.
 
-**❌ BAD — layers floating at top level:**
-```
-input → Conv2d → BatchNorm → ReLU → Conv2d → BatchNorm → ReLU → output
-```
-
-**✅ GOOD — layers wrapped in blocks:**
-```
-input → [ConvStage] → [ResBlock] → output
-         ↓             ↓
-    (Conv2d, BN,    (Conv2d, BN,
-     ReLU inside)    ReLU, skip inside)
-```
+Layers MAY exist at the top level of a diagram alongside input/output nodes. Blocks are the recommended way to organize layers into named sub-components (Backbone, Head, Neck, ConvStage, ResBlock, etc.), but they are not mandatory. Use blocks when grouping improves readability — don't force every layer into a block if it doesn't add clarity.
 
 ### 3. Creating new `.net.json` files: build scripts only
 
@@ -173,10 +161,13 @@ Represents a reusable sub-network (e.g. ResBlock, C2f, Bottleneck). A block **co
  ]}
 ```
 
+**Blocks are always available — no network declaration required.** You can create and use blocks freely in any `.net.json` file without needing to declare or register the network first. Blocks are the fundamental organizational unit and work out of the box.
+
 **When to use block vs layer:**
-- **Block-first:** Start by grouping layers into blocks. Almost every sequential chain of layers belongs inside a block. The top level should contain only input/output and blocks — never bare layers.
-- Use **layer** for individual operations (Conv2d, ReLU, MaxPool, Linear…)
-- Use **block** to group related layers into a named sub-component (ConvStage, ResBlock, MLP, C2f, TransformerBlock…)
+- Use **layer** for individual operations (Conv2d, ReLU, MaxPool, Linear…). Layers can live at the top level or inside blocks — both are valid.
+- Use **block** to group related nodes into a named sub-component. Common block patterns include:
+  - **Architectural stages:** Backbone, Head, Neck — high-level YOLO-style network structure concepts
+  - **Reusable modules:** ConvStage, ResBlock, MLP, C2f, TransformerBlock, Bottleneck, FPN, SPPF
 - Do NOT set `layerType` or `params` on a block node — those fields belong on `kind: "layer"` only
 - Do NOT set `inputShape`/`outputShape` on a block node — shapes go on individual layer nodes
 - `direction`: Controls the block's internal layout direction — `"horizontal"` (left→right) or `"vertical"` (top→bottom). When omitted/null, the layout is auto-detected.

@@ -15,7 +15,7 @@ export function ServerStatus() {
     navigator.clipboard.writeText(url)
   }
 
-  const [agentVisible, setAgentVisible] = useState(false)
+  const [agentHidden, setAgentHidden] = useState(true)
   const [configVisible, setConfigVisible] = useState(false)
 
   return (
@@ -56,14 +56,14 @@ export function ServerStatus() {
           </>
         )}
           <button
-            className={`agent-btn${agentVisible ? ' agent-btn-active' : ''}`}
-            onClick={() => setAgentVisible(!agentVisible)}
+            className={`agent-btn${!agentHidden ? ' agent-btn-active' : ''}`}
+            onClick={() => setAgentHidden(!agentHidden)}
           >
             Agent
           </button>
         </div>
       </div>
-      <AgentDialog visible={agentVisible} onClose={() => setAgentVisible(false)} />
+      <AgentDialog hidden={agentHidden} onToggleHidden={() => setAgentHidden(!agentHidden)} />
       <ConfigDialog visible={configVisible} onClose={() => setConfigVisible(false)} />
     </>
   )

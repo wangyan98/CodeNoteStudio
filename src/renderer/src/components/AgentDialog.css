@@ -5,6 +5,10 @@
   z-index: 1000;
 }
 
+.agent-dialog-overlay.overlay-hidden {
+  display: none;
+}
+
 .agent-dialog {
   width: 420px;
   height: 520px;
@@ -20,16 +24,6 @@
   overflow: hidden;
   min-width: 320px;
   min-height: 300px;
-}
-
-.agent-dialog.minimized {
-  height: auto;
-  min-height: unset;
-  resize: none;
-}
-
-.agent-dialog.minimized .agent-dialog-header {
-  border-bottom: none;
 }
 
 .agent-dialog-header {
