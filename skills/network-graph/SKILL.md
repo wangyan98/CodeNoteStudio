@@ -1,6 +1,6 @@
 ---
 name: network-graph
-description: Create and edit .net.json network graph files — a notebook-specific format for visualizing neural network architectures as directed graphs with nodes (input/output/layer/block) and edges (forward/skip). Use when: (1) Creating new network graphs, (2) Adding layers/blocks/connections, (3) Updating node labels/params/code mappings, (4) Deleting nodes or connections. Triggers on .net.json file operations.
+description: Create and edit .net.json network graph files — a notebook-specific format for visualizing neural network architectures as directed graphs with nodes (input/output/layer/block) and edges (forward/skip). Complex networks MUST be split across multiple .net.json files (overview + component diagrams). Use when: (1) Creating new network graphs via build scripts, (2) Adding layers/blocks/connections to existing diagrams, (3) Updating node labels/params/code mappings, (4) Deleting nodes or connections. Triggers on .net.json file operations.
 ---
 
 # Network Graph Skill
@@ -16,6 +16,13 @@ Operates on `.net.json` files — graph-based neural network visualizations with
   edit it to define the architecture, and execute it. Do NOT use other scripts
   (such as `create_network.py`) for initial file creation — those are
   adjustment tools for existing `.net.json` files only.
+  → **MANDATORY: Split complex architectures.** Before writing any build script,
+    assess whether the network needs multiple diagrams per the
+    [Multi-Diagram Architectures](#multi-diagram-architectures) rules. Almost
+    all non-trivial networks need at minimum an overview + 1-2 component
+    diagrams. Each diagram gets its own `build_xxx.py` script and its own
+    `.net.json` file. A single `build_xxx.py` MAY produce multiple `.net.json`
+    files (overview + per-component) for closely related diagrams.
   → All build scripts MUST be created in the workspace directory (not inside
     skills/network-graph/scripts/).
   → Execute them with `python <script-path> <output-path>`. Only Python scripts
@@ -43,33 +50,64 @@ Typical use cases:
 
 ## Multi-Diagram Architectures
 
-Complex networks with many sub-modules (e.g., SAM3, multi-modal models, encoder-decoder architectures) do **not** need to fit entirely in a single diagram. Instead, split the architecture across multiple `.net.json` files:
+**This is a HARD rule, not a suggestion.** Complex networks MUST be split across multiple `.net.json` files. Do NOT cram everything into a single diagram.
 
-- **Overview diagram** — high-level blocks and their interconnections. Blocks in the overview serve as abstractions; they do NOT need to expose every internal layer or edge. Keep the overview focused on the data flow between major components.
-- **Component diagrams** — one `.net.json` per major sub-module, showing detailed layer-by-layer structure, internal edges, shapes, and parameters.
+The overview diagram shows the high-level architecture as blocks and their data flow. Each major sub-module gets its own component diagram with full internal detail. Sub-modules that are themselves complex (e.g., an MLP block with multiple layers) SHOULD appear by name only in the component diagram — their internal structure goes in yet another dedicated diagram built by a separate `build_xxx.py` script.
 
-**When to split:**
+### How splitting works
+
+```
+Overview (.net.json)
+  └─ Block "Backbone"       → backbone.net.json (detailed layers)
+       └─ Block "MLP"       → mlp.net.json (separate build script)
+```
+
+- **Overview diagram** — high-level blocks and inter-block connections. Blocks serve as abstractions with only `label`, `direction`, and `repeat` — NO internal `children` or `internalEdges`. Keep the overview focused on data flow between major components.
+- **Component diagrams** — one `.net.json` per major sub-module. When a sub-module contains a reusable sub-component (e.g., MLP, FFN, Attention), keep that sub-component as a single block node by name only (empty `children`), and build its internal details in a separate `.net.json` file with its own `build_xxx.py` script.
+
+### When to split (any of these triggers = MUST split)
+
 - The top-level graph has more than ~8–12 nodes (blocks + layers + input/output)
 - A sub-module has significant internal complexity (e.g., ViT with 32 transformer blocks, FPN with multiple scale branches)
 - The same sub-module is reused across different architectures (split it out for reuse)
 - Cross-block skip connections would create excessive edge crossings in a single diagram
 - Block nesting exceeds 2 levels (block → block → layer) — split deeper sub-modules into dedicated component diagrams
+- **Any block that itself contains multiple layers** — build it as a separate diagram, reference it by name in the parent
 
-**Conventions:**
-- Use a consistent naming pattern: `<model>-overview.net.json`, `<model>-backbone.net.json`, `<model>-neck.net.json`, etc.
-- In the overview, set block `direction` but keep `children` minimal or empty — the block's internal detail lives in its own dedicated diagram.
-- Use `repeat` on overview blocks to indicate stacked sub-layers without enumerating them.
+### Naming conventions
 
-**Anti-pattern (avoid):** One monolithic diagram with 20+ top-level nodes, deeply nested block children (3+ levels), and dense cross-graph skip edges. This produces an unreadable graph.
+- Use a consistent naming pattern: `<model>-overview.net.json`, `<model>-backbone.net.json`, `<model>-neck.net.json`, `<model>-mlp.net.json`, etc.
+- Corresponding build scripts: `build_<model>_overview.py`, `build_<model>_backbone.py`, etc.
 
-**Example — SAM3 split:**
+### How to represent sub-modules
 
-| File | Contents |
-|------|----------|
-| `sam3-overview.net.json` | Image/Text inputs → ViT backbone block → FPN neck block → VL backbone block → Transformer Encoder/Decoder blocks → Segmentation Head block → Output. Internal details omitted; blocks show only the high-level flow and cross-block skip edges. |
-| `sam3-vit-backbone.net.json` | PatchEmbed → 7 ViT stages (windowed + global attention), with full shape annotations and internal edges. |
-| `sam3-fpn-neck.net.json` | PositionEmbeddingSine → 4-scale feature pyramid (P2–P5) with individual ConvTranspose2d/Conv2d/MaxPool2d layers. |
-| `sam3-transformer-decoder.net.json` | Query Embeddings → 6 decoder layers → BBox regression head, with self/cross-attention annotations. |
+When a component diagram references a sub-module that has its own detailed diagram:
+
+**In the parent diagram**, add a block node with `label` only — no `children`, no `internalEdges`. The label matches the sub-module's name:
+
+```json
+{"id": "uuid", "kind": "block", "label": "MLP", "repeat": 1}
+```
+
+**In a separate build script**, create the sub-module's dedicated `.net.json` with full internal detail (layers, shapes, edges, parameters).
+
+This keeps each diagram focused and readable — a block labeled "MLP" signals "details in `mlp.net.json`" without cluttering the parent.
+
+### Anti-pattern (avoid)
+
+One monolithic diagram with 20+ top-level nodes, deeply nested block children (3+ levels), and dense cross-graph skip edges. This produces an unreadable graph.
+
+Also avoid: a block with its full internal layers enumerated in the overview diagram. Move those layers to a dedicated component diagram.
+
+### Example — SAM3 split
+
+| File | Build Script | Contents |
+|------|-------------|----------|
+| `sam3-overview.net.json` | `build_sam3_overview.py` | Image/Text inputs → ViT backbone block → FPN neck block → VL backbone block → Transformer Encoder/Decoder blocks → Segmentation Head block → Output. Blocks show only name + direction + repeat, no internal layers. |
+| `sam3-vit-backbone.net.json` | `build_sam3_vit.py` | PatchEmbed → 7 ViT stages (windowed + global attention), with full shape annotations and internal edges. |
+| `sam3-fpn-neck.net.json` | `build_sam3_fpn.py` | PositionEmbeddingSine → 4-scale feature pyramid (P2–P5) with individual ConvTranspose2d/Conv2d/MaxPool2d layers. |
+| `sam3-transformer-decoder.net.json` | `build_sam3_decoder.py` | Query Embeddings → 6 decoder layers → BBox regression head, with self/cross-attention annotations. |
+| `sam3-mlp.net.json` | `build_sam3_mlp.py` | Full MLP internals: Linear → GELU → Dropout → Linear, with shapes and parameters. Referenced by name ("MLP") in the decoder diagram. |
 
 ## Node Kind Reference
 
