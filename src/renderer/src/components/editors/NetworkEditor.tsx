@@ -9,6 +9,18 @@ import { NetworkCanvas } from './NetworkCanvas'
 import { NetworkPanel } from './NetworkPanel'
 import './NetworkEditor.css'
 
+/** Recursively find a node by id in the tree. */
+function findNodeInTree(nodes: GraphNode[], id: string): GraphNode | null {
+  for (const n of nodes) {
+    if (n.id === id) return n
+    if (n.children) {
+      const found = findNodeInTree(n.children, id)
+      if (found) return found
+    }
+  }
+  return null
+}
+
 interface NetworkEditorProps {
   document: NetworkDocument
   notePath: string
@@ -130,14 +142,7 @@ export function NetworkEditor({ document: initialDoc, notePath, workspacePath, o
 
   const selectedNode = useMemo(() => {
     if (!selectedNodeId) return null
-    for (const n of (doc.nodes ?? [])) {
-      if (n.id === selectedNodeId) return n
-      if (n.children) {
-        const child = n.children.find(c => c.id === selectedNodeId)
-        if (child) return child
-      }
-    }
-    return null
+    return findNodeInTree(doc.nodes ?? [], selectedNodeId)
   }, [doc.nodes, selectedNodeId])
 
   selectedNodeRef.current = selectedNode
@@ -234,7 +239,23 @@ export function NetworkEditor({ document: initialDoc, notePath, workspacePath, o
           + Output
         </button>
         <span style={{ flex: 1 }} />
-        <button className="network-editor-btn" onClick={() => dispatch({ type: 'ADD_NODE', kind: 'block', name: 'New Block' })}>
+        <button
+          className="network-editor-btn"
+          onClick={() => {
+            if (selectedNode && selectedNode.kind === 'block') {
+              // Add nested block inside selected block
+              dispatch({
+                type: 'ADD_NODE',
+                kind: 'block',
+                name: 'New Block',
+                parentId: selectedNode.id,
+              })
+            } else {
+              // Add top-level block
+              dispatch({ type: 'ADD_NODE', kind: 'block', name: 'New Block' })
+            }
+          }}
+        >
           + Add Block
         </button>
         <span className={`network-editor-save-status ${saveStatusClass}`}>
