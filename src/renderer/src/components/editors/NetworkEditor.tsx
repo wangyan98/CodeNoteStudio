@@ -21,6 +21,23 @@ function findNodeInTree(nodes: GraphNode[], id: string): GraphNode | null {
   return null
 }
 
+/** Check whether a node is already inside a block — used to enforce the 2-level nesting limit. */
+function hasBlockAncestor(nodes: GraphNode[], targetId: string): boolean {
+  for (const n of nodes) {
+    if (n.children) {
+      for (const child of n.children) {
+        if (child.id === targetId && n.kind === 'block') return true
+        if (child.children) {
+          const found = child.children.some(gc => gc.id === targetId)
+          if (found && child.kind === 'block') return true
+        }
+      }
+      if (hasBlockAncestor(n.children, targetId)) return true
+    }
+  }
+  return false
+}
+
 interface NetworkEditorProps {
   document: NetworkDocument
   notePath: string
@@ -242,16 +259,16 @@ export function NetworkEditor({ document: initialDoc, notePath, workspacePath, o
         <button
           className="network-editor-btn"
           onClick={() => {
-            if (selectedNode && selectedNode.kind === 'block') {
-              // Add nested block inside selected block
+            const sel = selectedNode
+            // Only nest if the selected node is a block AND it's not already inside another block
+            if (sel && sel.kind === 'block' && !hasBlockAncestor(doc.nodes ?? [], sel.id)) {
               dispatch({
                 type: 'ADD_NODE',
                 kind: 'block',
                 name: 'New Block',
-                parentId: selectedNode.id,
+                parentId: sel.id,
               })
             } else {
-              // Add top-level block
               dispatch({ type: 'ADD_NODE', kind: 'block', name: 'New Block' })
             }
           }}
