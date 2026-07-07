@@ -1,6 +1,6 @@
 ---
 name: network-graph
-description: Create and edit .net.json network graph files — a notebook-specific format for visualizing neural network architectures as directed graphs with nodes (input/output/layer/block) and edges (forward/skip). Complex networks MUST be split across multiple .net.json files (overview + component diagrams). Use when: (1) Creating new network graphs via build scripts, (2) Adding layers/blocks/connections to existing diagrams, (3) Updating node labels/params/code mappings, (4) Deleting nodes or connections. Triggers on .net.json file operations.
+description: Create and edit .net.json network graph files — a notebook-specific format for visualizing neural network architectures as directed graphs with nodes (input/output/layer/block) and edges (forward/skip). HARD RULES: (1) NEVER write .net.json by hand — use build scripts only, (2) EVERY layer MUST be inside a block — no top-level layers, (3) Complex networks MUST be split across multiple .net.json files (overview + component diagrams). Triggers on .net.json file operations.
 ---
 
 # Network Graph Skill
@@ -9,9 +9,36 @@ Operates on `.net.json` files — graph-based neural network visualizations with
 
 ## Critical rules
 
-- **NEVER write `.net.json` files directly.** All .net.json creation/modification MUST go through the scripts listed below. The scripts handle UUID generation, edge rewiring, and data integrity.
-- **Creating new `.net.json` files: build scripts only.** To create a brand-new
-  network graph, you MUST scaffold a build script with
+### 1. NEVER write `.net.json` files directly
+
+You MUST NOT create, write, or edit `.net.json` files by hand. All `.net.json` operations go through the scripts listed below. The scripts handle UUID generation, edge rewiring, and data integrity. **If you find yourself writing JSON — STOP. Use a build script instead.**
+
+Punishment for writing .net.json directly: UUID collision, broken edge references, data corruption.
+
+### 2. MANDATORY: Use blocks — do NOT put layers at the top level
+
+**Every layer MUST live inside a block.** The only nodes allowed at the top level of a diagram are:
+- `kind: "input"` and `kind: "output"` (entry/exit points)
+- `kind: "block"` (containers for layers)
+
+A top-level layer outside any block is a broken diagram. Blocks organize layers into meaningful sub-components (ResBlock, MLP, ConvStage, etc.).
+
+**❌ BAD — layers floating at top level:**
+```
+input → Conv2d → BatchNorm → ReLU → Conv2d → BatchNorm → ReLU → output
+```
+
+**✅ GOOD — layers wrapped in blocks:**
+```
+input → [ConvStage] → [ResBlock] → output
+         ↓             ↓
+    (Conv2d, BN,    (Conv2d, BN,
+     ReLU inside)    ReLU, skip inside)
+```
+
+### 3. Creating new `.net.json` files: build scripts only
+
+  To create a brand-new network graph, you MUST scaffold a build script with
   `scripts/create_build_script.py <full-path> --workspace <workspace-path>`,
   edit it to define the architecture, and execute it. Do NOT use other scripts
   (such as `create_network.py`) for initial file creation — those are
@@ -33,11 +60,11 @@ Operates on `.net.json` files — graph-based neural network visualizations with
   → For complex networks, a single build script MAY produce multiple `.net.json`
     files (overview + per-component diagrams). See **Multi-Diagram Architectures**
     for when and how to split.
-- **Adjusting existing `.net.json` files:** Use the individual scripts
+- **Adjusting existing `.net.json` files (#4):** Use the individual scripts
   (`add_layer.py`, `add_block.py`, `add_connection.py`, `update_node.py`,
   `delete_node.py`, `delete_connection.py`, `add_node_to_block.py`) for
   incremental edits to an existing file. These are NOT for initial creation.
-- **Scripts directory:** `skills/network-graph/scripts/`
+- **Scripts directory (#5):** `skills/network-graph/scripts/`
 
 ## Purpose
 
@@ -147,8 +174,9 @@ Represents a reusable sub-network (e.g. ResBlock, C2f, Bottleneck). A block **co
 ```
 
 **When to use block vs layer:**
+- **Block-first:** Start by grouping layers into blocks. Almost every sequential chain of layers belongs inside a block. The top level should contain only input/output and blocks — never bare layers.
 - Use **layer** for individual operations (Conv2d, ReLU, MaxPool, Linear…)
-- Use **block** only when a group of layers forms a reusable sub-component (ResBlock, C2f, TransformerBlock…)
+- Use **block** to group related layers into a named sub-component (ConvStage, ResBlock, MLP, C2f, TransformerBlock…)
 - Do NOT set `layerType` or `params` on a block node — those fields belong on `kind: "layer"` only
 - Do NOT set `inputShape`/`outputShape` on a block node — shapes go on individual layer nodes
 - `direction`: Controls the block's internal layout direction — `"horizontal"` (left→right) or `"vertical"` (top→bottom). When omitted/null, the layout is auto-detected.
