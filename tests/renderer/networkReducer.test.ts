@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { networkReducer } from '../../src/renderer/src/components/editors/networkReducer'
 import type { NetworkAction } from '../../src/renderer/src/components/editors/networkReducer'
-import type { NetworkDocument } from '../../src/main/schemas/note-types'
+import type { NetworkDocument, GraphNode, GraphEdge } from '../../src/main/schemas/note-types'
 import { createNetworkDocument } from '../../src/main/schemas/note-types'
 
 function makeDoc(): NetworkDocument {
@@ -204,6 +204,116 @@ describe('networkReducer', () => {
       const original = makeDoc()
       const origJson = JSON.stringify(original)
       dispatch(original, { type: 'DELETE_LAYER', blockId: 'b1', layerId: 'l2' })
+      expect(JSON.stringify(original)).toBe(origJson)
+    })
+  })
+})
+
+// ─── v2 tests: nested block operations ───────────────────────────────
+
+function makeV2Doc(): NetworkDocument {
+  const inputId = 'in-1'
+  const outputId = 'out-1'
+  return {
+    type: 'net',
+    version: 2,
+    name: 'TestNet',
+    nodes: [
+      { id: inputId, kind: 'input', label: 'Input' },
+      { id: 'b1', kind: 'block', label: 'Backbone', children: [
+        { id: 'l1', kind: 'layer', label: 'conv1', layerType: 'Conv2d', params: {} },
+      ], internalEdges: [] },
+      { id: outputId, kind: 'output', label: 'Output' },
+    ],
+    edges: [
+      { id: 'e1', source: inputId, target: 'b1', style: 'forward' },
+      { id: 'e2', source: 'b1', target: outputId, style: 'forward' },
+    ],
+  }
+}
+
+describe('networkReducer (v2) — nested blocks', () => {
+  describe('ADD_NODE with parentId', () => {
+    it('adds a layer as child of a top-level block', () => {
+      const doc = makeV2Doc()
+      const result = dispatch(doc, {
+        type: 'ADD_NODE', nodeId: 'l2', parentId: 'b1',
+        kind: 'layer', layerType: 'ReLU', name: 'relu1',
+      })
+      const b1 = result.nodes!.find(n => n.id === 'b1')!
+      expect(b1.children!.length).toBe(2)
+      expect(b1.children![1].label).toBe('relu1')
+      // Should create auto internal edge from l1 -> l2
+      expect(b1.internalEdges!.length).toBe(1)
+      expect(b1.internalEdges![0].source).toBe('l1')
+      expect(b1.internalEdges![0].target).toBe('l2')
+    })
+
+    it('adds a nested block as child of a top-level block', () => {
+      const doc = makeV2Doc()
+      const result = dispatch(doc, {
+        type: 'ADD_NODE', nodeId: 'b2', parentId: 'b1',
+        kind: 'block', name: 'ResBlock',
+      })
+      const b1 = result.nodes!.find(n => n.id === 'b1')!
+      expect(b1.children!.length).toBe(2)
+      const nested = b1.children![1]
+      expect(nested.kind).toBe('block')
+      expect(nested.label).toBe('ResBlock')
+      expect(nested.children).toEqual([])
+    })
+  })
+
+  describe('DELETE_NODE', () => {
+    it('deletes a layer from inside a block', () => {
+      const doc = makeV2Doc()
+      const result = dispatch(doc, { type: 'DELETE_NODE', nodeId: 'l1' })
+      const b1 = result.nodes!.find(n => n.id === 'b1')!
+      expect(b1.children!.length).toBe(0)
+    })
+
+    it('deletes a nested block from inside a parent block', () => {
+      const doc = makeV2Doc()
+      // First add a nested block
+      const withNested = dispatch(doc, {
+        type: 'ADD_NODE', nodeId: 'b2', parentId: 'b1',
+        kind: 'block', name: 'ResBlock',
+      })
+      // Now delete it
+      const result = dispatch(withNested, { type: 'DELETE_NODE', nodeId: 'b2' })
+      const b1 = result.nodes!.find(n => n.id === 'b1')!
+      expect(b1.children!.length).toBe(1)
+      expect(b1.children![0].id).toBe('l1')
+    })
+  })
+
+  describe('UPDATE_NODE', () => {
+    it('updates a layer nested inside a block', () => {
+      const doc = makeV2Doc()
+      const result = dispatch(doc, {
+        type: 'UPDATE_NODE', nodeId: 'l1',
+        field: 'label', value: 'renamed_conv',
+      })
+      const b1 = result.nodes!.find(n => n.id === 'b1')!
+      expect(b1.children![0].label).toBe('renamed_conv')
+    })
+  })
+
+  describe('immutability', () => {
+    it('does not mutate original document on ADD_NODE', () => {
+      const original = makeV2Doc()
+      const origJson = JSON.stringify(original)
+      dispatch(original, {
+        type: 'ADD_NODE', nodeId: 'l2', parentId: 'b1',
+        kind: 'layer', layerType: 'ReLU', name: 'relu1',
+      })
+      expect(JSON.stringify(original)).toBe(origJson)
+    })
+
+    it('does not mutate original document on DELETE_NODE', () => {
+      const original = makeV2Doc()
+      const origJson = JSON.stringify(original)
+      dispatch(original, { type: 'DELETE_NODE', nodeId: 'l1' })
       expect(JSON.stringify(original)).toBe(origJson)
     })
   })
