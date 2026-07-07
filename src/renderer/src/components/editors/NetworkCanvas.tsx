@@ -26,6 +26,8 @@ const INPUT_W = 100
 const INPUT_H = 28
 const BLOCK_MIN_W = 200
 const BLOCK_HEADER_H = 24
+const BLOCK_PAD = 20
+const BLOCK_BOTTOM_PAD = 14
 
 function runLayout(
   nodes: GraphNode[],
@@ -78,6 +80,78 @@ function autoDetectDirection(
     if (count >= 2) return 'horizontal'
   }
   return 'vertical'
+}
+
+type BlockLayout = {
+  positions: Map<string, { x: number; y: number }>
+  width: number
+  height: number
+  childOffsetX: number
+  childOffsetY: number
+  direction: BlockDirection
+}
+
+function computeBlockLayout(
+  block: GraphNode,
+  allLayouts: Map<string, BlockLayout>
+): BlockLayout | null {
+  if (!block.children || block.children.length === 0) return null
+
+  const children = block.children
+  const internalEdges = block.internalEdges ?? []
+  const blockDirection = (block.direction as BlockDirection | undefined) ?? autoDetectDirection(internalEdges)
+
+  // Build size overrides for any child blocks (recursive)
+  const nodeSizes = new Map<string, { width: number; height: number }>()
+  for (const child of children) {
+    if (child.kind === 'block') {
+      const childLayout = computeBlockLayout(child, allLayouts)
+      if (childLayout) {
+        allLayouts.set(child.id, childLayout)
+        nodeSizes.set(child.id, { width: childLayout.width, height: childLayout.height })
+      } else {
+        nodeSizes.set(child.id, { width: BLOCK_MIN_W, height: NODE_H + BLOCK_HEADER_H })
+      }
+    }
+  }
+
+  const childPositions = runLayout(children, internalEdges, nodeSizes, blockDirection)
+
+  // Compute bounding box from child positions
+  let cMinX = Infinity, cMaxX = -Infinity, cMinY = Infinity, cMaxY = -Infinity
+  for (const child of children) {
+    const cp = childPositions.get(child.id)
+    if (!cp) continue
+    const size = nodeSizes.get(child.id) ?? {
+      width: child.kind === 'input' || child.kind === 'output' ? INPUT_W : NODE_W,
+      height: child.kind === 'input' || child.kind === 'output' ? INPUT_H : NODE_H,
+    }
+    cMinX = Math.min(cMinX, cp.x - size.width / 2)
+    cMaxX = Math.max(cMaxX, cp.x + size.width / 2)
+    cMinY = Math.min(cMinY, cp.y - size.height / 2)
+    cMaxY = Math.max(cMaxY, cp.y + size.height / 2)
+  }
+
+  if (!isFinite(cMinX)) {
+    cMinX = -NODE_W / 2; cMaxX = NODE_W / 2
+    cMinY = -NODE_H / 2; cMaxY = NODE_H / 2
+  }
+
+  const contentW = cMaxX - cMinX
+  const contentH = cMaxY - cMinY
+  const padX = blockDirection === 'horizontal' ? BLOCK_PAD * 2 : BLOCK_PAD
+  const padY = blockDirection === 'vertical' ? BLOCK_PAD * 2 : BLOCK_PAD
+  const bw = Math.max(BLOCK_MIN_W, contentW + padX * 2)
+  const bh = BLOCK_HEADER_H + contentH + padY + BLOCK_BOTTOM_PAD
+
+  return {
+    positions: childPositions,
+    width: bw,
+    height: bh,
+    childOffsetX: padX - cMinX,
+    childOffsetY: BLOCK_HEADER_H + padY - cMinY,
+    direction: blockDirection,
+  }
 }
 
 export function NetworkCanvas({
@@ -141,54 +215,16 @@ export function NetworkCanvas({
     const topNodes = doc.nodes ?? []
     const topEdges = doc.edges ?? []
 
-    // For each block with children, run sub-layout and compute block dimensions
-    type BlockLayout = {
-      positions: Map<string, { x: number; y: number }>
-      width: number
-      height: number
-      childOffsetX: number
-      childOffsetY: number
-      direction: BlockDirection
-    }
     const blockLayouts = new Map<string, BlockLayout>()
-    const BLOCK_PAD = 20
-    const BLOCK_BOTTOM_PAD = 14
 
+    // Build block layouts recursively (top-level only — nested layouts are stored
+    // inside computeBlockLayout via the allLayouts map)
     for (const node of topNodes) {
-      if (node.kind === 'block' && node.children && node.children.length > 0) {
-        const children = node.children
-        const internalEdges = node.internalEdges ?? []
-        const blockDirection = node.direction ?? autoDetectDirection(internalEdges)
-        const childPositions = runLayout(children, internalEdges, undefined, blockDirection)
-
-        // Compute bounding box of children (positions are node centers)
-        let cMinX = Infinity, cMaxX = -Infinity, cMinY = Infinity, cMaxY = -Infinity
-        for (const cp of childPositions.values()) {
-          cMinX = Math.min(cMinX, cp.x - NODE_W / 2)
-          cMaxX = Math.max(cMaxX, cp.x + NODE_W / 2)
-          cMinY = Math.min(cMinY, cp.y - NODE_H / 2)
-          cMaxY = Math.max(cMaxY, cp.y + NODE_H / 2)
+      if (node.kind === 'block') {
+        const layout = computeBlockLayout(node, blockLayouts)
+        if (layout) {
+          blockLayouts.set(node.id, layout)
         }
-        if (!isFinite(cMinX)) {
-          cMinX = -NODE_W / 2; cMaxX = NODE_W / 2
-          cMinY = -NODE_H / 2; cMaxY = NODE_H / 2
-        }
-
-        const contentW = cMaxX - cMinX
-        const contentH = cMaxY - cMinY
-        const padX = blockDirection === 'horizontal' ? BLOCK_PAD * 2 : BLOCK_PAD
-        const padY = blockDirection === 'vertical' ? BLOCK_PAD * 2 : BLOCK_PAD
-        const bw = Math.max(BLOCK_MIN_W, contentW + padX * 2)
-        const bh = BLOCK_HEADER_H + contentH + padY + BLOCK_BOTTOM_PAD
-
-        blockLayouts.set(node.id, {
-          positions: childPositions,
-          width: bw,
-          height: bh,
-          childOffsetX: padX - cMinX,
-          childOffsetY: BLOCK_HEADER_H + padY - cMinY,
-          direction: blockDirection,
-        })
       }
     }
 
@@ -1055,6 +1091,232 @@ export function NetworkCanvas({
           for (const child of node.children) {
             const cp = blockLayout.positions.get(child.id)
             if (!cp) continue
+
+            if (child.kind === 'block') {
+              // Render nested block as a mini-block
+              const nestedLayout = blockLayouts.get(child.id)
+              const nw = nestedLayout?.width ?? BLOCK_MIN_W
+              const nh = nestedLayout?.height ?? (NODE_H + BLOCK_HEADER_H)
+              const nx = childOffsetX + cp.x - nw / 2
+              const ny = childOffsetY + cp.y - nh / 2
+              const childIsSelected = child.id === selectedNodeId
+
+              const nestedG = nodeG.append('g')
+                .attr('class', 'net-node')
+                .attr('data-node-id', child.id)
+                .attr('data-node-kind', 'block')
+                .style('cursor', 'pointer')
+
+              // Dashed border
+              nestedG.append('rect')
+                .attr('x', nx).attr('y', ny).attr('width', nw).attr('height', nh)
+                .attr('rx', 6).attr('fill', 'none')
+                .attr('stroke', childIsSelected ? '#4a90d9' : '#ff9800')
+                .attr('stroke-width', childIsSelected ? 2.5 : 1.5)
+                .attr('stroke-dasharray', '4,2')
+
+              // Header
+              let headerText = child.label
+              if (child.repeat && child.repeat > 1) headerText += ` ×${child.repeat}`
+              nestedG.append('text')
+                .attr('x', nx + 8).attr('y', ny + 14)
+                .attr('fill', '#ff9800').attr('font-size', '10px').attr('font-weight', 'bold')
+                .text(headerText)
+
+              // Render nested block's children (layers only) and internal edges
+              if (nestedLayout && child.children) {
+                const nChildOffsetX = nx + nestedLayout.childOffsetX
+                const nChildOffsetY = ny + nestedLayout.childOffsetY
+
+                // Internal edges of the nested block
+                for (const ie of (child.internalEdges ?? [])) {
+                  const cpSrc = nestedLayout.positions.get(ie.source)
+                  const cpTgt = nestedLayout.positions.get(ie.target)
+                  if (!cpSrc || !cpTgt) continue
+                  renderEdge(ie,
+                    { x: nChildOffsetX + cpSrc.x, y: nChildOffsetY + cpSrc.y },
+                    { x: nChildOffsetX + cpTgt.x, y: nChildOffsetY + cpTgt.y },
+                    NODE_W, NODE_H, NODE_W, NODE_H, nestedG,
+                    0, 1, 0, 1,
+                    nestedLayout.direction, nestedLayout.direction)
+                }
+
+                // Layer children of the nested block
+                for (const nChild of child.children) {
+                  const ncp = nestedLayout.positions.get(nChild.id)
+                  if (!ncp) continue
+                  const ncx = nChildOffsetX + ncp.x - NODE_W / 2
+                  const ncy = nChildOffsetY + ncp.y - NODE_H / 2
+                  const nSelected = nChild.id === selectedNodeId
+
+                  let cc = '#888', cf = '#2a2a2a'
+                  if (nChild.layerType) {
+                    const def = catalog[nChild.layerType]
+                    cc = def?.color ?? '#888'
+                    cf = (def?.color ?? '#888') + '22'
+                  }
+
+                  const nChildG = nestedG.append('g')
+                    .attr('class', 'net-node')
+                    .attr('data-node-id', nChild.id)
+                    .attr('data-node-kind', nChild.kind)
+                    .style('cursor', 'pointer')
+
+                  if (nChild.inputShape) {
+                    nChildG.append('text')
+                      .attr('x', ncx + NODE_W / 2).attr('y', ncy - 4)
+                      .attr('text-anchor', 'middle').attr('fill', '#888').attr('font-size', '9px')
+                      .text(nChild.inputShape)
+                  }
+
+                  nChildG.append('rect')
+                    .attr('x', ncx).attr('y', ncy).attr('width', NODE_W).attr('height', NODE_H)
+                    .attr('rx', 4).attr('fill', cf)
+                    .attr('stroke', nSelected ? '#4a90d9' : cc)
+                    .attr('stroke-width', nSelected ? 2.5 : 1)
+
+                  nChildG.append('text')
+                    .attr('x', ncx + NODE_W / 2).attr('y', ncy + NODE_H / 2 + 4)
+                    .attr('text-anchor', 'middle').attr('fill', '#d4d4d4')
+                    .attr('font-size', '9px').attr('font-weight', 'bold')
+                    .text(nChild.label)
+
+                  // Click handlers
+                  if (!readOnly) {
+                    nChildG.on('click', (event: MouseEvent) => {
+                      event.stopPropagation()
+                      if (clickTimersRef.current.has(nChild.id)) return
+                      const timer = setTimeout(() => {
+                        onSelectNode?.(nChild.id)
+                        clickTimersRef.current.delete(nChild.id)
+                      }, 250)
+                      clickTimersRef.current.set(nChild.id, timer)
+                    })
+                  }
+                }
+              }
+
+              // Ports on nested block
+              if (!readOnly) {
+                // Output port
+                if (child.kind !== 'output') {
+                  nestedG.append('circle')
+                    .attr('class', 'net-port-out')
+                    .attr('cx', nx + nw / 2).attr('cy', ny + nh)
+                    .attr('r', 4).attr('fill', '#ff9800').attr('stroke', '#333').attr('stroke-width', 0.5)
+                    .attr('opacity', 0.5).style('cursor', 'crosshair')
+                    .on('mouseenter', function () { d3.select(this).attr('opacity', 1).attr('r', 6) })
+                    .on('mouseleave', function () { d3.select(this).attr('opacity', 0.5).attr('r', 4) })
+                }
+                // Input port
+                if (child.kind !== 'input') {
+                  nestedG.append('circle')
+                    .attr('class', 'net-port-in')
+                    .attr('cx', nx + nw / 2).attr('cy', ny)
+                    .attr('r', 4).attr('fill', '#ff9800').attr('stroke', '#333').attr('stroke-width', 0.5)
+                    .attr('opacity', 0.5).style('cursor', 'crosshair')
+                    .on('mouseenter', function () { d3.select(this).attr('opacity', 1).attr('r', 6) })
+                    .on('mouseleave', function () { d3.select(this).attr('opacity', 0.5).attr('r', 4) })
+                }
+              }
+
+              // Click on nested block
+              if (!readOnly) {
+                nestedG.on('click', (event: MouseEvent) => {
+                  event.stopPropagation()
+                  if (clickTimersRef.current.has(child.id)) return
+                  const timer = setTimeout(() => {
+                    onSelectNode?.(child.id)
+                    clickTimersRef.current.delete(child.id)
+                  }, 250)
+                  clickTimersRef.current.set(child.id, timer)
+                })
+              }
+
+              // Drag-to-connect for nested block
+              if (!readOnly && child.kind !== 'input' && child.kind !== 'output') {
+                const nestedDrag = d3.drag<SVGGElement, unknown>()
+                  .on('start', function (event: d3.D3DragEvent<SVGGElement, unknown, unknown>) {
+                    d3.select(this).raise()
+                    d3.select(this).select('rect').attr('stroke', '#ff0').attr('stroke-width', 2.5)
+                    const transform = d3.zoomTransform(svgEl!)
+                    const r = container.getBoundingClientRect()
+                    const sx = (event.sourceEvent.clientX - r.left - transform.x) / transform.k
+                    const sy = (event.sourceEvent.clientY - r.top - transform.y) / transform.k
+                    g.append('line')
+                      .attr('class', 'net-drag-line')
+                      .attr('x1', sx).attr('y1', sy)
+                      .attr('x2', sx).attr('y2', sy)
+                      .attr('stroke', '#4a90d9').attr('stroke-width', 2)
+                      .attr('stroke-dasharray', '4,2')
+                  })
+                  .on('drag', function (event: d3.D3DragEvent<SVGGElement, unknown, unknown>) {
+                    const transform = d3.zoomTransform(svgEl!)
+                    const r = container.getBoundingClientRect()
+                    const mx = (event.sourceEvent.clientX - r.left - transform.x) / transform.k
+                    const my = (event.sourceEvent.clientY - r.top - transform.y) / transform.k
+                    svgEl!.querySelector('.net-drag-line')?.setAttribute('x2', String(mx))
+                    svgEl!.querySelector('.net-drag-line')?.setAttribute('y2', String(my))
+                    // Highlight targets
+                    svgEl!.querySelectorAll('.net-drag-target').forEach(el => {
+                      el.classList.remove('net-drag-target')
+                      const r2 = (el as SVGGElement).querySelector('rect')
+                      if (r2) {
+                        const os = r2.getAttribute('data-orig-stroke')
+                        const ow = r2.getAttribute('data-orig-stroke-width')
+                        if (os) r2.setAttribute('stroke', os)
+                        if (ow) r2.setAttribute('stroke-width', ow)
+                      }
+                    })
+                    const els = document.elementsFromPoint(event.sourceEvent.clientX, event.sourceEvent.clientY)
+                    for (const el of els) {
+                      const nodeEl = (el as Element).closest?.('.net-node') as HTMLElement | null
+                      if (!nodeEl) continue
+                      const tid = nodeEl.getAttribute('data-node-id')
+                      if (!tid || tid === child.id || !validDragTargetIds.has(tid)) continue
+                      nodeEl.classList.add('net-drag-target')
+                      const tr = nodeEl.querySelector('rect')
+                      if (tr) {
+                        tr.setAttribute('data-orig-stroke', tr.getAttribute('stroke') || '#888')
+                        tr.setAttribute('data-orig-stroke-width', tr.getAttribute('stroke-width') || '1.5')
+                        tr.setAttribute('stroke', '#ff0')
+                        tr.setAttribute('stroke-width', '2.5')
+                      }
+                      break
+                    }
+                  })
+                  .on('end', function (event: d3.D3DragEvent<SVGGElement, unknown, unknown>) {
+                    svgEl!.querySelector('.net-drag-line')?.remove()
+                    const isSel = child.id === selectedNodeId
+                    d3.select(this).select('rect')
+                      .attr('stroke', isSel ? '#4a90d9' : '#ff9800')
+                      .attr('stroke-width', isSel ? 2.5 : 1.5)
+                    svgEl!.querySelectorAll('.net-drag-target').forEach(el => {
+                      el.classList.remove('net-drag-target')
+                      const r2 = (el as SVGGElement).querySelector('rect')
+                      if (r2) {
+                        const os = r2.getAttribute('data-orig-stroke')
+                        const ow = r2.getAttribute('data-orig-stroke-width')
+                        if (os) r2.setAttribute('stroke', os)
+                        if (ow) r2.setAttribute('stroke-width', ow)
+                      }
+                    })
+                    const els = document.elementsFromPoint(event.sourceEvent.clientX, event.sourceEvent.clientY)
+                    for (const el of els) {
+                      const nodeEl = (el as Element).closest?.('.net-node') as HTMLElement | null
+                      if (!nodeEl) continue
+                      const tid = nodeEl.getAttribute('data-node-id')
+                      if (!tid || tid === child.id || !validDragTargetIds.has(tid)) continue
+                      onAddEdge?.(child.id, tid)
+                      break
+                    }
+                  })
+                nestedG.call(nestedDrag as any)
+              }
+
+              continue // skip the existing layer rendering for this child
+            }
+
             const cx = childOffsetX + cp.x - NODE_W / 2
             const cy = childOffsetY + cp.y - NODE_H / 2
             const childIsSelected = child.id === selectedNodeId
