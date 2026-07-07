@@ -10,11 +10,12 @@ Operates on `.net.json` files — graph-based neural network visualizations with
 ## Critical rules
 
 - **NEVER write `.net.json` files directly.** All .net.json creation/modification MUST go through the scripts listed below. The scripts handle UUID generation, edge rewiring, and data integrity.
-- **Writing build scripts is allowed.** You MAY scaffold new generator scripts
-  with `scripts/create_build_script.py <full-path> --workspace <workspace-path>`
-  and then edit them. Build scripts programmatically call the existing CRUD
-  scripts to produce a .net.json. This is the preferred approach for large
-  architectures.
+- **Creating new `.net.json` files: build scripts only.** To create a brand-new
+  network graph, you MUST scaffold a build script with
+  `scripts/create_build_script.py <full-path> --workspace <workspace-path>`,
+  edit it to define the architecture, and execute it. Do NOT use other scripts
+  (such as `create_network.py`) for initial file creation — those are
+  adjustment tools for existing `.net.json` files only.
   → All build scripts MUST be created in the workspace directory (not inside
     skills/network-graph/scripts/).
   → Execute them with `python <script-path> <output-path>`. Only Python scripts
@@ -24,7 +25,11 @@ Operates on `.net.json` files — graph-based neural network visualizations with
   → PermissionGuard enforces these boundaries; violations return an error.
   → For complex networks, a single build script MAY produce multiple `.net.json`
     files (overview + per-component diagrams). See **Multi-Diagram Architectures**
-    above for when and how to split.
+    for when and how to split.
+- **Adjusting existing `.net.json` files:** Use the individual scripts
+  (`add_layer.py`, `add_block.py`, `add_connection.py`, `update_node.py`,
+  `delete_node.py`, `delete_connection.py`, `add_node_to_block.py`) for
+  incremental edits to an existing file. These are NOT for initial creation.
 - **Scripts directory:** `skills/network-graph/scripts/`
 
 ## Purpose
@@ -157,26 +162,25 @@ Edge styles: forward, skip.
 
 ## Scripts
 
+### Build scripts (create new .net.json files)
+
 | Script | Purpose |
 |--------|---------|
-| `scripts/create_network.py <path> [--name]` | Create .net.json with input/output |
+| `scripts/create_build_script.py <path> --workspace <dir>` | Scaffold a new build script in workspace. **Use this for creating new .net.json files.** |
+| `scripts/build_yolov5n.py <path> [--name]` | Reference: complete YOLOv5n net.json with direction-aware blocks |
+
+### Adjustment scripts (modify existing .net.json files)
+
+| Script | Purpose |
+|--------|---------|
 | `scripts/list_preset_layers.py` | List all available preset layer types and their parameters. Call this BEFORE add_layer to see valid layer types. |
 | `scripts/add_layer.py <path> <type> [--name] [--params JSON]` | Insert layer before output |
-| `scripts/add_block.py <path> <name> [--repeat N] [--direction horizontal|vertical]` | Create block node |
+| `scripts/add_block.py <path> <name> [--repeat N] [--direction horizontal\|vertical] [--parent <block-id>]` | Add block node |
 | `scripts/add_node_to_block.py <path> <block-id> <node-id>` | Move node into block |
 | `scripts/add_connection.py <path> <from-id> <to-id> [--style] [--label]` | Add edge |
-| `scripts/update_node.py <path> <node-id> [--label] [--params] [--input-shape] [--output-shape] [--code-mapping] [--direction horizontal|vertical]` | Update node |
+| `scripts/update_node.py <path> <node-id> [--label] [--params] [--input-shape] [--output-shape] [--code-mapping] [--direction horizontal\|vertical]` | Update node |
 | `scripts/delete_node.py <path> <node-id>` | Delete node + incident edges |
 | `scripts/delete_connection.py <path> <edge-id>` | Delete single edge |
-| `scripts/build_yolov5n.py <path> [--name]` | Build a complete YOLOv5n net.json with direction-aware blocks |
-| `scripts/create_build_script.py <path> --workspace <dir>` | Scaffold a new build script in workspace |
-
-### create_network.py
-
-```bash
-python scripts/create_network.py model.net.json --name "ResNet50"
-# => {"ok": true, "inputId": "uuid", "outputId": "uuid"}
-```
 
 ### add_layer.py
 
